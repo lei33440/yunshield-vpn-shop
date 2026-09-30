@@ -1,0 +1,28 @@
+# Local and production configuration
+/config/config.php
+.env
+.env.*
+
+# Runtime logs and generated files
+/storage/logs/*
+!/storage/logs/.gitkeep
+
+# Browser previews and test artifacts
+/.playwright-mcp/
+/*.png
+/*.jpg
+/*.jpeg
+/*.html
+
+# Database exports and backups
+*.sql.gz
+*.dump
+*.bak
+backup/
+backups/
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
