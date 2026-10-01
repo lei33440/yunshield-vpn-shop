@@ -2,9 +2,10 @@
 if (PHP_SAPI !== 'cli') exit("CLI only\n");
 $config = require dirname(__DIR__) . '/config/config.php';
 require dirname(__DIR__) . '/app/Core/Database.php';
-$email = trim(readline('管理员邮箱: '));
+fwrite(STDOUT, '管理员邮箱: ');
+$email = trim((string)fgets(STDIN));
 $password = getenv('VPN_ADMIN_PASSWORD');
-if (!$password) $password = trim(readline('管理员密码（建议至少 12 位）: '));
+if (!$password) { fwrite(STDOUT, '管理员密码（建议至少 12 位）: '); $password = trim((string)fgets(STDIN)); }
 if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($password) < 12) exit("邮箱无效或密码少于 12 位。\n");
 $pdo = Database::connect($config);
 $stmt = $pdo->prepare('INSERT INTO admin_users(email,password_hash,display_name,role,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?)');
