@@ -65,7 +65,9 @@ class UpdateService
             );
             return $this->store($this->withCurrentVersion($latest));
         } catch (Exception $e) {
-            return $this->store($this->result($current, 'error', $e->getMessage()));
+            $message = $e->getMessage();
+            $status = $message === 'GitHub 尚未发布 Release。' ? 'no_release' : 'error';
+            return $this->store($this->result($current, $status, $message));
         }
     }
 
