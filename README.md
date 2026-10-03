@@ -20,6 +20,17 @@
 - 临时订阅地址、文章、软件下载资源和售后工单管理。
 - 易支付配置（支付宝/微信）、异步通知处理及支付记录。
 - 管理员操作日志。
+- 活动运营配置：幸运抽奖、拉人返佣、好友拼单和团长免单。
+- 幸运抽奖自定义多奖品奖池：每个奖品独立设置面值、使用门槛、有效期、库存、权重和启停状态。
+- 好友拼单可按具体 `product_plan` 选择允许参与的套餐方案，并由服务端校验订单优惠。
+
+### 活动运营
+- 幸运抽奖支持每日次数、整体中奖概率和多个奖品权重配置。
+- 奖品库存支持固定库存和不限库存；库存耗尽后自动排除，后台启用活动前必须存在有效奖品。
+- 每个抽奖奖品独立生成优惠券，独立控制优惠金额、使用门槛和有效天数。
+- 拉人返佣支持首笔有效付款结算、人工审核提现和管理员审计。
+- 好友拼单支持指定多个套餐方案，成员创建/加入时先占位，订单付款确认后才计入成团人数。
+- 团长免单支持按有效邀请人数和指定套餐方案发放奖励。
 
 ### 安全相关
 - 使用 `password_hash/password_verify` 保存密码。
@@ -56,6 +67,7 @@ export VPN_TEMPORARY_SUBSCRIPTION_URL=''
 
 ```sh
 php scripts/migrate.php
+# 可选：仅开发环境导入演示套餐
 php scripts/seed.php
 ```
 
@@ -118,6 +130,32 @@ php -l scripts/create_admin.php
 ```
 
 完整验证需要可用的 MySQL/MariaDB 数据库和有效的本地环境配置。
+
+## 发布前检查清单
+
+```sh
+php -l public/index.php
+php -l app/Core/Bootstrap.php
+php -l app/Core/AdminDashboard.php
+php -l app/Core/AdminExtraPages.php
+php -l app/Core/AdminView.php
+php -l app/Services/ActivityService.php
+php -l app/Services/OrderService.php
+php -l app/Services/PaymentService.php
+php -l scripts/migrate.php
+php -l scripts/create_admin.php
+php -l scripts/seed.php
+git diff --check
+```
+
+发布前请确认：
+
+- `config/config.php`、`.env`、数据库备份、运行日志和支付密钥未被 Git 跟踪。
+- 生产环境 `VPN_APP_DEBUG=0`，`VPN_ENCRYPTION_KEY` 使用稳定且高强度的密钥。
+- Web 根目录只指向 `public/`。
+- 先在测试环境执行 `php scripts/migrate.php`，再备份数据库后执行生产迁移。
+- 抽奖奖池、拼团允许方案、支付回调地址和管理员账号已完成配置。
+- 不要将真实支付、提现或生产订单数据写入公开仓库。
 
 ## 许可证
 

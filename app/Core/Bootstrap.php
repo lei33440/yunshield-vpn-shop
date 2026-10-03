@@ -18,7 +18,7 @@ class Bootstrap
         require_once $root . '/app/Core/Security.php';
         if (session_status() !== PHP_SESSION_ACTIVE) {
             session_name($config['security']['session_name']);
-            session_set_cookie_params(0, '/', '', !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off', true);
+            $secure=!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';session_set_cookie_params(array('lifetime'=>0,'path'=>'/','domain'=>'','secure'=>$secure,'httponly'=>true,'samesite'=>'Lax'));
             session_start();
         }
         set_exception_handler(function ($e) use ($config, $root) {

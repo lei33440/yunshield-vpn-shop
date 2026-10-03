@@ -1,7 +1,7 @@
 <?php
 return array(
     'app' => array(
-        'name' => '云盾 VPN 套餐商城',
+        'name' => '小云铺加速器',
         'base_url' => getenv('VPN_BASE_URL') ?: 'http://127.0.0.1:8080',
         'timezone' => 'Asia/Shanghai',
         'debug' => getenv('VPN_APP_DEBUG') === '1',
