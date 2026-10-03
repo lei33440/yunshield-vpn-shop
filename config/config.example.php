@@ -16,4 +16,10 @@ return array(
         'encryption_key' => getenv('VPN_ENCRYPTION_KEY') ?: '',
         'session_name' => 'vpn_shop_session',
     ),
+    'update' => array(
+        'repository' => getenv('VPN_UPDATE_REPOSITORY') ?: 'lei33440/yunshield-vpn-shop',
+        'branch' => getenv('VPN_UPDATE_BRANCH') ?: 'main',
+        'enabled' => getenv('VPN_UPDATE_ENABLED') !== '0',
+        'cache_seconds' => (int)(getenv('VPN_UPDATE_CACHE_SECONDS') ?: 900),
+    ),
 );

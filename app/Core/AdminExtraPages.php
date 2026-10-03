@@ -17,6 +17,24 @@ function lottery_prize_input(){
 }
 function lottery_prize_form($row,$action,$title){$r=$row?:array('prize_code'=>'','name'=>'','prize_type'=>'coupon','value_cents'=>0,'min_amount_cents'=>0,'valid_days'=>30,'quantity'=>-1,'remaining_quantity'=>-1,'weight'=>0,'sort_order'=>0,'status'=>'active');return '<div class="product-form-card"><div class="product-form-heading"><div><h1>'.e($title).'</h1><p>奖品库存为 -1 表示不限量；已发放奖品不可将库存调低到已发放数量以下。</p></div><a class="secondary-button" href="/admin/events/lottery">返回抽奖配置</a></div><form method="post" action="'.e($action).'">'.csrf_field().'<div class="product-form-grid"><div class="product-form-section"><h2>奖品信息</h2><label>奖品编码<input name="prize_code" maxlength="80" pattern="[A-Za-z0-9_-]+" value="'.e($r['prize_code']).'" required></label><label>奖品名称<input name="name" maxlength="160" value="'.e($r['name']).'" required></label><label>奖品类型<select name="prize_type"><option value="coupon"'.($r['prize_type']==='coupon'?' selected':'').'>优惠券</option></select></label><label>优惠金额（元）<input type="text" name="value" inputmode="decimal" value="'.e(number_format((int)$r['value_cents']/100,2,'.','')).'" required></label><label>使用门槛（元）<input type="text" name="min_amount" inputmode="decimal" value="'.e(number_format((int)$r['min_amount_cents']/100,2,'.','')).'" required></label><label>有效期（天）<input type="number" name="valid_days" min="1" max="365" value="'.(int)$r['valid_days'].'" required></label></div><div class="product-form-section"><h2>奖池设置</h2><label>总库存（-1 为不限）<input type="number" name="quantity" min="-1" value="'.(int)$r['quantity'].'" required></label><label>抽奖权重<input type="number" name="weight" min="0" value="'.(int)$r['weight'].'" required></label><label>排序<input type="number" name="sort_order" min="0" value="'.(int)$r['sort_order'].'" required></label><label>状态<select name="status"><option value="active"'.($r['status']==='active'?' selected':'').'>启用</option><option value="inactive"'.($r['status']==='inactive'?' selected':'').'>停用</option></select></label></div></div><div class="product-form-actions"><a class="secondary-button" href="/admin/events/lottery">取消</a><button class="button" type="submit">保存奖品</button></div></form></div>';}
 
+function update_check_panel($config)
+{
+    try {
+        $service = new UpdateService($config);
+        $result = $service->cachedResult();
+        $current = $service->currentVersion();
+    } catch (Exception $e) {
+        $result = array('status'=>'error','message'=>'本地版本信息暂不可用。','current_version'=>'未知','latest_version'=>'','release_name'=>'','published_at'=>'','release_url'=>'','has_update'=>false,'checked_at'=>'');
+        $current = '未知';
+    }
+    $status = $result ? (isset($result['message']) ? $result['message'] : '已检测') : '尚未检测';
+    $tone = $result && isset($result['has_update']) && $result['has_update'] ? 'pending_payment' : 'delivered';
+    $latest = $result && !empty($result['latest_version']) ? e($result['latest_version']) : '—';
+    $checked = $result && !empty($result['checked_at']) ? e(date('Y-m-d H:i', strtotime($result['checked_at']))) : '—';
+    $link = $result && !empty($result['release_url']) ? '<a class="secondary-button" target="_blank" rel="noopener" href="'.e($result['release_url']).'">查看 Release</a>' : '';
+    return '<section class="admin-panel admin-settings-panel"><div class="admin-panel-head"><div><h2>项目更新</h2><p>检测 GitHub 是否发布了新版本，不会自动覆盖当前代码。</p></div><span class="admin-status '.e($tone).'">'.e($status).'</span></div><div class="admin-settings-fields"><label>当前版本<input value="'.e($current).'" readonly></label><label>GitHub 最新版本<input value="'.$latest.'" readonly></label><label>最近检测时间<input value="'.$checked.'" readonly></label></div><div class="product-form-actions">'.$link.'<form method="post" action="/admin/system/update/check" style="display:inline">'.csrf_field().'<button class="button" type="submit">立即检测</button></form></div></section>';
+}
+
 function register_admin_extra_routes($router, $pdo, $config)
 {
     $router->get('/admin/search', function() use ($pdo, $config) {
@@ -269,13 +287,24 @@ function register_admin_extra_routes($router, $pdo, $config)
         page('内容管理',$body,$config);
     });
 
+    $router->post('/admin/system/update/check', function() use ($config) {
+        Security::requireAdmin();
+        post_csrf();
+        try {
+            $result = (new UpdateService($config))->checkLatest(true);
+            flash($result['status']==='ok' ? 'success' : 'error', $result['message']);
+        } catch (Exception $e) {
+            flash('error', '更新检测失败，请稍后重试。');
+        }
+        redirect('/admin/settings?tab=general');
+    });
     $router->get('/admin/settings', function() use ($pdo, $config) {
         Security::requireAdmin();
         $tab=isset($_GET['tab'])&&in_array($_GET['tab'],array('general','payment','notifications','admins','security'),true)?$_GET['tab']:'general';
         $tabs='<nav class="admin-content-tabs"><a href="/admin/settings?tab=general"'.($tab==='general'?' class="selected"':'').'>基础设置</a><a href="/admin/settings?tab=payment"'.($tab==='payment'?' class="selected"':'').'>支付配置</a><a href="/admin/settings?tab=notifications"'.($tab==='notifications'?' class="selected"':'').'>消息通知</a><a href="/admin/settings?tab=admins"'.($tab==='admins'?' class="selected"':'').'>管理员与权限</a><a href="/admin/settings?tab=security"'.($tab==='security'?' class="selected"':'').'>安全与审计</a></nav>';
         $body=admin_heading('系统设置','配置支付、通知、安全与管理员权限').$tabs;
         if($tab==='general'){
-            $body.='<section class="admin-panel admin-settings-panel"><div class="admin-panel-head"><div><h2>基础设置</h2><p>平台品牌及默认业务配置</p></div></div><div class="admin-settings-logo"><img src="/assets/xiaoyun-logo.png" alt="小云铺加速器"><span><b>平台 Logo</b><small>当前品牌标识</small></span></div><div class="admin-settings-fields"><label>平台名称<input value="'.e($config['app']['name']).'" readonly></label><label>平台域名<input value="'.e($config['app']['base_url']).'" readonly></label><label>默认货币<input value="人民币 CNY" readonly></label></div><div class="admin-info-banner">品牌名称和平台域名由服务器配置文件维护。</div></section>';
+            $body.='<section class="admin-panel admin-settings-panel"><div class="admin-panel-head"><div><h2>基础设置</h2><p>平台品牌及默认业务配置</p></div></div><div class="admin-settings-logo"><img src="/assets/xiaoyun-logo.png" alt="小云铺加速器"><span><b>平台 Logo</b><small>当前品牌标识</small></span></div><div class="admin-settings-fields"><label>平台名称<input value="'.e($config['app']['name']).'" readonly></label><label>平台域名<input value="'.e($config['app']['base_url']).'" readonly></label><label>默认货币<input value="人民币 CNY" readonly></label></div><div class="admin-info-banner">品牌名称和平台域名由服务器配置文件维护。</div></section>'.update_check_panel($config);
         }elseif($tab==='payment'){
             $body.='<div class="admin-hub-grid">'.admin_hub_card('/admin/payment','支付配置','管理支付渠道、网关和通知地址。','finance','violet').admin_hub_card('/admin/temporary-subscription','临时订阅','维护付款确认后交付给用户的临时订阅。','subscriptions','blue').'</div>';
         }elseif($tab==='admins'){

@@ -63,6 +63,12 @@ export VPN_TEMPORARY_SUBSCRIPTION_URL=''
 
 生产环境请将变量放在权限受限的 PHP-FPM/systemd 环境或秘密管理设施中。`VPN_ENCRYPTION_KEY` 必须稳定保存；轮换会导致现有加密数据无法解密。
 
+### 版本更新检测
+
+项目根目录的 `VERSION` 文件记录当前版本号。管理员可在“系统设置 → 基础设置”中手动检测公开 GitHub 仓库 `lei33440/yunshield-vpn-shop` 的最新 Release；检测结果默认缓存 15 分钟。可选环境变量：`VPN_UPDATE_REPOSITORY`、`VPN_UPDATE_BRANCH`、`VPN_UPDATE_ENABLED` 和 `VPN_UPDATE_CACHE_SECONDS`。
+
+该功能只负责检测并提供 Release 链接，不会自动执行 `git pull`、覆盖代码、数据库迁移或重启服务。发布新版本时，请同步更新 `VERSION` 并创建匹配的 GitHub Release/tag。
+
 3. 初始化数据库并导入可选演示套餐：
 
 ```sh

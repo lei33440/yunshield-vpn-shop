@@ -5,7 +5,9 @@
 
 # Runtime logs and generated files
 /storage/logs/*
+/storage/cache/*
 !/storage/logs/.gitkeep
+!/storage/cache/.gitkeep
 
 # Browser previews and test artifacts
 /.playwright-mcp/
