@@ -67,7 +67,9 @@ export VPN_TEMPORARY_SUBSCRIPTION_URL=''
 
 项目根目录的 `VERSION` 文件记录当前版本号。管理员可在“系统设置 → 基础设置”中手动检测公开 GitHub 仓库 `lei33440/yunshield-vpn-shop` 的最新 Release；检测结果默认缓存 15 分钟。可选环境变量：`VPN_UPDATE_REPOSITORY`、`VPN_UPDATE_BRANCH`、`VPN_UPDATE_ENABLED` 和 `VPN_UPDATE_CACHE_SECONDS`。
 
-该功能只负责检测并提供 Release 链接，不会自动执行 `git pull`、覆盖代码、数据库迁移或重启服务。发布新版本时，请同步更新 `VERSION` 并创建匹配的 GitHub Release/tag。
+管理员可在检测到签名 Release 后点击“下载并验证更新”，再勾选确认安装。在线安装默认关闭，需要配置 `VPN_UPDATE_INSTALL_ENABLED=1` 和发布方 Ed25519 公钥 `VPN_UPDATE_PUBLIC_KEY`；更新包必须包含 `update-manifest.json`、签名文件和匹配版本的 `yunshield-vpn-shop-X.Y.Z.zip`。安装前会备份应用代码，签名、哈希、PHP 版本和压缩包路径校验全部通过后才替换文件，并保留备份供回滚。服务器还需要启用 `ZipArchive`、Sodium 扩展，并确保 `storage/update/` 可写且不对外暴露。
+
+该功能不会自动执行 `git pull`、覆盖生产配置、数据库迁移或重启服务。更新完成后请先备份数据库，再按需手动运行 `php scripts/migrate.php` 并检查登录、订单、支付回调、活动和交付流程。发布新版本时，请同步更新 `VERSION`、生成签名 manifest 并创建匹配的 GitHub Release/tag。
 
 3. 初始化数据库并导入可选演示套餐：
 

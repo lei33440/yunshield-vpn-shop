@@ -6,6 +6,7 @@
 # Runtime logs and generated files
 /storage/logs/*
 /storage/cache/*
+/storage/update/*
 !/storage/logs/.gitkeep
 !/storage/cache/.gitkeep
 

@@ -21,5 +21,9 @@ return array(
         'branch' => getenv('VPN_UPDATE_BRANCH') ?: 'main',
         'enabled' => getenv('VPN_UPDATE_ENABLED') !== '0',
         'cache_seconds' => (int)(getenv('VPN_UPDATE_CACHE_SECONDS') ?: 900),
+        'install_enabled' => getenv('VPN_UPDATE_INSTALL_ENABLED') === '1',
+        'public_key' => getenv('VPN_UPDATE_PUBLIC_KEY') ?: '',
+        'backup_keep' => (int)(getenv('VPN_UPDATE_BACKUP_KEEP') ?: 3),
+        'package_name_prefix' => 'yunshield-vpn-shop-' ,
     ),
 );

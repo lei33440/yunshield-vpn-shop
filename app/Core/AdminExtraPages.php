@@ -32,7 +32,30 @@ function update_check_panel($config)
     $latest = $result && !empty($result['latest_version']) ? e($result['latest_version']) : '—';
     $checked = $result && !empty($result['checked_at']) ? e(date('Y-m-d H:i', strtotime($result['checked_at']))) : '—';
     $link = $result && !empty($result['release_url']) ? '<a class="secondary-button" target="_blank" rel="noopener" href="'.e($result['release_url']).'">查看 Release</a>' : '';
-    return '<section class="admin-panel admin-settings-panel"><div class="admin-panel-head"><div><h2>项目更新</h2><p>检测 GitHub 是否发布了新版本，不会自动覆盖当前代码。</p></div><span class="admin-status '.e($tone).'">'.e($status).'</span></div><div class="admin-settings-fields"><label>当前版本<input value="'.e($current).'" readonly></label><label>GitHub 最新版本<input value="'.$latest.'" readonly></label><label>最近检测时间<input value="'.$checked.'" readonly></label></div><div class="product-form-actions">'.$link.'<form method="post" action="/admin/system/update/check" style="display:inline">'.csrf_field().'<button class="button" type="submit">立即检测</button></form></div></section>';
+    $prepare = $result && !empty($result['has_update']) && !empty($result['assets_ready']) && !empty($config['update']['install_enabled']) ? '<form method="post" action="/admin/system/update/prepare" style="display:inline">'.csrf_field().'<button class="button" type="submit">下载并验证更新</button></form>' : '';
+    $statusPanel = update_status_panel($config);
+    return '<section class="admin-panel admin-settings-panel"><div class="admin-panel-head"><div><h2>项目更新</h2><p>检测 GitHub 新版本；在线安装前会校验签名，不会自动迁移数据库。</p></div><span class="admin-status '.e($tone).'">'.e($status).'</span></div><div class="admin-settings-fields"><label>当前版本<input value="'.e($current).'" readonly></label><label>GitHub 最新版本<input value="'.$latest.'" readonly></label><label>最近检测时间<input value="'.$checked.'" readonly></label></div><div class="product-form-actions">'.$link.'<form method="post" action="/admin/system/update/check" style="display:inline">'.csrf_field().'<button class="button" type="submit">立即检测</button></form>'.$prepare.'</div>'.$statusPanel.'</section>';
+}
+
+function update_admin_log($pdo, $adminId, $action, $details = array())
+{
+    $pdo->prepare('INSERT INTO admin_logs(admin_id,action,target_type,target_id,details_json,created_at) VALUES(?,?,?,?,?,?)')->execute(array((int)$adminId, $action, 'system_update', null, json_encode($details, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), date('Y-m-d H:i:s')));
+}
+
+function update_status_panel($config)
+{
+    try {
+        $status = (new UpdateService($config))->status();
+    } catch (Exception $e) {
+        $status = null;
+    }
+    if (!$status) return '<div class="admin-module-empty">暂无待处理更新任务或备份。</div>';
+    $state = isset($status['status']) ? $status['status'] : 'unknown';
+    $labels = array('verified'=>'已验证，等待安装','installed'=>'已安装','failed'=>'安装失败','preparing'=>'准备中');
+    $label = isset($labels[$state]) ? $labels[$state] : $state;
+    $action='';
+    if($state==='verified')$action='<form method="post" action="/admin/system/update/install" style="margin-top:12px">'.csrf_field().'<input type="hidden" name="update_id" value="'.e($status['id']).'"><label><input type="checkbox" name="confirm_install" value="1" required> 我已备份数据库，确认安装此更新</label><button class="button" type="submit">安装更新</button></form>';
+    return '<div class="admin-info-banner">最近更新任务：'.e($label).'，目标版本 '.e(isset($status['version'])?$status['version']:'未知').'。'.(!empty($status['error'])?' '.e($status['error']):'').$action.'</div>';
 }
 
 function register_admin_extra_routes($router, $pdo, $config)
@@ -296,6 +319,37 @@ function register_admin_extra_routes($router, $pdo, $config)
         } catch (Exception $e) {
             flash('error', '更新检测失败，请稍后重试。');
         }
+        redirect('/admin/settings?tab=general');
+    });
+    $router->post('/admin/system/update/prepare', function() use ($pdo, $config) {
+        $aid=Security::requireAdmin(); post_csrf();
+        try {
+            $state=(new UpdateService($config))->prepareUpdate();
+            update_admin_log($pdo,$aid,'update_prepare',array('version'=>$state['version'],'update_id'=>$state['id']));
+            flash('success','更新包已下载并完成签名校验，可以安装。');
+        } catch(Exception $e) { flash('error',$e->getMessage()); }
+        redirect('/admin/settings?tab=general');
+    });
+    $router->post('/admin/system/update/install', function() use ($pdo, $config) {
+        $aid=Security::requireAdmin(); post_csrf(); $id=isset($_POST['update_id'])?trim($_POST['update_id']):'';
+        if(!isset($_POST['confirm_install'])||$_POST['confirm_install']!=='1'){flash('error','请确认已备份数据库并了解更新不会自动迁移。');redirect('/admin/settings?tab=general');}
+        try {
+            (new UpdateService($config))->startWorker($id,'install');
+            update_admin_log($pdo,$aid,'update_install_start',array('update_id'=>$id));
+            flash('success','更新任务已启动，请稍后刷新页面查看状态。');
+        } catch(Exception $e) { flash('error',$e->getMessage()); }
+        redirect('/admin/settings?tab=general');
+    });
+    $router->get('/admin/system/update/status', function() use ($config) {
+        Security::requireAdmin(); header('Content-Type: application/json; charset=utf-8'); echo json_encode((new UpdateService($config))->status(),JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+    });
+    $router->post('/admin/system/update/rollback', function() use ($pdo, $config) {
+        $aid=Security::requireAdmin(); post_csrf(); $id=isset($_POST['backup_id'])?trim($_POST['backup_id']):'';
+        try {
+            (new UpdateService($config))->startWorker($id,'rollback');
+            update_admin_log($pdo,$aid,'update_rollback_start',array('backup_id'=>$id));
+            flash('success','回滚任务已启动。');
+        } catch(Exception $e) { flash('error',$e->getMessage()); }
         redirect('/admin/settings?tab=general');
     });
     $router->get('/admin/settings', function() use ($pdo, $config) {
