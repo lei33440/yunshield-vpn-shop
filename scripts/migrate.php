@@ -1,10 +1,7 @@
 <?php
-if (PHP_SAPI !== 'cli') exit("CLI only\n");
-$config = require dirname(__DIR__) . '/config/config.php';
-require dirname(__DIR__) . '/app/Core/Database.php';
-try {
-    $pdo = Database::connect($config);
-    $sql = file_get_contents(dirname(__DIR__) . '/database/schema.sql');
+function run_migrations($pdo, $root)
+{
+    $sql = file_get_contents($root . '/database/schema.sql');
     foreach (array_filter(array_map('trim', preg_split('/;\s*(?:\r?\n|$)/', $sql))) as $statement) $pdo->exec($statement);
     $hasColumn = function($table, $column) use ($pdo) { $s=$pdo->prepare('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?'); $s->execute(array($table,$column)); return (int)$s->fetchColumn()>0; };
     $hasIndex = function($table, $index) use ($pdo) { $s=$pdo->prepare('SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND INDEX_NAME=?'); $s->execute(array($table,$index)); return (int)$s->fetchColumn()>0; };
@@ -41,5 +38,14 @@ try {
     foreach($products as $product){$s=$pdo->prepare('SELECT id FROM product_plans WHERE product_id=? LIMIT 1');$s->execute(array($product['id']));if(!$s->fetch()){$name='默认方案';$s=$pdo->prepare('SELECT COUNT(*) FROM product_plans WHERE product_id=? AND name=?');$s->execute(array($product['id'],$name));if((int)$s->fetchColumn())$name='基础方案';$pdo->prepare('INSERT INTO product_plans(product_id,name,duration_days,price_cents,status,sort_order,created_at,updated_at) VALUES(?,?,?,? ,"active",0,NOW(),NOW())')->execute(array($product['id'],$name,$product['duration_days'],$product['price_cents']));}}
     $pdo->exec('UPDATE orders o JOIN product_plans p ON p.product_id=o.product_id AND p.duration_days=o.duration_days_snapshot AND p.price_cents=o.unit_price_cents_snapshot SET o.product_plan_id=p.id,o.plan_name_snapshot=p.name WHERE o.product_plan_id IS NULL OR o.plan_name_snapshot=""');
     $pdo->exec('UPDATE orders o JOIN product_plans p ON p.id=o.product_plan_id SET o.plan_name_snapshot=p.name WHERE o.plan_name_snapshot=""');
-    echo "数据库表和多期限方案迁移完成。\n";
-} catch (Exception $e) { fwrite(STDERR, "迁移失败：" . $e->getMessage() . "\n"); exit(1); }
+    return true;
+}
+
+if (PHP_SAPI === 'cli' && realpath(isset($_SERVER['SCRIPT_FILENAME']) ? $_SERVER['SCRIPT_FILENAME'] : '') === realpath(__FILE__)) {
+    $config = require dirname(__DIR__) . '/config/config.php';
+    require dirname(__DIR__) . '/app/Core/Database.php';
+    try {
+        run_migrations(Database::connect($config), dirname(__DIR__));
+        echo "数据库表和多期限方案迁移完成。\n";
+    } catch (Exception $e) { fwrite(STDERR, "迁移失败：" . $e->getMessage() . "\n"); exit(1); }
+}

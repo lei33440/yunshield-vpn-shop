@@ -1,5 +1,7 @@
 <?php
-require dirname(__DIR__) . '/app/Core/Bootstrap.php';
+$projectRoot = dirname(__DIR__);
+if (!is_file($projectRoot . '/config/config.php')) { header('Location: /install.php', true, 302); exit; }
+require $projectRoot . '/app/Core/Bootstrap.php';
 require dirname(__DIR__) . '/app/Core/AdminView.php';
 require dirname(__DIR__) . '/app/Core/AdminDashboard.php';
 require dirname(__DIR__) . '/app/Core/AdminExtraPages.php';

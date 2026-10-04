@@ -48,7 +48,8 @@
 ## 快速开始
 
 1. 创建数据库，例如 `vpn_shop`，字符集使用 `utf8mb4`。
-2. 将 `config/config.example.php` 复制为 `config/config.php`，或直接使用该示例配置，并在当前进程环境中设置以下变量。不要把真实值写入 Git：
+2. 首次部署可直接访问 `/install.php`，按页面填写站点、数据库和管理员信息。安装页会检查 PHP 扩展、生成随机加密密钥、初始化数据库并创建管理员，完成后自动写入安装锁。
+3. 也可以手动将 `config/config.example.php` 复制为 `config/config.php`，并在当前进程环境中设置以下变量。不要把真实值写入 Git：
 
 ```sh
 export VPN_BASE_URL='http://127.0.0.1:8080'
@@ -71,7 +72,7 @@ export VPN_TEMPORARY_SUBSCRIPTION_URL=''
 
 该功能不会自动执行 `git pull`、覆盖生产配置、数据库迁移或重启服务。更新完成后请先备份数据库，再按需手动运行 `php scripts/migrate.php` 并检查登录、订单、支付回调、活动和交付流程。发布新版本时，请同步更新 `VERSION`、生成签名 manifest 并创建匹配的 GitHub Release/tag。
 
-3. 初始化数据库并导入可选演示套餐：
+4. 初始化数据库并导入可选演示套餐：
 
 ```sh
 php scripts/migrate.php
@@ -81,7 +82,7 @@ php scripts/seed.php
 
 `seed.php` 会写入演示套餐与方案；生产环境如不需要演示商品，请不要执行它。
 
-4. 创建管理员。脚本会交互式询问邮箱和密码；密码至少 12 个字符：
+5. 如果未使用安装页面，再创建管理员。脚本会交互式询问邮箱和密码；密码至少 12 个字符：
 
 ```sh
 php scripts/create_admin.php
