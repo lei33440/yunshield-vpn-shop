@@ -352,13 +352,47 @@ function register_admin_extra_routes($router, $pdo, $config)
         } catch(Exception $e) { flash('error',$e->getMessage()); }
         redirect('/admin/settings?tab=general');
     });
+    $router->post('/admin/settings/general', function() use ($pdo, $config) {
+        $aid = Security::requireAdmin();
+        post_csrf();
+        $name = isset($_POST['site_name']) && is_string($_POST['site_name']) ? trim($_POST['site_name']) : '';
+        $base = isset($_POST['site_base_url']) && is_string($_POST['site_base_url']) ? trim($_POST['site_base_url']) : '';
+        $parts = parse_url($base);
+        if ($name === '' || mb_strlen($name, 'UTF-8') > 100 || preg_match('/^[\s\p{Z}]*$/u', $name) || preg_match('/[\x00-\x1F\x7F]/', $name)) {
+            flash('error', '站点名称长度必须为 1-100 个字符，且不能仅为空格或包含控制字符。');
+            redirect('/admin/settings?tab=general');
+        }
+        if (strlen($base) > 500 || !filter_var($base, FILTER_VALIDATE_URL) || !is_array($parts)
+            || !isset($parts['scheme'], $parts['host']) || !in_array(strtolower($parts['scheme']), array('http', 'https'), true)
+            || isset($parts['user']) || isset($parts['pass']) || isset($parts['query']) || isset($parts['fragment'])
+            || (isset($parts['path']) && $parts['path'] !== '' && $parts['path'] !== '/')) {
+            flash('error', '请输入有效的 HTTP 或 HTTPS 站点根地址。');
+            redirect('/admin/settings?tab=general');
+        }
+        $base = rtrim($base, '/');
+        try {
+            $now = date('Y-m-d H:i:s');
+            $pdo->beginTransaction();
+            $statement = $pdo->prepare('INSERT INTO system_settings(setting_key,setting_value,updated_by,updated_at) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value),updated_by=VALUES(updated_by),updated_at=VALUES(updated_at)');
+            $statement->execute(array('site_name', $name, $aid, $now));
+            $statement->execute(array('site_base_url', $base, $aid, $now));
+            $details = array('old'=>array('site_name'=>$config['app']['name'],'site_base_url'=>$config['app']['base_url']), 'new'=>array('site_name'=>$name,'site_base_url'=>$base));
+            $pdo->prepare('INSERT INTO admin_logs(admin_id,action,target_type,details_json,created_at) VALUES(?,?,?,?,?)')->execute(array($aid, 'update_general_settings', 'system', json_encode($details, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $now));
+            $pdo->commit();
+            flash('success', '基础设置已保存。');
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            flash('error', '基础设置保存失败，请稍后重试。');
+        }
+        redirect('/admin/settings?tab=general');
+    });
     $router->get('/admin/settings', function() use ($pdo, $config) {
         Security::requireAdmin();
         $tab=isset($_GET['tab'])&&in_array($_GET['tab'],array('general','payment','notifications','admins','security'),true)?$_GET['tab']:'general';
         $tabs='<nav class="admin-content-tabs"><a href="/admin/settings?tab=general"'.($tab==='general'?' class="selected"':'').'>基础设置</a><a href="/admin/settings?tab=payment"'.($tab==='payment'?' class="selected"':'').'>支付配置</a><a href="/admin/settings?tab=notifications"'.($tab==='notifications'?' class="selected"':'').'>消息通知</a><a href="/admin/settings?tab=admins"'.($tab==='admins'?' class="selected"':'').'>管理员与权限</a><a href="/admin/settings?tab=security"'.($tab==='security'?' class="selected"':'').'>安全与审计</a></nav>';
         $body=admin_heading('系统设置','配置支付、通知、安全与管理员权限').$tabs;
         if($tab==='general'){
-            $body.='<section class="admin-panel admin-settings-panel"><div class="admin-panel-head"><div><h2>基础设置</h2><p>平台品牌及默认业务配置</p></div></div><div class="admin-settings-logo"><img src="/assets/xiaoyun-logo.png" alt="小云铺加速器"><span><b>平台 Logo</b><small>当前品牌标识</small></span></div><div class="admin-settings-fields"><label>平台名称<input value="'.e($config['app']['name']).'" readonly></label><label>平台域名<input value="'.e($config['app']['base_url']).'" readonly></label><label>默认货币<input value="人民币 CNY" readonly></label></div><div class="admin-info-banner">品牌名称和平台域名由服务器配置文件维护。</div></section>'.update_check_panel($config);
+            $body.='<section class="admin-panel admin-settings-panel"><div class="admin-panel-head"><div><h2>基础设置</h2><p>平台品牌及默认业务配置</p></div></div><div class="admin-settings-logo"><img src="/assets/xiaoyun-logo.png" alt="'.e($config['app']['name']).'"><span><b>平台 Logo</b><small>当前品牌标识</small></span></div><form method="post" action="/admin/settings/general">'.csrf_field().'<div class="admin-settings-fields"><label>平台名称<input name="site_name" maxlength="100" value="'.e($config['app']['name']).'" required></label><label>站点根地址<input type="url" name="site_base_url" maxlength="500" value="'.e($config['app']['base_url']).'" required></label><label>默认货币<input value="人民币 CNY" readonly></label></div><div class="admin-info-banner">站点根地址不会自动修改服务器域名、HTTPS 证书或支付回调地址。</div><div class="product-form-actions"><button class="button" type="submit">保存基础设置</button></div></form></section>'.update_check_panel($config);
         }elseif($tab==='payment'){
             $body.='<div class="admin-hub-grid">'.admin_hub_card('/admin/payment','支付配置','管理支付渠道、网关和通知地址。','finance','violet').admin_hub_card('/admin/temporary-subscription','临时订阅','维护付款确认后交付给用户的临时订阅。','subscriptions','blue').'</div>';
         }elseif($tab==='admins'){
