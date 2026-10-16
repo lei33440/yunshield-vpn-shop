@@ -42,20 +42,50 @@ function update_admin_log($pdo, $adminId, $action, $details = array())
     $pdo->prepare('INSERT INTO admin_logs(admin_id,action,target_type,target_id,details_json,created_at) VALUES(?,?,?,?,?,?)')->execute(array((int)$adminId, $action, 'system_update', null, json_encode($details, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), date('Y-m-d H:i:s')));
 }
 
-function update_status_panel($config)
+function update_storage_root()
+{
+    return dirname(dirname(__DIR__)).'/storage/update';
+}
+
+function update_status_payload($config)
 {
     try {
-        $status = (new UpdateService($config))->status();
+        $task = (new UpdateService($config))->status();
     } catch (Exception $e) {
-        $status = null;
+        $task = null;
     }
-    if (!$status) return '<div class="admin-module-empty">暂无待处理更新任务或备份。</div>';
-    $state = isset($status['status']) ? $status['status'] : 'unknown';
-    $labels = array('verified'=>'已验证，等待安装','installed'=>'已安装','failed'=>'安装失败','preparing'=>'准备中');
-    $label = isset($labels[$state]) ? $labels[$state] : $state;
-    $action='';
-    if($state==='verified')$action='<form method="post" action="/admin/system/update/install" style="margin-top:12px">'.csrf_field().'<input type="hidden" name="update_id" value="'.e($status['id']).'"><label><input type="checkbox" name="confirm_install" value="1" required> 我已备份数据库，确认安装此更新</label><button class="button" type="submit">安装更新</button></form>';
-    return '<div class="admin-info-banner">最近更新任务：'.e($label).'，目标版本 '.e(isset($status['version'])?$status['version']:'未知').'。'.(!empty($status['error'])?' '.e($status['error']):'').$action.'</div>';
+    $service = new UpdateService($config);
+    $maintenance = $service->maintenance();
+    return array('task'=>$task, 'maintenance'=>!empty($maintenance['enabled']), 'maintenance_at'=>isset($maintenance['at'])?$maintenance['at']:'', 'backups'=>$service->backups());
+}
+
+function update_status_panel($config)
+{
+    $payload = update_status_payload($config);
+    $status = $payload['task'];
+    $labels = array('verified'=>'已验证，等待安装','installed'=>'已安装','failed'=>'安装失败','preparing'=>'准备中','installing'=>'安装中','running'=>'执行中','rollback'=>'回滚中','rolled_back'=>'已回滚');
+    $taskHtml = '<div class="admin-module-empty">暂无待处理更新任务。</div>';
+    if ($status) {
+        $state = isset($status['status']) ? (string)$status['status'] : 'unknown';
+        $label = isset($labels[$state]) ? $labels[$state] : $state;
+        $action = '';
+        $busy = in_array($state, array('preparing','installing','running','rollback'), true);
+        if ($state === 'verified' && !empty($status['id'])) {
+            $action = '<form method="post" action="/admin/system/update/install" style="margin-top:12px" data-update-install-form="1">'.csrf_field().'<input type="hidden" name="update_id" value="'.e($status['id']).'"><label><input type="checkbox" name="confirm_install" value="1" required> 我已备份数据库，确认安装此更新</label><button class="button" type="submit"'.($busy?' disabled':'').'>安装更新</button></form>';
+        }
+        $taskHtml = '<div class="admin-info-banner" data-update-task="1">最近更新任务：<strong data-update-state="1">'.e($label).'</strong>，目标版本 '.e(isset($status['version'])?$status['version']:'未知').'。'.(!empty($status['error'])?' '.e($status['error']):'').$action.'</div>';
+    }
+    $backupHtml = '';
+    if ($payload['backups']) {
+        $rows = '';
+        foreach ($payload['backups'] as $backup) {
+            $when = !empty($backup['created_at']) ? date('Y-m-d H:i', strtotime($backup['created_at'])) : '—';
+            $rows .= '<tr><td>'.e($backup['id']).'</td><td>'.e($when).'</td><td>'.(int)$backup['files'].'</td><td><form method="post" action="/admin/system/update/rollback" onsubmit="return confirm(\'确认回滚到此备份？\')">'.csrf_field().'<input type="hidden" name="backup_id" value="'.e($backup['id']).'"><button class="row-link" type="submit">回滚</button></form></td></tr>';
+        }
+        $backupHtml = '<div class="admin-panel" style="margin-top:16px"><div class="admin-panel-head"><div><h3>更新备份</h3><p>安装前自动创建的文件备份，可用于回滚。</p></div></div><div class="table-wrap"><table><thead><tr><th>备份编号</th><th>创建时间</th><th>文件数</th><th>操作</th></tr></thead><tbody>'.$rows.'</tbody></table></div></div>';
+    }
+    $maintenance = $payload['maintenance'] ? '<span class="admin-status pending_payment" data-update-maintenance="1">维护模式中</span>' : '';
+    return '<div data-update-status-panel="1">'.$maintenance.$taskHtml.$backupHtml.'</div><script>(function(){var panel=document.querySelector("[data-update-status-panel]");if(!panel)return;var last="";setInterval(function(){fetch("/admin/system/update/status",{credentials:"same-origin",headers:{"Accept":"application/json"}}).then(function(r){return r.json()}).then(function(data){var task=data&&data.task?data.task:null;var state=task&&task.status?task.status:"none";if(last&&last!==state)window.location.reload();last=state;var node=panel.querySelector("[data-update-state]");if(node&&task)node.textContent=state;}).catch(function(){});},5000);})();</script>';
 }
 
 function register_admin_extra_routes($router, $pdo, $config)
@@ -334,6 +364,10 @@ function register_admin_extra_routes($router, $pdo, $config)
         $aid=Security::requireAdmin(); post_csrf(); $id=isset($_POST['update_id'])?trim($_POST['update_id']):'';
         if(!isset($_POST['confirm_install'])||$_POST['confirm_install']!=='1'){flash('error','请确认已备份数据库并了解更新不会自动迁移。');redirect('/admin/settings?tab=general');}
         try {
+            $existing = (new UpdateService($config))->status();
+            if ($existing && isset($existing['status']) && in_array($existing['status'], array('preparing','installing','running','rollback'), true)) {
+                throw new RuntimeException('已有更新任务正在执行，请等待任务完成。');
+            }
             (new UpdateService($config))->startWorker($id,'install');
             update_admin_log($pdo,$aid,'update_install_start',array('update_id'=>$id));
             flash('success','更新任务已启动，请稍后刷新页面查看状态。');
@@ -341,7 +375,7 @@ function register_admin_extra_routes($router, $pdo, $config)
         redirect('/admin/settings?tab=general');
     });
     $router->get('/admin/system/update/status', function() use ($config) {
-        Security::requireAdmin(); header('Content-Type: application/json; charset=utf-8'); echo json_encode((new UpdateService($config))->status(),JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+        Security::requireAdmin(); header('Content-Type: application/json; charset=utf-8'); header('Cache-Control: no-store, no-cache, must-revalidate'); echo json_encode(update_status_payload($config),JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
     });
     $router->post('/admin/system/update/rollback', function() use ($pdo, $config) {
         $aid=Security::requireAdmin(); post_csrf(); $id=isset($_POST['backup_id'])?trim($_POST['backup_id']):'';
