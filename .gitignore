@@ -19,6 +19,7 @@
 /*.html
 
 # Database exports and backups
+*.sql
 *.sql.gz
 *.dump
 *.bak
