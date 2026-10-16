@@ -53,9 +53,9 @@ class Installer
             $written = true;
             $pdo = $this->connect($data);
             $this->initializeDatabase($pdo);
-            $this->createAdmin($pdo, $admin);
+            $adminEmail = $this->createAdmin($pdo, $admin);
             $this->writeLock();
-            return array('admin_email'=>$admin['email'],'admin_password'=>$admin['password']);
+            return array('admin_email'=>$adminEmail,'admin_password'=>$admin['password']);
         } catch (Exception $e) {
             if (is_file($tmp)) @unlink($tmp);
             if ($written && !is_file($this->root . '/storage/install.lock')) @unlink($configPath);
@@ -125,7 +125,8 @@ class Installer
         $admin['email'] = $candidate;
         $now = date('Y-m-d H:i:s');
         $stmt = $pdo->prepare('INSERT INTO admin_users(email,password_hash,display_name,role,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?)');
-        $stmt->execute(array($admin['email'], password_hash($admin['password'], PASSWORD_DEFAULT), $admin['name'], 'admin', 'active', $now, $now));
+        $stmt->execute(array($candidate, password_hash($admin['password'], PASSWORD_DEFAULT), $admin['name'], 'admin', 'active', $now, $now));
+        return $candidate;
     }
 
     private function buildConfig($data)

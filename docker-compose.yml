@@ -1,0 +1,42 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8081:8080"
+    environment:
+      # 仅开发环境示例；生产环境请使用受保护的环境注入配置。
+      VPN_BASE_URL: http://127.0.0.1:8081
+      VPN_APP_DEBUG: "1"
+      VPN_DB_DSN: mysql:host=db;port=3306;dbname=a_ynt_asia;charset=utf8mb4
+      VPN_DB_USER: a_ynt_asia
+      VPN_DB_PASSWORD: local_dev_password
+      VPN_ENCRYPTION_KEY: 9bS6ukQ5fT0bminVdCsDZ1up8QSdevg87mE/jOb1B4w=
+      VPN_UPDATE_INSTALL_ENABLED: "1"
+      VPN_UPDATE_PUBLIC_KEY: ""
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:5.7
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_DATABASE: a_ynt_asia
+      MYSQL_USER: a_ynt_asia
+      MYSQL_PASSWORD: local_dev_password
+      MYSQL_ROOT_PASSWORD: local_root_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/local.sql:/docker-entrypoint-initdb.d/01-local.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  mysql_data:

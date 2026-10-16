@@ -66,11 +66,13 @@ export VPN_TEMPORARY_SUBSCRIPTION_URL=''
 
 ### 版本更新检测
 
-项目根目录的 `VERSION` 文件记录当前版本号。管理员可在“系统设置 → 基础设置”中手动检测公开 GitHub 仓库 `lei33440/yunshield-vpn-shop` 的最新 Release；检测结果默认缓存 15 分钟。可选环境变量：`VPN_UPDATE_REPOSITORY`、`VPN_UPDATE_BRANCH`、`VPN_UPDATE_ENABLED` 和 `VPN_UPDATE_CACHE_SECONDS`。
+项目根目录的 `VERSION` 文件记录当前版本号。管理员可在“系统设置 → 基础设置”中手动检测公开 GitHub 仓库 `lei33440/yunshield-vpn-shop` 的最新 Release；检测结果默认缓存 15 分钟。可选环境变量：`VPN_UPDATE_REPOSITORY`、`VPN_UPDATE_BRANCH`、`VPN_UPDATE_ENABLED`、`VPN_UPDATE_CACHE_SECONDS`、`VPN_UPDATE_MAX_MANIFEST_BYTES`、`VPN_UPDATE_MAX_SIGNATURE_BYTES`、`VPN_UPDATE_MAX_PACKAGE_BYTES`、`VPN_UPDATE_MAX_MIGRATION_BYTES` 和 `VPN_UPDATE_BACKUP_KEEP`。
 
-管理员可在检测到签名 Release 后点击“下载并验证更新”，再勾选确认安装。在线安装默认关闭，需要配置 `VPN_UPDATE_INSTALL_ENABLED=1` 和发布方 Ed25519 公钥 `VPN_UPDATE_PUBLIC_KEY`；更新包必须包含 `update-manifest.json`、签名文件和匹配版本的 `yunshield-vpn-shop-X.Y.Z.zip`。安装前会备份应用代码，签名、哈希、PHP 版本和压缩包路径校验全部通过后才替换文件，并保留备份供回滚。服务器还需要启用 `ZipArchive`、Sodium 扩展，并确保 `storage/update/` 可写且不对外暴露。
+管理员可在检测到签名 Release 后点击“下载并验证更新”，再勾选确认安装。在线安装默认关闭，需要配置 `VPN_UPDATE_INSTALL_ENABLED=1` 和发布方 Ed25519 公钥 `VPN_UPDATE_PUBLIC_KEY`（base64 公钥）；更新包必须来自同一 Release 的三项资产：`update-manifest.json`、`update-manifest.json.sig` 和匹配版本的 `yunshield-vpn-shop-X.Y.Z.zip`。签名、哈希、PHP 版本和压缩包路径校验全部通过后才替换文件，并保留备份供回滚。服务器还需要启用 `ZipArchive`、Sodium、`curl` 扩展，并确保 `storage/update/` 可写且不对外暴露。
 
-该功能不会自动执行 `git pull`、覆盖生产配置、数据库迁移或重启服务。更新完成后请先备份数据库，再按需手动运行 `php scripts/migrate.php` 并检查登录、订单、支付回调、活动和交付流程。发布新版本时，请同步更新 `VERSION`、生成签名 manifest 并创建匹配的 GitHub Release/tag。
+`config/config.example.php` 中的 `VPN_UPDATE_MAX_MANIFEST_BYTES`、`VPN_UPDATE_MAX_SIGNATURE_BYTES`、`VPN_UPDATE_MAX_PACKAGE_BYTES` 和 `VPN_UPDATE_MAX_MIGRATION_BYTES` 用于限制更新清单、签名、ZIP 包和迁移描述大小；应按发布包实际大小设置并保留余量。任何 Release 只要 `migration_required` 为 true，就会被在线安装阻断，必须先备份数据库并在维护窗口手动执行 `php scripts/migrate.php`，确认迁移成功后再部署代码。在线更新不会自动执行迁移、覆盖 `config/config.php` 或重启服务。
+
+发布前请为每个版本创建 Release/tag 并上传上述三资产，使用固定 Ed25519 私钥签名 manifest；验证签名公钥与部署配置一致。更新前检查健康检查（Docker 的 `db` healthcheck 通过且应用可访问），更新后检查登录、订单、支付回调、活动和交付流程。回滚仅恢复应用文件备份，不会回滚数据库迁移、外部支付状态或用户数据；发生迁移后的不兼容问题必须按数据库备份制定人工恢复方案。
 
 4. 初始化数据库并导入可选演示套餐：
 
@@ -95,6 +97,17 @@ php scripts/create_admin.php
 ```sh
 php -S 127.0.0.1:8080 -t public public/router.php
 ```
+
+也可以使用仅供开发环境的 Docker Compose 配置（不会读取或覆盖 `config/config.php`）：
+
+```sh
+docker compose up --build -d
+docker compose ps                 # db 应为 healthy
+docker compose exec app php -m   # 应包含 curl、pdo_mysql、zip
+docker compose down
+```
+
+Compose 通过 MySQL `mysqladmin ping` healthcheck 阻止 app 在数据库未就绪时启动；它不是应用 HTTP 健康检查，生产环境仍需由反向代理或编排平台探测 `/` 并配置独立的存活/就绪策略。
 
 - 前台：`http://127.0.0.1:8080/`
 - 管理端：`http://127.0.0.1:8080/admin/login`

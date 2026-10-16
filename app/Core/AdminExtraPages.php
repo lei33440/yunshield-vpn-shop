@@ -42,20 +42,50 @@ function update_admin_log($pdo, $adminId, $action, $details = array())
     $pdo->prepare('INSERT INTO admin_logs(admin_id,action,target_type,target_id,details_json,created_at) VALUES(?,?,?,?,?,?)')->execute(array((int)$adminId, $action, 'system_update', null, json_encode($details, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), date('Y-m-d H:i:s')));
 }
 
-function update_status_panel($config)
+function update_storage_root()
+{
+    return dirname(dirname(__DIR__)).'/storage/update';
+}
+
+function update_status_payload($config)
 {
     try {
-        $status = (new UpdateService($config))->status();
+        $task = (new UpdateService($config))->status();
     } catch (Exception $e) {
-        $status = null;
+        $task = null;
     }
-    if (!$status) return '<div class="admin-module-empty">暂无待处理更新任务或备份。</div>';
-    $state = isset($status['status']) ? $status['status'] : 'unknown';
-    $labels = array('verified'=>'已验证，等待安装','installed'=>'已安装','failed'=>'安装失败','preparing'=>'准备中');
-    $label = isset($labels[$state]) ? $labels[$state] : $state;
-    $action='';
-    if($state==='verified')$action='<form method="post" action="/admin/system/update/install" style="margin-top:12px">'.csrf_field().'<input type="hidden" name="update_id" value="'.e($status['id']).'"><label><input type="checkbox" name="confirm_install" value="1" required> 我已备份数据库，确认安装此更新</label><button class="button" type="submit">安装更新</button></form>';
-    return '<div class="admin-info-banner">最近更新任务：'.e($label).'，目标版本 '.e(isset($status['version'])?$status['version']:'未知').'。'.(!empty($status['error'])?' '.e($status['error']):'').$action.'</div>';
+    $service = new UpdateService($config);
+    $maintenance = $service->maintenance();
+    return array('task'=>$task, 'maintenance'=>!empty($maintenance['enabled']), 'maintenance_at'=>isset($maintenance['at'])?$maintenance['at']:'', 'backups'=>$service->backups());
+}
+
+function update_status_panel($config)
+{
+    $payload = update_status_payload($config);
+    $status = $payload['task'];
+    $labels = array('verified'=>'已验证，等待安装','installed'=>'已安装','failed'=>'安装失败','preparing'=>'准备中','installing'=>'安装中','running'=>'执行中','rollback'=>'回滚中','rolled_back'=>'已回滚');
+    $taskHtml = '<div class="admin-module-empty">暂无待处理更新任务。</div>';
+    if ($status) {
+        $state = isset($status['status']) ? (string)$status['status'] : 'unknown';
+        $label = isset($labels[$state]) ? $labels[$state] : $state;
+        $action = '';
+        $busy = in_array($state, array('preparing','installing','running','rollback'), true);
+        if ($state === 'verified' && !empty($status['id'])) {
+            $action = '<form method="post" action="/admin/system/update/install" style="margin-top:12px" data-update-install-form="1">'.csrf_field().'<input type="hidden" name="update_id" value="'.e($status['id']).'"><label><input type="checkbox" name="confirm_install" value="1" required> 我已备份数据库，确认安装此更新</label><button class="button" type="submit"'.($busy?' disabled':'').'>安装更新</button></form>';
+        }
+        $taskHtml = '<div class="admin-info-banner" data-update-task="1">最近更新任务：<strong data-update-state="1">'.e($label).'</strong>，目标版本 '.e(isset($status['version'])?$status['version']:'未知').'。'.(!empty($status['error'])?' '.e($status['error']):'').$action.'</div>';
+    }
+    $backupHtml = '';
+    if ($payload['backups']) {
+        $rows = '';
+        foreach ($payload['backups'] as $backup) {
+            $when = !empty($backup['created_at']) ? date('Y-m-d H:i', strtotime($backup['created_at'])) : '—';
+            $rows .= '<tr><td>'.e($backup['id']).'</td><td>'.e($when).'</td><td>'.(int)$backup['files'].'</td><td><form method="post" action="/admin/system/update/rollback" onsubmit="return confirm(\'确认回滚到此备份？\')">'.csrf_field().'<input type="hidden" name="backup_id" value="'.e($backup['id']).'"><button class="row-link" type="submit">回滚</button></form></td></tr>';
+        }
+        $backupHtml = '<div class="admin-panel" style="margin-top:16px"><div class="admin-panel-head"><div><h3>更新备份</h3><p>安装前自动创建的文件备份，可用于回滚。</p></div></div><div class="table-wrap"><table><thead><tr><th>备份编号</th><th>创建时间</th><th>文件数</th><th>操作</th></tr></thead><tbody>'.$rows.'</tbody></table></div></div>';
+    }
+    $maintenance = $payload['maintenance'] ? '<span class="admin-status pending_payment" data-update-maintenance="1">维护模式中</span>' : '';
+    return '<div data-update-status-panel="1">'.$maintenance.$taskHtml.$backupHtml.'</div><script>(function(){var panel=document.querySelector("[data-update-status-panel]");if(!panel)return;var last="";setInterval(function(){fetch("/admin/system/update/status",{credentials:"same-origin",headers:{"Accept":"application/json"}}).then(function(r){return r.json()}).then(function(data){var task=data&&data.task?data.task:null;var state=task&&task.status?task.status:"none";if(last&&last!==state)window.location.reload();last=state;var node=panel.querySelector("[data-update-state]");if(node&&task)node.textContent=state;}).catch(function(){});},5000);})();</script>';
 }
 
 function register_admin_extra_routes($router, $pdo, $config)
@@ -334,6 +364,10 @@ function register_admin_extra_routes($router, $pdo, $config)
         $aid=Security::requireAdmin(); post_csrf(); $id=isset($_POST['update_id'])?trim($_POST['update_id']):'';
         if(!isset($_POST['confirm_install'])||$_POST['confirm_install']!=='1'){flash('error','请确认已备份数据库并了解更新不会自动迁移。');redirect('/admin/settings?tab=general');}
         try {
+            $existing = (new UpdateService($config))->status();
+            if ($existing && isset($existing['status']) && in_array($existing['status'], array('preparing','installing','running','rollback'), true)) {
+                throw new RuntimeException('已有更新任务正在执行，请等待任务完成。');
+            }
             (new UpdateService($config))->startWorker($id,'install');
             update_admin_log($pdo,$aid,'update_install_start',array('update_id'=>$id));
             flash('success','更新任务已启动，请稍后刷新页面查看状态。');
@@ -341,7 +375,7 @@ function register_admin_extra_routes($router, $pdo, $config)
         redirect('/admin/settings?tab=general');
     });
     $router->get('/admin/system/update/status', function() use ($config) {
-        Security::requireAdmin(); header('Content-Type: application/json; charset=utf-8'); echo json_encode((new UpdateService($config))->status(),JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+        Security::requireAdmin(); header('Content-Type: application/json; charset=utf-8'); header('Cache-Control: no-store, no-cache, must-revalidate'); echo json_encode(update_status_payload($config),JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
     });
     $router->post('/admin/system/update/rollback', function() use ($pdo, $config) {
         $aid=Security::requireAdmin(); post_csrf(); $id=isset($_POST['backup_id'])?trim($_POST['backup_id']):'';
@@ -352,13 +386,47 @@ function register_admin_extra_routes($router, $pdo, $config)
         } catch(Exception $e) { flash('error',$e->getMessage()); }
         redirect('/admin/settings?tab=general');
     });
+    $router->post('/admin/settings/general', function() use ($pdo, $config) {
+        $aid = Security::requireAdmin();
+        post_csrf();
+        $name = isset($_POST['site_name']) && is_string($_POST['site_name']) ? trim($_POST['site_name']) : '';
+        $base = isset($_POST['site_base_url']) && is_string($_POST['site_base_url']) ? trim($_POST['site_base_url']) : '';
+        $parts = parse_url($base);
+        if ($name === '' || mb_strlen($name, 'UTF-8') > 100 || preg_match('/^[\s\p{Z}]*$/u', $name) || preg_match('/[\x00-\x1F\x7F]/', $name)) {
+            flash('error', '站点名称长度必须为 1-100 个字符，且不能仅为空格或包含控制字符。');
+            redirect('/admin/settings?tab=general');
+        }
+        if (strlen($base) > 500 || !filter_var($base, FILTER_VALIDATE_URL) || !is_array($parts)
+            || !isset($parts['scheme'], $parts['host']) || !in_array(strtolower($parts['scheme']), array('http', 'https'), true)
+            || isset($parts['user']) || isset($parts['pass']) || isset($parts['query']) || isset($parts['fragment'])
+            || (isset($parts['path']) && $parts['path'] !== '' && $parts['path'] !== '/')) {
+            flash('error', '请输入有效的 HTTP 或 HTTPS 站点根地址。');
+            redirect('/admin/settings?tab=general');
+        }
+        $base = rtrim($base, '/');
+        try {
+            $now = date('Y-m-d H:i:s');
+            $pdo->beginTransaction();
+            $statement = $pdo->prepare('INSERT INTO system_settings(setting_key,setting_value,updated_by,updated_at) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value),updated_by=VALUES(updated_by),updated_at=VALUES(updated_at)');
+            $statement->execute(array('site_name', $name, $aid, $now));
+            $statement->execute(array('site_base_url', $base, $aid, $now));
+            $details = array('old'=>array('site_name'=>$config['app']['name'],'site_base_url'=>$config['app']['base_url']), 'new'=>array('site_name'=>$name,'site_base_url'=>$base));
+            $pdo->prepare('INSERT INTO admin_logs(admin_id,action,target_type,details_json,created_at) VALUES(?,?,?,?,?)')->execute(array($aid, 'update_general_settings', 'system', json_encode($details, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $now));
+            $pdo->commit();
+            flash('success', '基础设置已保存。');
+        } catch (Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            flash('error', '基础设置保存失败，请稍后重试。');
+        }
+        redirect('/admin/settings?tab=general');
+    });
     $router->get('/admin/settings', function() use ($pdo, $config) {
         Security::requireAdmin();
         $tab=isset($_GET['tab'])&&in_array($_GET['tab'],array('general','payment','notifications','admins','security'),true)?$_GET['tab']:'general';
         $tabs='<nav class="admin-content-tabs"><a href="/admin/settings?tab=general"'.($tab==='general'?' class="selected"':'').'>基础设置</a><a href="/admin/settings?tab=payment"'.($tab==='payment'?' class="selected"':'').'>支付配置</a><a href="/admin/settings?tab=notifications"'.($tab==='notifications'?' class="selected"':'').'>消息通知</a><a href="/admin/settings?tab=admins"'.($tab==='admins'?' class="selected"':'').'>管理员与权限</a><a href="/admin/settings?tab=security"'.($tab==='security'?' class="selected"':'').'>安全与审计</a></nav>';
         $body=admin_heading('系统设置','配置支付、通知、安全与管理员权限').$tabs;
         if($tab==='general'){
-            $body.='<section class="admin-panel admin-settings-panel"><div class="admin-panel-head"><div><h2>基础设置</h2><p>平台品牌及默认业务配置</p></div></div><div class="admin-settings-logo"><img src="/assets/xiaoyun-logo.png" alt="小云铺加速器"><span><b>平台 Logo</b><small>当前品牌标识</small></span></div><div class="admin-settings-fields"><label>平台名称<input value="'.e($config['app']['name']).'" readonly></label><label>平台域名<input value="'.e($config['app']['base_url']).'" readonly></label><label>默认货币<input value="人民币 CNY" readonly></label></div><div class="admin-info-banner">品牌名称和平台域名由服务器配置文件维护。</div></section>'.update_check_panel($config);
+            $body.='<section class="admin-panel admin-settings-panel"><div class="admin-panel-head"><div><h2>基础设置</h2><p>平台品牌及默认业务配置</p></div></div><div class="admin-settings-logo"><img src="/assets/xiaoyun-logo.png" alt="'.e($config['app']['name']).'"><span><b>平台 Logo</b><small>当前品牌标识</small></span></div><form method="post" action="/admin/settings/general">'.csrf_field().'<div class="admin-settings-fields"><label>平台名称<input name="site_name" maxlength="100" value="'.e($config['app']['name']).'" required></label><label>站点根地址<input type="url" name="site_base_url" maxlength="500" value="'.e($config['app']['base_url']).'" required></label><label>默认货币<input value="人民币 CNY" readonly></label></div><div class="admin-info-banner">站点根地址不会自动修改服务器域名、HTTPS 证书或支付回调地址。</div><div class="product-form-actions"><button class="button" type="submit">保存基础设置</button></div></form></section>'.update_check_panel($config);
         }elseif($tab==='payment'){
             $body.='<div class="admin-hub-grid">'.admin_hub_card('/admin/payment','支付配置','管理支付渠道、网关和通知地址。','finance','violet').admin_hub_card('/admin/temporary-subscription','临时订阅','维护付款确认后交付给用户的临时订阅。','subscriptions','blue').'</div>';
         }elseif($tab==='admins'){
