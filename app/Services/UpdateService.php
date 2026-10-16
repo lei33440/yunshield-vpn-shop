@@ -235,7 +235,7 @@ class UpdateService
         if (!function_exists('curl_init')) throw new RuntimeException('服务器未启用 cURL，无法下载更新。');
         if (!$this->validGithubUrl($url)) throw new RuntimeException('更新下载地址无效。');
         $fp=@fopen($path,'wb'); if (!$fp) throw new RuntimeException('无法保存更新文件。');
-        $size=0; $ctx=$this;
+        $size=0;
         $ch=curl_init($url);
         curl_setopt_array($ch,array(CURLOPT_FILE=>$fp,CURLOPT_FOLLOWLOCATION=>true,CURLOPT_MAXREDIRS=>3,CURLOPT_CONNECTTIMEOUT=>15,CURLOPT_TIMEOUT=>300,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_USERAGENT=>'yunshield-vpn-shop-updater',CURLOPT_HTTPHEADER=>array('Accept: application/octet-stream'),CURLOPT_NOPROGRESS=>false,CURLOPT_PROGRESSFUNCTION=>function($resource,$downloadSize,$downloaded) use (&$size,$limit){$size=(int)$downloaded;return $size>$limit?1:0;}));
         $ok=curl_exec($ch); $error=curl_error($ch); $code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE); $final=(string)curl_getinfo($ch,CURLINFO_EFFECTIVE_URL); curl_close($ch); fclose($fp);
