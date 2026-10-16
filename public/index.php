@@ -6,6 +6,15 @@ require dirname(__DIR__) . '/app/Core/AdminView.php';
 require dirname(__DIR__) . '/app/Core/AdminDashboard.php';
 require dirname(__DIR__) . '/app/Core/AdminExtraPages.php';
 $config = Bootstrap::init();
+$requestPath = rtrim(parse_url(isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/', PHP_URL_PATH), '/') ?: '/';
+$maintenanceFlag = $projectRoot . '/storage/update/maintenance.flag';
+if (is_file($maintenanceFlag) && empty($_SESSION['admin_id']) && $requestPath !== '/health' && $requestPath !== '/admin/login' && $requestPath !== '/login') {
+    http_response_code(503);
+    header('Retry-After: 60');
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!doctype html><meta charset="utf-8"><title>系统维护中</title><style>body{font-family:system-ui,sans-serif;max-width:640px;margin:18vh auto;padding:24px;color:#273047;text-align:center}h1{font-size:30px}p{color:#697386}</style><h1>系统维护中</h1><p>系统正在进行版本更新，请稍后再试。</p>';
+    exit;
+}
 $pdo = Database::connect($config);
 $settings = $pdo->query('SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ("site_name", "site_base_url")');
 foreach ($settings as $setting) {
@@ -14,6 +23,20 @@ foreach ($settings as $setting) {
 }
 $GLOBALS['config'] = $config;
 $router = new Router();
+$router->get('/health', function() use ($config) {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    try {
+        $version = trim((string)@file_get_contents(dirname(__DIR__) . '/VERSION'));
+        $pdo = Database::connect($config);
+        $pdo->query('SELECT 1');
+        echo json_encode(array('ok'=>true,'version'=>$version,'database'=>'ok'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    } catch (Throwable $e) {
+        http_response_code(503);
+        echo json_encode(array('ok'=>false,'error'=>'health_check_failed'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+    exit;
+});
 function user_nav_icon($name) {
     $paths = array(
         'home'=>'<path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10M9 20v-6h6v6"/>',
