@@ -23,7 +23,12 @@ return array(
         'cache_seconds' => (int)(getenv('VPN_UPDATE_CACHE_SECONDS') ?: 900),
         'install_enabled' => getenv('VPN_UPDATE_INSTALL_ENABLED') === '1',
         'public_key' => getenv('VPN_UPDATE_PUBLIC_KEY') ?: '',
+        // 在线更新安全上限：拒绝超出限制的 manifest/ZIP/迁移描述。
+        'max_manifest_bytes' => (int)(getenv('VPN_UPDATE_MAX_MANIFEST_BYTES') ?: 1048576),
+        'max_signature_bytes' => (int)(getenv('VPN_UPDATE_MAX_SIGNATURE_BYTES') ?: 16384),
+        'max_package_bytes' => (int)(getenv('VPN_UPDATE_MAX_PACKAGE_BYTES') ?: 52428800),
+        'max_migration_bytes' => (int)(getenv('VPN_UPDATE_MAX_MIGRATION_BYTES') ?: 1048576),
         'backup_keep' => (int)(getenv('VPN_UPDATE_BACKUP_KEEP') ?: 3),
-        'package_name_prefix' => 'yunshield-vpn-shop-' ,
+        'package_name_prefix' => 'yunshield-vpn-shop-',
     ),
 );
