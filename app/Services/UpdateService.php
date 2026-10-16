@@ -77,7 +77,7 @@ class UpdateService
             $this->download($release['package_url'], $dir . '/package.zip', 52428800);
             if (!hash_equals(strtolower($manifest['sha256']), hash_file('sha256', $dir . '/package.zip'))) throw new RuntimeException('更新包校验失败。');
             $this->validatePackage($dir . '/package.zip', $manifest);
-            $state = array('id'=>$id,'status'=>'verified','version'=>$manifest['version'],'release_url'=>$release['release_url'],'release_name'=>$release['release_name'],'prepared_at'=>date('c'),'manifest'=>$manifest);
+            $state = array('id'=>$id,'status'=>'verified','version'=>$manifest['version'],'release_url'=>$release['release_url'],'release_name'=>$release['release_name'],'prepared_at'=>date('c'),'updated_at'=>date('c'),'manifest'=>$manifest);
             $this->writeState($id, $state);
             return $state;
         } catch (Exception $e) {
@@ -109,8 +109,36 @@ class UpdateService
         $dir = $this->updateRoot . '/staging';
         $files = is_dir($dir) ? glob($dir . '/*/state.json') : array();
         $latest = null;
-        foreach ($files as $file) { $item = json_decode((string)@file_get_contents($file), true); if (is_array($item) && (!$latest || strcmp($item['prepared_at'], $latest['prepared_at']) > 0)) $latest = $item; }
+        foreach ($files as $file) { $item = json_decode((string)@file_get_contents($file), true); $time = isset($item['updated_at']) ? $item['updated_at'] : (isset($item['prepared_at']) ? $item['prepared_at'] : ''); if (is_array($item) && (!$latest || strcmp($time, isset($latest['updated_at']) ? $latest['updated_at'] : (isset($latest['prepared_at']) ? $latest['prepared_at'] : '')) > 0)) $latest = $item; }
         return $latest;
+    }
+
+    public function backups()
+    {
+        $dir = $this->updateRoot . '/backups';
+        $items = array();
+        foreach (is_dir($dir) ? glob($dir . '/*/manifest.json') : array() as $path) {
+            $raw = @file_get_contents($path);
+            $manifest = $raw === false ? null : json_decode($raw, true);
+            if (is_array($manifest) && !empty($manifest['id'])) {
+                $items[] = array('id'=>(string)$manifest['id'], 'created_at'=>isset($manifest['created_at'])?(string)$manifest['created_at']:'', 'files'=>isset($manifest['files'])&&is_array($manifest['files'])?count($manifest['files']):0);
+            }
+        }
+        usort($items, function($a, $b) { return strcmp($b['id'], $a['id']); });
+        return $items;
+    }
+
+    public function maintenance()
+    {
+        $path = $this->updateRoot . '/maintenance.flag';
+        return array('enabled'=>is_file($path), 'at'=>is_file($path)?trim((string)@file_get_contents($path)):'');
+    }
+
+    public function healthCheck()
+    {
+        $checks=array('version'=>false,'database'=>false,'zip'=>class_exists('ZipArchive'),'pdo_mysql'=>extension_loaded('pdo_mysql'));
+        try { $checks['version']=$this->isVersion($this->currentVersion()); $pdo=Database::connect($this->config); $pdo->query('SELECT 1'); $checks['database']=true; } catch (Throwable $e) {}
+        return array('ok'=>!in_array(false,$checks,true),'checks'=>$checks,'version'=>isset($checks['version'])&&$checks['version']?$this->currentVersion():'');
     }
 
     public function performInstall($id)
@@ -118,38 +146,32 @@ class UpdateService
         $this->requireCli();
         $state = $this->readState($id);
         if (!$state || $state['status'] !== 'verified') throw new RuntimeException('更新任务状态无效。');
+        if (!empty($state['manifest']['migration_required'])) throw new RuntimeException('该更新需要数据库迁移，已拒绝在线安装。');
         $lock = $this->lock();
         try {
             $dir = $this->updateRoot . '/staging/' . $id;
             $zipPath = $dir . '/package.zip';
             $manifest = $state['manifest'];
             $this->validatePackage($zipPath, $manifest);
+            $state['status']='installing'; $state['started_at']=date('c'); $state['updated_at']=date('c'); $this->writeState($id,$state);
+            $this->setMaintenance(true);
             $backup = $this->backup($manifest['version'], $id);
-            $zip = new ZipArchive();
-            if ($zip->open($zipPath) !== true) throw new RuntimeException('无法打开更新包。');
-            $rootPrefix = $this->packageRootPrefix($zip);
-            $installed = array();
-            for ($i=0; $i<$zip->numFiles; $i++) {
-                $entry = str_replace('\\','/',$zip->getNameIndex($i));
-                if ($entry === '' || substr($entry,-1)==='/') continue;
-                $relative = $rootPrefix !== '' && strpos($entry,$rootPrefix)===0 ? substr($entry,strlen($rootPrefix)) : $entry;
-                $relative = ltrim($relative,'/');
-                if (!$this->allowedPath($relative)) throw new RuntimeException('更新包包含禁止覆盖的文件。');
-                $target = $this->root . '/' . $relative;
-                $parent = dirname($target);
-                if (!is_dir($parent) && !@mkdir($parent,0750,true) && !is_dir($parent)) throw new RuntimeException('无法创建更新目录。');
-                $contents = $zip->getFromIndex($i);
-                if ($contents === false || @file_put_contents($target . '.update-tmp', $contents, LOCK_EX) === false) throw new RuntimeException('写入更新文件失败。');
-                if (!@rename($target . '.update-tmp', $target)) throw new RuntimeException('替换更新文件失败。');
-                $installed[] = $relative;
-            }
-            $zip->close();
+            $extracted = $dir . '/extracted';
+            $this->extractPackage($zipPath, $extracted);
+            $this->lintTree($extracted);
+            $installed = $this->installTree($extracted);
+            if (!$installed) throw new RuntimeException('更新包没有可安装的文件。');
             $this->markBackupInstalled($backup['id'], $installed);
-            $this->writeState($id, array_merge($state,array('status'=>'installed','installed_at'=>date('c'),'backup_id'=>$backup['id'],'files'=>$installed)));
+            $state=array_merge($state,array('status'=>'health_check','updated_at'=>date('c'),'backup_id'=>$backup['id'],'files'=>$installed)); $this->writeState($id,$state);
+            $health=$this->healthCheck();
+            if (!$health['ok']) throw new RuntimeException('更新后健康检查失败。');
+            $this->writeState($id, array_merge($state,array('status'=>'installed','installed_at'=>date('c'),'updated_at'=>date('c'),'health_check'=>$health)));
             $this->trimBackups();
-        } catch (Exception $e) {
-            if (isset($backup)) $this->restoreBackup($backup['id']);
-            $this->writeState($id, array_merge($state,array('status'=>'failed','error'=>'更新失败，已尝试恢复备份。','failed_at'=>date('c'))));
+            $this->setMaintenance(false);
+        } catch (Throwable $e) {
+            if (isset($backup)) { try { $this->restoreBackup($backup['id']); } catch (Throwable $restore) { $this->log('恢复备份失败: '.$restore->getMessage()); } }
+            try { $this->writeState($id, array_merge($state,array('status'=>'failed','error'=>$e->getMessage(),'failed_at'=>date('c')))); } catch (Throwable $ignore) {}
+            $this->setMaintenance(false);
             throw $e;
         } finally { $this->unlock($lock); }
     }
@@ -209,9 +231,29 @@ class UpdateService
     }
     private function stripPackagePrefix($name,$zip){$name=ltrim(str_replace('\\','/',$name),'/');$prefix=$this->packageRootPrefix($zip);return $prefix!==''&&strpos($name,$prefix)===0?substr($name,strlen($prefix)):$name;}
     private function allowedPath($path){$path=ltrim(str_replace('\\','/',$path),'/'); if($path===''||strpos($path,'..')!==false||preg_match('#^(config/config\.php|\.env|storage/|\.git/)#i',$path)) return false; return (bool)preg_match('#^(app/|public/|config/config\.example\.php$|database/|scripts/|README\.md$|CHANGELOG\.md$|VERSION$|\.gitignore$)#i',$path);}
-    private function download($url,$path,$limit){$data=$this->request($url,$limit); if(@file_put_contents($path,$data,LOCK_EX)===false)throw new RuntimeException('无法保存更新文件。');return $data;}
-    private function request($url,$limit=1048576){if(!$this->validGithubUrl($url))throw new RuntimeException('更新下载地址无效。');$accept=parse_url($url,PHP_URL_HOST)==='api.github.com'?'application/vnd.github+json':'application/octet-stream';$ctx=stream_context_create(array('http'=>array('method'=>'GET','timeout'=>10,'ignore_errors'=>true,'header'=>"Accept: ".$accept."\r\nUser-Agent: yunshield-vpn-shop-updater\r\n"),'ssl'=>array('verify_peer'=>true,'verify_peer_name'=>true)));$fp=@fopen($url,'rb',false,$ctx);if(!$fp)throw new RuntimeException('无法连接 GitHub。');$data='';while(!feof($fp)){$chunk=fread($fp,8192);if($chunk===false||strlen($data)+strlen($chunk)>$limit){fclose($fp);throw new RuntimeException('更新响应过大或读取失败。');}$data.=$chunk;}fclose($fp);$status=0;if(isset($http_response_header[0])&&preg_match('/\s(\d{3})\s/',$http_response_header[0],$m))$status=(int)$m[1];if($status<200||$status>=300)throw new RuntimeException('GitHub 更新资源不可用。');return $data;}
-    private function validGithubUrl($url){$parts=is_string($url)?parse_url($url):false;return is_array($parts)&&isset($parts['scheme'],$parts['host'])&&$parts['scheme']==='https'&&in_array(strtolower($parts['host']),array('github.com','api.github.com'),true)&&empty($parts['user'])&&!isset($parts['port']);}
+    private function download($url,$path,$limit){
+        if (!function_exists('curl_init')) throw new RuntimeException('服务器未启用 cURL，无法下载更新。');
+        if (!$this->validGithubUrl($url)) throw new RuntimeException('更新下载地址无效。');
+        $fp=@fopen($path,'wb'); if (!$fp) throw new RuntimeException('无法保存更新文件。');
+        $size=0;
+        $ch=curl_init($url);
+        curl_setopt_array($ch,array(CURLOPT_FILE=>$fp,CURLOPT_FOLLOWLOCATION=>true,CURLOPT_MAXREDIRS=>3,CURLOPT_CONNECTTIMEOUT=>15,CURLOPT_TIMEOUT=>300,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_USERAGENT=>'yunshield-vpn-shop-updater',CURLOPT_HTTPHEADER=>array('Accept: application/octet-stream'),CURLOPT_NOPROGRESS=>false,CURLOPT_PROGRESSFUNCTION=>function($resource,$downloadSize,$downloaded) use (&$size,$limit){$size=(int)$downloaded;return $size>$limit?1:0;}));
+        $ok=curl_exec($ch); $error=curl_error($ch); $code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE); $final=(string)curl_getinfo($ch,CURLINFO_EFFECTIVE_URL); curl_close($ch); fclose($fp);
+        if (!$ok || $code<200 || $code>=300 || !$this->validGithubUrl($final)) { @unlink($path); throw new RuntimeException($error!==''?'更新下载失败：'.$error:'GitHub 更新资源不可用。'); }
+        if ($size>$limit) { @unlink($path); throw new RuntimeException('更新响应过大。'); }
+        return (string)@file_get_contents($path);
+    }
+    private function setMaintenance($on){$path=$this->root.'/storage/update/maintenance.flag'; if($on){if(!is_dir(dirname($path))&&!@mkdir(dirname($path),0750,true)&&!is_dir(dirname($path)))throw new RuntimeException('无法创建维护模式目录。');if(@file_put_contents($path,date('c'),LOCK_EX)===false)throw new RuntimeException('无法启用维护模式。');}elseif(is_file($path))@unlink($path);}
+    private function log($message){$dir=$this->root.'/storage/logs';if(!is_dir($dir))@mkdir($dir,0750,true);@file_put_contents($dir.'/update.log',date('c').' '.$message.PHP_EOL,FILE_APPEND|LOCK_EX);}
+    private function extractPackage($zipPath,$dir){if(!is_dir($dir)&&!@mkdir($dir,0750,true)&&!is_dir($dir))throw new RuntimeException('无法创建解压目录。');$zip=new ZipArchive();if($zip->open($zipPath)!==true)throw new RuntimeException('更新包无法打开。');if(!$zip->extractTo($dir)){ $zip->close();throw new RuntimeException('更新包解压失败。');}$zip->close();}
+    private function lintTree($dir){foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir,FilesystemIterator::SKIP_DOTS)) as $file){if(substr($file->getFilename(),-4)==='.php'){exec(escapeshellarg(PHP_BINARY).' -l '.escapeshellarg($file->getPathname()),$out,$code);if($code!==0)throw new RuntimeException('更新 PHP 语法检查失败。');}}}
+    private function installTree($dir){$files=array();$base=$dir;$entries=glob($dir.'/*');if(count($entries)===1&&is_dir($entries[0]))$base=$entries[0];$it=new RecursiveIteratorIterator(new RecursiveDirectoryIterator($base,FilesystemIterator::SKIP_DOTS));foreach($it as $file){if(!$file->isFile())continue;$relative=str_replace('\\','/',substr($file->getPathname(),strlen($base)+1));if(!$this->allowedPath($relative))continue;$target=$this->root.'/'.$relative;if(!is_dir(dirname($target))&&!@mkdir(dirname($target),0750,true)&&!is_dir(dirname($target)))throw new RuntimeException('无法创建更新目录。');$tmp=$target.'.update-tmp';if(!copy($file->getPathname(),$tmp)||!@rename($tmp,$target))throw new RuntimeException('替换更新文件失败。');$files[]=$relative;}return $files;}
+    private function request($url,$limit=1048576){
+        if (!function_exists('curl_init')) throw new RuntimeException('服务器未启用 cURL，无法连接 GitHub。');
+        if (!$this->validGithubUrl($url)) throw new RuntimeException('更新下载地址无效。');
+        $ch=curl_init($url); curl_setopt_array($ch,array(CURLOPT_RETURNTRANSFER=>true,CURLOPT_FOLLOWLOCATION=>true,CURLOPT_MAXREDIRS=>3,CURLOPT_CONNECTTIMEOUT=>15,CURLOPT_TIMEOUT=>60,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_USERAGENT=>'yunshield-vpn-shop-updater',CURLOPT_HTTPHEADER=>array('Accept: application/vnd.github+json'))); $data=curl_exec($ch);$error=curl_error($ch);$code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);$final=(string)curl_getinfo($ch,CURLINFO_EFFECTIVE_URL);curl_close($ch);if($data===false||$code<200||$code>=300||!$this->validGithubUrl($final))throw new RuntimeException($error!==''?'GitHub 请求失败：'.$error:'GitHub 更新资源不可用。');if(strlen($data)>$limit)throw new RuntimeException('更新响应过大。');return $data;
+    }
+    private function validGithubUrl($url){$parts=is_string($url)?parse_url($url):false;return is_array($parts)&&isset($parts['scheme'],$parts['host'])&&$parts['scheme']==='https'&&in_array(strtolower($parts['host']),array('github.com','api.github.com','release-assets.githubusercontent.com','objects.githubusercontent.com'),true)&&empty($parts['user'])&&!isset($parts['port']);}
     private function updateConfig(){return isset($this->config['update'])&&is_array($this->config['update'])?$this->config['update']:array();}
     private function installEnabled(){return !empty($this->updateConfig()['install_enabled']);}
     private function packagePrefix(){return isset($this->updateConfig()['package_name_prefix'])&&preg_match('/^[A-Za-z0-9_.-]+$/',$this->updateConfig()['package_name_prefix'])?$this->updateConfig()['package_name_prefix']:'yunshield-vpn-shop-';}
@@ -220,7 +262,7 @@ class UpdateService
     private function result($current,$status,$message){return $this->withCurrentVersion(array('status'=>$status,'message'=>$message,'latest_version'=>'','release_name'=>'','published_at'=>'','release_url'=>'','has_update'=>false,'checked_at'=>date('c'),'assets_ready'=>false));}
     private function withCurrentVersion($r){$r['current_version']=$this->currentVersion();return $r;}
     private function store($r){$path=$this->root.'/storage/cache/update-check.json';$dir=dirname($path);if(!is_dir($dir)&&!@mkdir($dir,0750,true)&&!is_dir($dir))return $r;$tmp=$path.'.'.getmypid().'.tmp';if(@file_put_contents($tmp,json_encode(array('checked_at'=>time(),'result'=>$r),JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),LOCK_EX)!==false)@rename($tmp,$path);return $r;}
-    private function writeState($id,$state){$dir=$this->updateRoot.'/staging/'.$id;if(!is_dir($dir)&&!@mkdir($dir,0750,true)&&!is_dir($dir))throw new RuntimeException('无法保存更新状态。');@file_put_contents($dir.'/state.json',json_encode($state,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),LOCK_EX);}
+    private function writeState($id,$state){$dir=$this->updateRoot.'/staging/'.$id;if(!is_dir($dir)&&!@mkdir($dir,0750,true)&&!is_dir($dir))throw new RuntimeException('无法保存更新状态。');$tmp=$dir.'/state.json.'.getmypid().'.tmp';if(@file_put_contents($tmp,json_encode($state,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),LOCK_EX)===false||!@rename($tmp,$dir.'/state.json'))throw new RuntimeException('无法保存更新状态。');}
     private function readState($id){if(!preg_match('/^[a-f0-9]{32}$/',$id))return null;$raw=@file_get_contents($this->updateRoot.'/staging/'.$id.'/state.json');$s=$raw===false?null:json_decode($raw,true);return is_array($s)?$s:null;}
     private function lock(){$dir=$this->updateRoot;if(!is_dir($dir)&&!@mkdir($dir,0750,true)&&!is_dir($dir))throw new RuntimeException('无法创建更新目录。');$fp=@fopen($dir.'/update.lock','c');if(!$fp||!flock($fp,LOCK_EX|LOCK_NB))throw new RuntimeException('已有更新任务正在执行。');return $fp;}
     private function unlock($fp){if($fp){flock($fp,LOCK_UN);fclose($fp);}}
