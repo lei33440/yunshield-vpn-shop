@@ -12,7 +12,7 @@ services:
       VPN_DB_PASSWORD: local_dev_password
       VPN_ENCRYPTION_KEY: 9bS6ukQ5fT0bminVdCsDZ1up8QSdevg87mE/jOb1B4w=
       VPN_UPDATE_INSTALL_ENABLED: "1"
-      VPN_UPDATE_PUBLIC_KEY: ""
+      VPN_UPDATE_PUBLIC_KEY: mjuxap9G3LhgtRNO8RtI2f/DXaZreboNPpP2AP45owI=
     volumes:
       - .:/var/www/html
     depends_on:
