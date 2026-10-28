@@ -15,7 +15,23 @@ class Security
     public static function requireUser()
     {
         if (empty($_SESSION['user_id'])) { flash('error', '请先登录。'); redirect('/login'); }
-        return (int) $_SESSION['user_id'];
+        $uid = (int) $_SESSION['user_id'];
+        if (!array_key_exists('user_password_changed_at', $_SESSION)) { $_SESSION = array(); session_destroy(); flash('error', '请重新登录以验证会话。'); redirect('/login'); }
+        if (array_key_exists('user_password_changed_at', $_SESSION)) {
+            global $pdo;
+            if (isset($pdo) && $pdo instanceof PDO) {
+                $s = $pdo->prepare('SELECT password_changed_at FROM users WHERE id=?');
+                $s->execute(array($uid));
+                $changed = (string)$s->fetchColumn();
+                if ($changed !== '' && $changed !== (string)$_SESSION['user_password_changed_at']) {
+                    $_SESSION = array();
+                    session_destroy();
+                    flash('error', '密码已更新，请重新登录。');
+                    redirect('/login');
+                }
+            }
+        }
+        return $uid;
     }
     public static function requireAdmin()
     {
