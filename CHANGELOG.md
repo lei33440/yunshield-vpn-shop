@@ -22,6 +22,7 @@
 - 先进入维护窗口并备份数据库、生产配置和应用文件，再从正式 `v1.0.9` tag 源码取得本版 `scripts/migrate.php` 与 `database/schema.sql`，使用生产环境原有配置手动执行 `php scripts/migrate.php`。
 - 运行更新 ZIP 不含迁移脚本；请使用 GitHub 本版 tag 的完整源码完成迁移和人工部署，不要尝试在线强制安装。迁移和部署完成后检查登录、重置密码、SMTP、队列、订单和支付流程。
 - 迁移可能包含历史数据修复及隐式提交；应用回滚不能撤销数据库变更，恢复必须依据数据库备份人工处理。
+- MySQL 会话时区与应用 `app.timezone` 必须一致（默认 `Asia/Shanghai` / `+08:00`），否则重置令牌有效期和通知队列投递时间可能错位；请在隔离环境验证后再上线。
 
 ### 认证与账户安全
 - 找回密码流程补齐 `users.password_changed_at` 字段与 `password_reset_tokens` 表，密码修改后自动失效其他登录会话。
