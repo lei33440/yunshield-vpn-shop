@@ -22,6 +22,10 @@ return array(
         'enabled' => getenv('VPN_UPDATE_ENABLED') !== '0',
         'cache_seconds' => (int)(getenv('VPN_UPDATE_CACHE_SECONDS') ?: 900),
         'install_enabled' => getenv('VPN_UPDATE_INSTALL_ENABLED') === '1',
+        'queue_enabled' => getenv('VPN_UPDATE_QUEUE_ENABLED') === '1',
+        'php_cli' => getenv('VPN_UPDATE_PHP_CLI') ?: '',
+        'health_url' => getenv('VPN_UPDATE_HEALTH_URL') ?: '',
+        'health_token' => getenv('VPN_UPDATE_HEALTH_TOKEN') ?: '',
         'public_key' => getenv('VPN_UPDATE_PUBLIC_KEY') ?: '',
         // 在线更新安全上限：拒绝超出限制的 manifest/ZIP/迁移描述。
         'max_manifest_bytes' => (int)(getenv('VPN_UPDATE_MAX_MANIFEST_BYTES') ?: 1048576),

@@ -56,6 +56,14 @@ class PaymentService
         try {
             $s->execute(array($orderNo,$userId)); $order=$s->fetch();
             if (!$order||$order['status']!=='pending_payment') throw new RuntimeException('当前订单不能发起在线支付。');
+            if((int)$order['total_amount_cents']<=0)throw new RuntimeException('零元订单无需在线支付。');
+            $existing=$this->pdo->prepare('SELECT * FROM payment_records WHERE order_id=? AND gateway_order_no<>"" ORDER BY id LIMIT 1 FOR UPDATE');$existing->execute(array($order['id']));$attempt=$existing->fetch();
+            if($attempt){
+                if($attempt['status']!=='pending'||$attempt['gateway_type']!==$type||$attempt['payment_url']==='')throw new RuntimeException('该订单已发起其他支付，请继续原支付方式或联系管理员核对。');
+                $gate=(new GroupService($this->pdo))->paymentGate($order['id']);if($gate&&!$gate['valid'])throw new RuntimeException('拼团占位已过期，不能继续原支付。');
+                $this->pdo->commit();return array('url'=>$attempt['payment_url'],'qrcode'=>'','urlscheme'=>'','trade_no'=>$attempt['gateway_trade_no']);
+            }
+            if(!empty($order['payment_started_at']))throw new RuntimeException('订单已发起支付，请联系管理员核对原支付记录。');
             $money=number_format(((int)$order['total_amount_cents'])/100,2,'.','');
             $gatewayOrderNo=substr($orderNo.'-'.strtolower($type).'-'.date('His').strtoupper(bin2hex(random_bytes(3))),0,64);
             $params=array('pid'=>$settings['pid'],'type'=>$type,'out_trade_no'=>$gatewayOrderNo,'notify_url'=>$notify,'return_url'=>$return.'?payment_order='.rawurlencode($gatewayOrderNo),'name'=>substr($order['product_name_snapshot'].' '.$order['plan_name_snapshot'],0,120),'money'=>$money,'sign_type'=>'MD5');
@@ -64,6 +72,7 @@ class PaymentService
             $paymentUrl=$pageUrl;$qrcode='';$scheme='';$result=array('code'=>1);
             $now=date('Y-m-d H:i:s');$displayUrl=$paymentUrl?:($qrcode?:$scheme);
             $this->pdo->prepare('INSERT INTO payment_records(order_id,method,amount_cents,status,gateway_trade_no,gateway_order_no,gateway_type,payment_url,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)')->execute(array($order['id'],'epay_'.$type,$order['total_amount_cents'],'pending',isset($result['trade_no'])?$result['trade_no']:'',$gatewayOrderNo,$type,$displayUrl,$now,$now));
+            $gate=(new GroupService($this->pdo))->paymentGate($order['id']);if($gate&&!$gate['valid'])throw new RuntimeException('拼团占位已过期或属于历史流程，不能发起支付。');
             $this->pdo->prepare('UPDATE orders SET payment_started_at=?,updated_at=? WHERE id=?')->execute(array($now,$now,$order['id']));
             $this->pdo->commit();return array('url'=>$paymentUrl,'qrcode'=>$qrcode,'urlscheme'=>$scheme,'trade_no'=>isset($result['trade_no'])?$result['trade_no']:'');
         }catch(Exception $e){if($this->pdo->inTransaction())$this->pdo->rollBack();throw $e;}
@@ -77,10 +86,9 @@ class PaymentService
         $gatewayOrderNo=(string)$params['out_trade_no'];$money=$this->moneyCents($params['money']);
         $s=$this->pdo->prepare('SELECT o.*,p.id payment_id,p.status payment_status,p.amount_cents,p.gateway_trade_no,p.gateway_order_no FROM orders o JOIN payment_records p ON p.order_id=o.id AND p.gateway_order_no=? LIMIT 1');$s->execute(array($gatewayOrderNo));$row=$s->fetch();
         if(!$row||$money!==(int)$row['total_amount_cents']||!$row['payment_id']||$money!==(int)$row['amount_cents'])throw new RuntimeException('invalid payment notification');
-        if($row['status']!=='pending_payment') return $row['payment_status']==='confirmed' ? true : false;
         if(!in_array(isset($params['type'])?$params['type']:'',array('alipay','wxpay'),true))throw new RuntimeException('invalid payment type');
         $raw=substr(json_encode($params,JSON_UNESCAPED_UNICODE),0,60000);$trade=isset($params['trade_no'])?(string)$params['trade_no']:'';
-        (new OrderService($this->pdo))->confirmPaymentSystem($row['order_no'],(string)$params['type'],$trade,$raw);
+        (new OrderService($this->pdo))->confirmPaymentSystem($row['order_no'],(string)$params['type'],$trade,$raw,(int)$row['payment_id']);
         return true;
     }
     private function moneyCents($value)
