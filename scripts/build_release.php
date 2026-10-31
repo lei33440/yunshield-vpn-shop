@@ -23,7 +23,7 @@ function releaseBuild($root, $output, $version, $migration, $minPhp = '7.4.0')
         }
     }
     // Only runtime workers and schema reference; no migrations, seeders or admin utilities execute on update.
-    foreach (array('config/config.example.php', 'database/schema.sql', 'scripts/update_worker.php', 'scripts/update_health.php', 'scripts/group_order_worker.php', 'scripts/wecom_notification_worker.php') as $path) {
+    foreach (array('config/config.example.php', 'database/schema.sql', 'scripts/update_worker.php', 'scripts/update_health.php', 'scripts/group_order_worker.php', 'scripts/wecom_notification_worker.php', 'scripts/customer_email_worker.php') as $path) {
         if (is_link($root . '/' . $path) || !is_file($root . '/' . $path)) throw new RuntimeException('Required runtime file missing or linked: ' . $path);
         $paths[$path] = $root . '/' . $path;
     }

@@ -22,6 +22,49 @@ CREATE TABLE IF NOT EXISTS payment_settings (id BIGINT UNSIGNED AUTO_INCREMENT P
 CREATE TABLE IF NOT EXISTS system_settings (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,setting_key VARCHAR(80) NOT NULL UNIQUE,setting_value VARCHAR(1000) NOT NULL DEFAULT '',setting_ciphertext MEDIUMTEXT NULL,setting_nonce VARBINARY(32) NULL,setting_tag VARBINARY(32) NULL,is_secret TINYINT(1) NOT NULL DEFAULT 0,updated_by BIGINT UNSIGNED NULL,updated_at DATETIME NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS notification_outbox (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,channel VARCHAR(30) NOT NULL,event_type VARCHAR(60) NOT NULL,dedupe_key VARCHAR(160) NOT NULL UNIQUE,payload_json LONGTEXT NOT NULL,status VARCHAR(20) NOT NULL DEFAULT 'pending',retry_count INT UNSIGNED NOT NULL DEFAULT 0,available_at DATETIME NOT NULL,locked_at DATETIME NULL,sent_at DATETIME NULL,last_error VARCHAR(500) NOT NULL DEFAULT '',created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL,KEY idx_outbox_status_available(status,available_at,id),KEY idx_outbox_event(event_type,created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS password_reset_tokens (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,user_id BIGINT UNSIGNED NOT NULL,token_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL UNIQUE,expires_at DATETIME NOT NULL,used_at DATETIME NULL,request_ip VARCHAR(45) NOT NULL DEFAULT '',created_at DATETIME NOT NULL,KEY idx_password_reset_user(user_id,created_at),KEY idx_password_reset_expiry(expires_at,used_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS email_templates (template_key VARCHAR(60) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,format_version INT UNSIGNED NOT NULL DEFAULT 1,version_no INT UNSIGNED NOT NULL DEFAULT 0,config_json MEDIUMTEXT NOT NULL,updated_by BIGINT UNSIGNED NULL,updated_at DATETIME NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- 客户通知群发独立三表；旧安装仅运行专用增量脚本，不回写历史业务数据。
+CREATE TABLE IF NOT EXISTS email_campaigns (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ created_by BIGINT UNSIGNED NOT NULL,
+ subject VARCHAR(600) NOT NULL,
+ body TEXT NOT NULL,
+ scope VARCHAR(20) NOT NULL,
+ selected_user_ids TEXT NOT NULL,
+ version INT UNSIGNED NOT NULL DEFAULT 1,
+ status VARCHAR(20) NOT NULL DEFAULT 'draft',
+ recipient_count INT UNSIGNED NOT NULL DEFAULT 0,
+ snapshot_digest CHAR(64) NOT NULL DEFAULT '',
+ snapshot_at DATETIME NULL,
+ enqueue_cursor BIGINT UNSIGNED NOT NULL DEFAULT 0,
+ enqueue_complete TINYINT(1) NOT NULL DEFAULT 0,
+ trusted_base_url VARCHAR(500) NOT NULL DEFAULT '',
+ confirmed_by BIGINT UNSIGNED NULL,
+ confirmed_at DATETIME NULL,
+ cancelled_at DATETIME NULL,
+ created_at DATETIME NOT NULL,
+ updated_at DATETIME NOT NULL,
+ KEY idx_email_campaign_status(status,enqueue_complete,id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS email_campaign_recipients (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ campaign_id BIGINT UNSIGNED NOT NULL,
+ user_id BIGINT UNSIGNED NOT NULL,
+ email_snapshot VARCHAR(190) NOT NULL,
+ outbox_id BIGINT UNSIGNED NULL,
+ token_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
+ created_at DATETIME NOT NULL,
+ UNIQUE KEY uk_email_campaign_user(campaign_id,user_id),
+ UNIQUE KEY uk_email_campaign_email(campaign_id,email_snapshot),
+ UNIQUE KEY uk_email_campaign_outbox(outbox_id),
+ UNIQUE KEY uk_email_campaign_token(token_hash),
+ KEY idx_email_campaign_cursor(campaign_id,id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS email_preferences (
+ user_id BIGINT UNSIGNED PRIMARY KEY,
+ broadcast_unsubscribed TINYINT(1) NOT NULL DEFAULT 0,
+ updated_at DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS order_events (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,order_id BIGINT UNSIGNED NOT NULL,event_type VARCHAR(40) NOT NULL,old_status VARCHAR(30) NULL,new_status VARCHAR(30) NULL,description VARCHAR(500) NOT NULL,actor_type VARCHAR(20) NOT NULL,actor_id BIGINT UNSIGNED NULL,created_at DATETIME NOT NULL,KEY idx_order_event(order_id,created_at),KEY idx_order_event_type(event_type,created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS notifications (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,user_id BIGINT UNSIGNED NOT NULL,type VARCHAR(40) NOT NULL,title VARCHAR(200) NOT NULL,content VARCHAR(1000) NOT NULL,order_no VARCHAR(40) NULL,target_type VARCHAR(40) NULL,target_id BIGINT UNSIGNED NULL,dedupe_key VARCHAR(160) CHARACTER SET ascii COLLATE ascii_bin NULL,read_at DATETIME NULL,created_at DATETIME NOT NULL,KEY idx_notification_user(user_id,read_at,created_at),KEY idx_notification_order(order_no),UNIQUE KEY uk_notification_dedupe(user_id,dedupe_key),KEY idx_notification_target(target_type,target_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS activity_settings (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,activity_key VARCHAR(80) NOT NULL UNIQUE,name VARCHAR(160) NOT NULL,description VARCHAR(500) NOT NULL DEFAULT '',status VARCHAR(20) NOT NULL DEFAULT 'disabled',config_json LONGTEXT NOT NULL,start_at DATETIME NULL,end_at DATETIME NULL,created_by BIGINT UNSIGNED NULL,updated_by BIGINT UNSIGNED NULL,created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL,KEY idx_activity_status_time(status,start_at,end_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
