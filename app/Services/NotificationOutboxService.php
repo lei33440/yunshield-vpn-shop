@@ -23,7 +23,7 @@ class NotificationOutboxService
     /** 回收、查询和抢占均限定新邮件事件，不触碰历史积压及找回密码。 */
     public function claimCustomerEmails($limit=20){
         $limit=max(1,min(20,(int)$limit));
-        $scope=' AND channel="email" AND event_type IN ("customer_order_created","customer_order_delivered","broadcast_notice")';
+        $scope=' AND channel="email" AND event_type IN ("customer_order_created","customer_order_delivered","customer_payment_confirmed","broadcast_notice")';
         $this->pdo->exec('UPDATE notification_outbox SET status="retry",locked_at=NULL,updated_at=NOW() WHERE status="processing" AND locked_at IS NOT NULL AND locked_at<DATE_SUB(NOW(),INTERVAL 10 MINUTE)'.$scope);
         $s=$this->pdo->prepare('SELECT * FROM notification_outbox WHERE status IN ("pending","retry") AND available_at<=NOW()'.$scope.' ORDER BY CASE WHEN event_type="broadcast_notice" THEN 1 ELSE 0 END,id LIMIT '.$limit);$s->execute();$claimed=array();
         foreach($s->fetchAll() as $row){

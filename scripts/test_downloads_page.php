@@ -3,6 +3,7 @@
 if (PHP_SAPI !== 'cli') exit(1);
 $root = dirname(__DIR__);
 require $root.'/app/Core/Router.php';
+require $root.'/app/Core/HelpCenterPages.php';
 function e($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
 function page($title, $body, $config) { echo $body; }
 function download_assert($ok, $label) {
@@ -44,6 +45,9 @@ $end = strpos($source, '$router->get(\'/articles\',', $start === false ? 0 : $st
 if ($start === false || $end === false) throw new RuntimeException('未找到真实下载路由边界');
 eval(substr($source, $start, $end-$start));
 list($html, $xpath) = download_document($router);
+download_assert(strpos($html,'help-reference-sidebar')!==false&&strpos($html,'help-reference-downloads')!==false&&strpos($html,'downloads-hero')===false,'下载页使用帮助导航及紧凑资源布局');
+download_assert($xpath->query('//button[@data-platform][@aria-pressed="true"]')->length===1&&$xpath->query('//button[@data-platform][@aria-pressed="false"]')->length===4,'平台按钮提供真实选中态');
+download_assert(strpos($html,'download-no-match')!==false&&strpos($html,'aria-label="选择设备平台"')!==false,'平台过滤具备空态与可访问名称');
 $flclash = '//article[@class="download-app-card"][.//h2[text()="FlClash"]]';
 $android = $xpath->query($flclash.'//div[@class="download-resource"][@data-platform="Android"]');
 download_assert($android->length === 4, '同软件三个安卓架构及另一个版本全部保留');

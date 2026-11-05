@@ -7,7 +7,7 @@ function customer_email_worker_mode($args){
 }
 function customer_email_worker_ready($email){$cfg=$email->settings();return !empty($cfg['enabled'])&&!empty($cfg['configured']);}
 function customer_email_worker_release($pdo,$rows){
-    $s=$pdo->prepare('UPDATE notification_outbox SET status="retry",locked_at=NULL,updated_at=NOW() WHERE id=? AND status="processing" AND channel="email" AND event_type IN ("customer_order_created","customer_order_delivered","broadcast_notice")');
+    $s=$pdo->prepare('UPDATE notification_outbox SET status="retry",locked_at=NULL,updated_at=NOW() WHERE id=? AND status="processing" AND channel="email" AND event_type IN ("customer_order_created","customer_order_delivered","customer_payment_confirmed","broadcast_notice")');
     foreach($rows as $row)$s->execute(array($row['id']));
 }
 /** 测试可注入 SMTP stub 与等待函数；生产入口不接受任意文件注入参数。 */

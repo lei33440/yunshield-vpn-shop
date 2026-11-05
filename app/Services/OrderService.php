@@ -147,6 +147,7 @@ class OrderService
         $channel=$payment['gateway_type']==='balance'?'余额支付':($payment['gateway_type']==='zero'?'零元订单结算':($actorType==='system'?'在线支付回调':'管理员人工确认'));
         $this->event($o['id'],'payment_confirmed','pending_payment','pending_delivery',$channel.'已完成，订单进入发货队列。',$actorType,$actorId,$now);
         $this->notify($o['user_id'],'payment_confirmed','付款已确认','订单 '.$no.' 已完成'.$channel.'，请等待人工发货。',$no,$now);
+        if(!$isGroup&&$type==='vpn'&&$tempUrl)(new CustomerEmailService($this->pdo))->enqueuePaymentConfirmed(array_merge($o,array('status'=>$nextStatus,'product_type_snapshot'=>$type,'temporary_subscription_url'=>$tempUrl,'temporary_subscription_status'=>'active')));
         (new NotificationOutboxService($this->pdo))->enqueue('payment_confirmed','payment_confirmed:'.$o['id'],array('title'=>'付款已确认','lines'=>array('订单号：'.$no,'金额：'.number_format($o['total_amount_cents']/100,2).' 元','确认方式：'.$channel,'时间：'.$now)));
         $activity=new ActivityService($this->pdo);if(!$isGroup){if($type==='vpn')$activity->settlePaidOrder($o['id']);}else{$groups->markPaid($o['id'],$gate);}
         if($actorType==='admin')$this->log($actorId,'confirm_payment','order',$o['id'],array('order_no'=>$no,'payment_id'=>$payment['id']));

@@ -24,16 +24,23 @@ foreach ($tokens as $i=>$token) {
 }
 $config=array('app'=>array('name'=>'品牌<script>不可执行</script>'));
 $router=new Router;
-foreach (explode("\n", $source) as $line) if (preg_match("~^\\\$router->get\\('/(?:login|register)',~", $line)) eval($line);
-foreach (array('/login','/register') as $path) {
+foreach (explode("\n", $source) as $line) if (preg_match("~^\\\$router->get\\('/(?:login|register|password/forgot|password/reset)',~", $line)) eval($line);
+foreach (array('/login','/register','/password/forgot','/password/reset') as $path) {
     $_SERVER['REQUEST_URI']=$path; $_GET=array('ref'=>'"><script>ref</script>');
     ob_start(); $router->dispatch('GET',$path); $html=ob_get_clean();
-    auth_assert(strpos($html,'class="auth-page"')!==false && strpos($html,'user-sidebar')===false, $path.' 独立认证外壳');
+    auth_assert(strpos($html,'class="auth-page auth-flow-')!==false && strpos($html,'user-sidebar')===false, $path.' 独立认证外壳');
     auth_assert(strpos($html,'action="'.$path.'"')!==false && strpos($html,'name="_csrf" value="isolated-csrf"')!==false, $path.' 原提交目标与CSRF');
-    auth_assert(strpos($html,'name="email"')!==false && strpos($html,'name="password"')!==false, $path.' 真实认证字段');
-    auth_assert(strpos($html,'type="button"')!==false && strpos($html,'auth-password-toggle')!==false, $path.' 密码查看不提交表单');
+    if ($path==='/password/reset') {
+        auth_assert(strpos($html,'name="token"')!==false && strpos($html,'name="password_confirm"')!==false, $path.' 重置令牌与确认字段');
+        auth_assert(substr_count($html,'class="auth-password-toggle"')===2, $path.' 两个密码均可显隐');
+    } elseif ($path==='/password/forgot') {
+        auth_assert(strpos($html,'name="email"')!==false && strpos($html,'class="auth-password-toggle"')===false, $path.' 邮箱无密码切换按钮');
+    } else {
+        auth_assert(strpos($html,'name="email"')!==false && strpos($html,'name="password"')!==false, $path.' 真实认证字段');
+        auth_assert(strpos($html,'type="button"')!==false && strpos($html,'class="auth-password-toggle"')!==false, $path.' 密码查看不提交表单');
+    }
     auth_assert(strpos($html,'<script>不可执行</script>')===false && strpos($html,'&lt;script&gt;不可执行&lt;/script&gt;')!==false, $path.' 品牌输出转义');
-    auth_assert(strpos($html,'隔离提示')!==false && strpos($html,'aria-current="page"')!==false, $path.' 提示和选中入口');
+    auth_assert(strpos($html,'隔离提示')!==false && strpos($html,in_array($path,array('/login','/register'),true)?'aria-current="page"':'aria-current="step"')!==false, $path.' 提示和选中入口');
     if ($path==='/register') auth_assert(strpos($html,'name="ref"')!==false && strpos($html,'<script>ref</script>')===false && strpos($html,'name="display_name"')!==false, '注册邀请字段保留且转义');
     preg_match_all('~/assets/(auth-[a-z-]+\.svg)~', $html, $matches);
     foreach (array_unique($matches[1]) as $asset) auth_assert(is_file($root.'/public/assets/'.$asset) && filesize($root.'/public/assets/'.$asset)>0, $path.' 本地资源 '.$asset);

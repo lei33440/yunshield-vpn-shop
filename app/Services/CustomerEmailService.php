@@ -6,15 +6,15 @@ class CustomerEmailService
     private $config;
     public function __construct($pdo,$config=array()){$this->pdo=$pdo;$this->config=$config;}
     public function settings(){
-        $s=$this->pdo->query('SELECT setting_key,setting_value FROM system_settings WHERE setting_key IN ("customer_order_created_enabled","customer_order_created_generation","customer_order_delivered_enabled","customer_order_delivered_generation")');
+        $s=$this->pdo->query('SELECT setting_key,setting_value FROM system_settings WHERE setting_key IN ("customer_order_created_enabled","customer_order_created_generation","customer_order_delivered_enabled","customer_order_delivered_generation","customer_payment_confirmed_enabled","customer_payment_confirmed_generation")');
         $values=array();foreach($s as $r)$values[$r['setting_key']]=$r['setting_value'];$result=array();
-        foreach(array('customer_order_created','customer_order_delivered') as $event){$result[$event.'_enabled']=isset($values[$event.'_enabled'])&&$values[$event.'_enabled']==='1';$result[$event.'_generation']=isset($values[$event.'_generation'])?(int)$values[$event.'_generation']:0;}
+        foreach(array('customer_order_created','customer_order_delivered','customer_payment_confirmed') as $event){$result[$event.'_enabled']=isset($values[$event.'_enabled'])&&$values[$event.'_enabled']==='1';$result[$event.'_generation']=isset($values[$event.'_generation'])?(int)$values[$event.'_generation']:0;}
         return $result;
     }
     public function saveSettings($input,$adminId=null){
         $own=!$this->pdo->inTransaction();if($own)$this->pdo->beginTransaction();
         try{
-            foreach(array('customer_order_created','customer_order_delivered') as $event){
+            foreach(array('customer_order_created','customer_order_delivered','customer_payment_confirmed') as $event){
                 $key=$event.'_enabled';if(!array_key_exists($key,$input))continue;
                 if(!in_array($input[$key],array(true,false,0,1,'0','1'),true))throw new InvalidArgumentException('客户通知开关无效。');
                 // 固定顺序锁配置，关闭时递增代次，即使随后重新启用也不补发。
@@ -41,20 +41,30 @@ class CustomerEmailService
         }
         (new NotificationOutboxService($this->pdo))->enqueue($event,$dedupe,$payload,'email');return true;
     }
+    public function enqueuePaymentConfirmed($order){
+        if(!$this->pdo->inTransaction())throw new LogicException('客户通知必须在订单事务中入队。');
+        $cfg=$this->settings();if(!$cfg['customer_payment_confirmed_enabled']||$order['status']!=='pending_delivery'||$order['product_type_snapshot']!=='vpn'||$order['temporary_subscription_status']!=='active'||trim((string)$order['temporary_subscription_url'])==='')return false;
+        $s=$this->pdo->prepare('SELECT email,status FROM users WHERE id=?');$s->execute(array($order['user_id']));$user=$s->fetch();if(!$user||$user['status']!=='active'||!filter_var($user['email'],FILTER_VALIDATE_EMAIL))return false;
+        $payload=array('user_id'=>(int)$order['user_id'],'order_id'=>(int)$order['id'],'order_no'=>(string)$order['order_no'],'product_summary'=>(string)$order['product_name_snapshot'].' / '.(string)$order['plan_name_snapshot'],'to'=>$user['email'],'generation'=>$cfg['customer_payment_confirmed_generation']);
+        (new NotificationOutboxService($this->pdo))->enqueue('customer_payment_confirmed','customer_payment_confirmed:'.$order['id'],$payload,'email');return true;
+    }
     public function eligibility($row,$payload){
         if(!is_array($payload)||empty($payload['user_id'])||!isset($payload['to'])||!is_string($payload['to'])||!filter_var($payload['to'],FILTER_VALIDATE_EMAIL))return 'customer_payload_invalid';
         $s=$this->pdo->prepare('SELECT email,status FROM users WHERE id=?');$s->execute(array($payload['user_id']));$user=$s->fetch();
         if(!$user||$user['status']!=='active')return 'customer_user_inactive';
         if(strcasecmp($user['email'],$payload['to'])!==0)return 'customer_email_changed';
-        if(in_array($row['event_type'],array('customer_order_created','customer_order_delivered'),true)){
+        if(in_array($row['event_type'],array('customer_order_created','customer_order_delivered','customer_payment_confirmed'),true)){
             $cfg=$this->settings();$event=$row['event_type'];
             if(!$cfg[$event.'_enabled'])return 'customer_event_disabled';
             if(!isset($payload['generation'])||(int)$payload['generation']!==$cfg[$event.'_generation'])return 'customer_generation_expired';
-            $s=$this->pdo->prepare('SELECT id,status,product_type_snapshot FROM orders WHERE id=? AND user_id=? AND order_no=?');$s->execute(array(isset($payload['order_id'])?$payload['order_id']:0,$payload['user_id'],isset($payload['order_no'])?$payload['order_no']:''));$order=$s->fetch();
+            $s=$this->pdo->prepare('SELECT id,status,product_type_snapshot,temporary_subscription_status,temporary_subscription_url FROM orders WHERE id=? AND user_id=? AND order_no=?');$s->execute(array(isset($payload['order_id'])?$payload['order_id']:0,$payload['user_id'],isset($payload['order_no'])?$payload['order_no']:''));$order=$s->fetch();
             if(!$order)return 'customer_order_invalid';
             if($event==='customer_order_delivered'){
                 if($order['status']!=='delivered')return 'customer_delivery_inactive';
                 if($this->hasBinding($payload))return $this->deliveryCheck($payload,$order);
+            }elseif($event==='customer_payment_confirmed'){
+                if($order['status']!=='pending_delivery'||$order['product_type_snapshot']!=='vpn'||$order['temporary_subscription_status']!=='active')return 'customer_payment_inactive';
+                $url=(string)$order['temporary_subscription_url'];if($url===''||preg_match('/[\x00-\x20\x7f]/',$url)||!filter_var($url,FILTER_VALIDATE_URL)||!in_array(strtolower((string)parse_url($url,PHP_URL_SCHEME)),array('http','https'),true))return 'customer_payment_subscription_invalid';
             }
             return null;
         }
@@ -101,7 +111,10 @@ class CustomerEmailService
         $reason=$this->eligibility($row,$payload);if($reason!==null)throw new UnexpectedValueException($reason);
         $modules=array();$base=isset($this->config['app']['base_url'])?rtrim($this->config['app']['base_url'],'/'):'';
         if($base!==''&&filter_var($base,FILTER_VALIDATE_URL)&&in_array(strtolower((string)parse_url($base,PHP_URL_SCHEME)),array('http','https'),true))$modules['order_link']=$base.'/orders/'.rawurlencode($payload['order_no']);
-        if($row['event_type']==='customer_order_delivered'&&$this->hasBinding($payload)){
+        if($row['event_type']==='customer_payment_confirmed'){
+            $s=$this->pdo->prepare('SELECT temporary_subscription_url FROM orders WHERE id=? AND user_id=?');$s->execute(array($payload['order_id'],$payload['user_id']));$url=$s->fetchColumn();if(!is_string($url)||preg_match('/[\x00-\x20\x7f]/',$url)||!filter_var($url,FILTER_VALIDATE_URL)||!in_array(strtolower((string)parse_url($url,PHP_URL_SCHEME)),array('http','https'),true))throw new UnexpectedValueException('customer_payment_subscription_invalid');
+            $modules['temporary_subscription']=array('subscription'=>$url);
+        }elseif($row['event_type']==='customer_order_delivered'&&$this->hasBinding($payload)){
             $s=$this->pdo->prepare('SELECT product_type_snapshot FROM orders WHERE id=? AND user_id=?');$s->execute(array($payload['order_id'],$payload['user_id']));$type=$s->fetchColumn();
             // 账号自由文字永不读取/解密；旧无绑定队列永不补绑当前交付。
             if($type==='vpn'){

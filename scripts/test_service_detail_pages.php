@@ -3,6 +3,7 @@
 if (PHP_SAPI !== 'cli') exit(1);
 require dirname(__DIR__).'/app/Core/Router.php';
 require dirname(__DIR__).'/app/Core/TicketPages.php';
+require dirname(__DIR__).'/app/Core/HelpCenterPages.php';
 require dirname(__DIR__).'/app/Core/AnnouncementPages.php';
 function e($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
 function csrf_field() { return '<input type="hidden" name="_csrf" value="isolated-csrf">'; }
@@ -20,7 +21,7 @@ class TicketService {
 }
 class AnnouncementService {
     function __construct($pdo) { if ($pdo !== null) throw new RuntimeException('禁止连接数据库'); }
-    function findActive($id) { return $id===1?array('title'=>'公告 & <标题>','starts_at'=>'2026-10-27 12:00:00','body'=>'正文<script>不可执行</script>'):false; }
+    function findActive($id) { return $id===1?array('type'=>'system','pinned'=>0,'title'=>'公告 & <标题>','starts_at'=>'2026-10-27 12:00:00','body'=>'正文<script>不可执行</script>'):false; }
 }
 $_SESSION=array(); $_GET=array();
 $router=new Router;

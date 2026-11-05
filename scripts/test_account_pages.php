@@ -26,13 +26,17 @@ for($i=0,$n=count($extractorTokens);$i<$n;$i++){
 }
 if(count($extractorFound)!==count($extractorNames))throw new RuntimeException('Missing cost test extractor');
 $source=file_get_contents($root.'/public/index.php');
-pc_functions($root.'/public/index.php',array('product_form','plan_description_html','money','status_text','order_timeline','post_csrf','copy_subscription_script','delivery_duration_presets','delivery_duration_script','product_plans_input','save_product_plans','product_input','user_nav_icon','shop_plan_period','shop_plan_key','shop_plan_daily','shop_traffic_gb','shop_tagline'));
+pc_functions($root.'/public/index.php',array('product_form','plan_description_html','money','status_text','order_timeline','order_detail_secret','order_detail_script','post_csrf','copy_subscription_script','delivery_email_notice','delivery_duration_presets','delivery_duration_script','product_plans_input','save_product_plans','product_input','user_nav_icon','shop_plan_period','shop_plan_key','shop_plan_daily','shop_traffic_gb','shop_tagline'));
 $config=array('security'=>array('encryption_key'=>bin2hex(random_bytes(32))),'app'=>array('timezone'=>'UTC','name'=>'isolated'));
 $router=new Router();account_catalog_routes($router,$pdo,$config);
 // Complete registration statements also support the multi-line public catalog route.
 preg_match_all("~^\\\$router->(get|post)\\('(/products(?:/\\{id\\})?|/order-confirm|/orders(?:/\\{no\\})?|/admin/products/(?:create|\\{id\\}/(?:edit|toggle))|/admin/orders/\\{no\\}(?:/(?:deliver|update-delivery))?)'~m",$source,$registrations,PREG_SET_ORDER);
 foreach($registrations as $registration)eval(pc_route_source($source,$registration[1],$registration[2]));
 register_admin_extra_routes($router,$pdo,$config);
+$workspaceStart=strpos($source,'$workspacePage = function(');$workspaceEnd=strpos($source,"\$router->get('/wallet',",$workspaceStart);
+if($workspaceStart===false||$workspaceEnd===false)throw new RuntimeException('Missing workspace route boundary');
+eval(substr($source,$workspaceStart,$workspaceEnd-$workspaceStart));
+eval(pc_route_source($source,'get','/wallet'));
 function ap_ok($value,$label){if(!$value)throw new RuntimeException('FAIL '.$label);echo 'PASS '.$label.PHP_EOL;}
 function ap_sql($sql,$args=array()){global $pdo;$s=$pdo->prepare($sql);$s->execute($args);return $s;}
 function ap_run($method,$path,$get=array(),$post=array()){global $router;$GLOBALS['test_body']='';$GLOBALS['test_flash']=array();$_GET=$get;$_POST=$post+array('_csrf'=>'test');http_response_code(200);try{$router->dispatch($method,$path);}catch(PageRedirect $r){return $r->url;}return $GLOBALS['test_body'];}
@@ -143,9 +147,9 @@ $body=ap_search_expect(array('q'=>" \t",'platform'=>$emptyPlatform),array(),'bla
 $plainCatalog=ap_run('GET','/accounts');$plainIds=ap_search_ids($plainCatalog);sort($plainIds,SORT_NUMERIC);$blankCatalog=ap_run('GET','/accounts',array('q'=>" \t\r\n"));ap_ok(http_response_code()===200&&ap_search_ids($blankCatalog)===$plainIds,'blank search without platform retains full catalog');
 // 百字按 UTF-8 字符而非字节计；先 trim 再检查长度。
 $ascii100=str_repeat('a',100);$utf100=str_repeat('界',100);$asciiHit=ap_search_fixture('百字英文 '.$tag,$ascii100,'普通公开规格',$searchPlatform);$utfHit=ap_search_fixture('百字中文 '.$tag,'普通介绍',$utf100,$searchPlatform);
-ap_search_expect(array('q'=>$ascii100),array($asciiHit),'100 ASCII characters accepted');
-ap_search_expect(array('q'=>$utf100),array($utfHit),'100 Chinese characters accepted despite 300 bytes');
-ap_search_expect(array('q'=>" \t".$utf100."\r\n"),array($utfHit),'trimmed 100-character boundary accepted');
+ap_search_expect(array('q'=>$ascii100,'platform'=>$searchPlatform),array($asciiHit),'100 ASCII characters accepted');
+ap_search_expect(array('q'=>$utf100,'platform'=>$searchPlatform),array($utfHit),'100 Chinese characters accepted despite 300 bytes');
+ap_search_expect(array('q'=>" \t".$utf100."\r\n",'platform'=>$searchPlatform),array($utfHit),'trimmed 100-character boundary accepted');
 $invalidQueries=array('101 ASCII'=>str_repeat('a',101),'101 Chinese'=>str_repeat('界',101),'array'=>array($needle),'nested array'=>array(array($needle)),'null'=>null,'integer'=>1,'boolean'=>false,'float'=>1.5,'invalid UTF-8'=>"\xC3\x28",'truncated UTF-8'=>"\xE4\xB8",'overlong UTF-8'=>"\xC0\xAF");
 foreach($invalidQueries as $label=>$query){$body=ap_run('GET','/accounts',array('q'=>$query,'platform'=>$searchPlatform));ap_ok(http_response_code()===400&&ap_search_ids($body)===array(),'invalid search rejected with 400: '.$label);}
 // 特殊字符必须按字面匹配；为每种字符放入可被错误通配符命中的干扰商品。
@@ -185,4 +189,62 @@ ap_search_expect(array('q'=>$tail),array($specProduct),'truncated specification 
 $detail=ap_run('GET','/accounts/'.$specProduct);ap_ok(strpos($detail,$hiddenLine)!==false&&strpos($detail,e($longLine))!==false,'detail retains full specification including omitted lines and tails');
 $stored=ap_sql('SELECT account_specification FROM products WHERE id=?',array($specProduct))->fetchColumn();ap_ok($stored===$fullSpec,'card rendering leaves stored specification unchanged');
 $form=account_product_form($p,'/test','test');ap_ok(strpos($form,'aria-describedby="account-spec-help"')!==false&&strpos($form,'每行填写一项公开规格')!==false,'admin form explains per-line specification tags');
+// 四页展示回归仅写本脚本创建的隔离账户与订单。
+$walletBody=ap_run('GET','/wallet');ap_ok(strpos($walletBody,'account-reference-wallet')!==false&&strpos($walletBody,'暂无余额变动记录')!==false,'余额空态与新外壳');
+$testWallet=new WalletService($pdo);$testWallet->adjust($uid,1234,'隔离界面测试',$tag.'_credit',$aid);$testWallet->adjust($uid,-234,'隔离界面测试',$tag.'_debit',$aid);
+$walletBody=ap_run('GET','/wallet');ap_ok(strpos($walletBody,'¥10.00')!==false&&strpos($walletBody,'+12.34')!==false&&strpos($walletBody,'-2.34')!==false&&strpos($walletBody,'共 2 条')!==false,'钱包金额与真实流水一致');
+ap_ok(strpos($walletBody,'name="from"')===false&&strpos($walletBody,'name="type"')===false,'钱包不显示未支持筛选');
+$emptySubscriptions=ap_run('GET','/account/subscriptions');ap_ok(strpos($emptySubscriptions,'还没有已交付订阅')!==false&&strpos($emptySubscriptions,e($secret))===false,'订阅不包含账号订单或凭据');
+ap_sql('INSERT INTO product_plans(product_id,name,duration_days,price_cents,status,created_at,updated_at) VALUES(?,?,30,1000,"active",NOW(),NOW())',array($vpn,'界面测试方案'));$vpnPlan=(int)$pdo->lastInsertId();$vpnOrders=array();
+foreach(array('active','expired','unknown') as $expiryCase){
+    $vpnNo=$service->create($uid,$vpn,$vpnPlan,'隔离界面测试');$service->confirmPayment($vpnNo,$aid);
+    $opened=$expiryCase==='expired'?'2020-01-01 00:00:00':date('Y-m-d H:i:s');$expires=$expiryCase==='expired'?'2020-02-01 00:00:00':date('Y-m-d H:i:s',time()+30*86400);
+    $service->deliver($vpnNo,$aid,array('subscription'=>'https://example.test/isolated-subscription','account'=>'','instructions'=>'仅隔离验收','opened_at'=>$opened,'expires_at'=>$expires),$config);
+    if($expiryCase==='unknown')ap_sql('UPDATE delivery_records SET expires_at=NULL WHERE order_id=(SELECT id FROM orders WHERE order_no=?)',array($vpnNo));
+    $vpnOrders[]=$vpnNo;
+}
+$subscriptionsBody=ap_run('GET','/account/subscriptions');ap_ok(substr_count($subscriptionsBody,'class="workspace-subscription-card account-subscription-card"')===3&&strpos($subscriptionsBody,'已到期')!==false&&strpos($subscriptionsBody,'期限未设置')!==false&&strpos($subscriptionsBody,'有效期内')!==false,'订阅横卡覆盖三种真实期限状态');
+ap_ok(strpos($subscriptionsBody,'?view=detail')!==false&&strpos($subscriptionsBody,'#order-delivery')!==false&&strpos($subscriptionsBody,'/payment-result')===false&&strpos($subscriptionsBody,'https://example.test/isolated-subscription')===false,'订阅卡保留双入口且不输出交付秘密');
+ap_sql('UPDATE users SET display_name=? WHERE id=?',array('<script>昵称</script>',$uid));
+$overviewBody=ap_run('GET','/account/overview');ap_ok(strpos($overviewBody,'account-welcome-avatar')!==false&&strpos($overviewBody,'UID：'.$uid)!==false&&strpos($overviewBody,e('<script>昵称</script>'))!==false&&strpos($overviewBody,'<script>昵称</script>')===false,'总览头像编号和昵称转义');
+ap_ok(substr_count($overviewBody,'class="account-stat-copy"')===4&&strpos($overviewBody,'¥10.00')!==false&&strpos($overviewBody,'<span>已交付</span><strong>4</strong>')!==false,'总览四统计与余额交付数量一致');
+ap_ok(strpos($overviewBody,'account-recent-table')!==false&&strpos($overviewBody,'最近消息')!==false&&strpos($overviewBody,e($secret))===false,'总览订单表和消息不泄露交付内容');
+$secretSample="\n0\n<script>不能执行</script>\n";
+$secretMarkup=order_detail_secret('secret-regression','交付正文',$secretSample,true);
+ap_ok(strpos($secretMarkup,'<div class="order-secret-value"')!==false&&strpos($secretMarkup,'>'.e($secretSample).'</div>')!==false&&strpos($secretMarkup,'<script>不能执行</script>')===false,'多行交付保留首换行与零值且转义');
+// 仅使用本脚本新建订单验证详情布局与状态隔离，不触碰其他验收订单。
+$body=ap_run('GET','/orders/'.$no,array('view'=>'detail'));
+list($summaryAttrs,$summary)=ap_search_section($body,'section','order-reference-summary');
+ap_ok(strpos($summary,'order-reference-product')!==false&&strpos($summary,'order-reference-timeline')!==false,'订单摘要与真实时间线同卡');
+ap_ok(strpos($body,'order-reference-account')!==false&&strpos($body,'data-detail-reveal="order-account-content"')!==false&&strpos($body,'data-detail-copy="order-account-content"')!==false,'账号完整交付可显隐及复制');
+ap_ok(strpos($summary,'order-reference-delivery-label')!==false&&strpos($summary,'账号已交付')!==false&&strpos($summary,'已核验')===false,'摘要辅助状态基于真实交付且不伪造核验');
+ap_ok(strpos($body,'<h2>账号信息</h2>')!==false&&strpos($body,'order-reference-public')!==false,'账号主辅栏保留完整交付与公开信息');
+ap_ok(strpos($body,e($secret))!==false&&strpos($body,$secret)===false&&strpos($body,'temporary-subscription-link')===false,'账号交付转义且不混入临时VPN');
+ap_ok(strpos($body,'action="/orders/'.$no.'/refund"')===false&&strpos($body,'申请退款')===false,'已交付详情不提供用户退款申请');
+ap_ok(!preg_match("~\\\$router->post\\('(/orders/\\{no\\}/refund)'~",$source),'用户退款申请POST路由已移除');
+$beforeRefund=ap_sql('SELECT * FROM orders WHERE order_no=?',array($no))->fetch();
+ap_run('POST','/orders/'.$no.'/refund',array(),array('reason'=>'不应受理'));
+ap_ok(http_response_code()===404&&ap_sql('SELECT * FROM orders WHERE order_no=?',array($no))->fetch()===$beforeRefund,'旧退款提交地址返回404且订单不变');
+$defaultBody=ap_run('GET','/orders/'.$no);
+ap_ok(strpos($defaultBody,'order-reference-page')!==false&&strpos($defaultBody,'id="order-delivery"')!==false&&strpos($defaultBody,'data-detail-copy="order-account-content"')!==false&&strpos($defaultBody,'payment-result-page')===false,'已交付普通入口直接使用统一详情和原文复制');
+ap_ok(strpos($defaultBody,'查看付款与交付结果')===false,'统一详情不保留结果页自循环入口');
+$_SESSION['user_id']=$uid+999999;$body=ap_run('GET','/orders/'.$no,array('view'=>'detail'));
+ap_ok(strpos($body,'order-account-content')===false&&strpos($body,e($secret))===false,'非购买者无显隐或复制凭据');$_SESSION['user_id']=$uid;
+foreach(array('refunding','refunded') as $refundStatus){
+    ap_sql('UPDATE orders SET status=?,refund_reason=?,refund_requested_at=NOW(),refund_processed_at=? WHERE order_no=?',array($refundStatus,'隔离退款原因 <script>不可执行</script>',$refundStatus==='refunded'?'2026-11-01 12:00:00':null,$no));
+    $body=ap_run('GET','/orders/'.$no,array('view'=>'detail'));
+    ap_ok(strpos($body,'order-reference-refund-timeline')!==false&&strpos($body,e('隔离退款原因 <script>不可执行</script>'))!==false,'退款布局与原因转义 '.$refundStatus);
+    ap_ok(strpos($body,'order-reference-refund-reason')!==false&&strpos($body,'撤回申请')===false,'退款原因独立浅底信息块且无假撤回 '.$refundStatus);
+    ap_ok(strpos($body,e($secret))===false&&strpos($body,'data-detail-copy=')===false&&strpos($body,'/revert')===false,'退款状态不输出旧凭据或虚构撤回入口 '.$refundStatus);
+}
+ap_sql('UPDATE orders SET status="delivered",refund_reason="",refund_requested_at=NULL,refund_processed_at=NULL WHERE order_no=?',array($no));
+foreach(array('pending_payment','paid_waiting_group','pending_delivery','delivered','cancelled','refunding','refunded') as $entryStatus){
+    ap_sql('UPDATE orders SET status=? WHERE order_no=?',array($entryStatus,$no));
+    $entryBody=ap_run('GET','/orders/'.$no);
+    ap_ok(strpos($entryBody,'order-reference-page')!==false&&strpos($entryBody,'payment-result-page')===false,'普通入口所有状态使用统一详情 '.$entryStatus);
+    ap_ok(strpos($entryBody,'申请退款')===false&&strpos($entryBody,'action="/orders/'.$no.'/refund"')===false,'所有状态均无用户退款申请入口 '.$entryStatus);
+    if($entryStatus==='pending_payment')ap_ok(strpos($entryBody,'action="/orders/'.$no.'/cancel"')!==false&&strpos($entryBody,'name="_csrf"')!==false,'未付款取消订单及CSRF保留');
+    if($entryStatus!=='delivered')ap_ok(strpos($entryBody,e($secret))===false&&strpos($entryBody,'data-detail-copy=')===false,'统一默认入口非交付状态不泄密 '.$entryStatus);
+}
+ap_sql('UPDATE orders SET status="delivered" WHERE order_no=?',array($no));
 echo "ACCOUNT PAGE HANDLERS PASSED\n";

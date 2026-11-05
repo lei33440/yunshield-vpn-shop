@@ -5,12 +5,12 @@ class EmailTemplateService
     private $pdo;
     private $config;
     public function __construct($pdo,$config=array()){$this->pdo=$pdo;$this->config=$config;}
-    public static function keys(){return array('password_reset','customer_order_created','customer_order_delivered');}
+    public static function keys(){return array('password_reset','customer_order_created','customer_order_delivered','customer_payment_confirmed');}
     private function assertKey($key){if(!in_array($key,self::keys(),true))throw new InvalidArgumentException('邮件模板类型无效。');}
     public function defaults($key){
         $this->assertKey($key);
-        $titles=array('password_reset'=>'密码重置','customer_order_created'=>'订单已提交','customer_order_delivered'=>'订单已发货');
-        return array('subject'=>'{{brand}} · '.$titles[$key],'title'=>$titles[$key],'body'=>$key==='password_reset'?'我们收到了您的密码重置申请。请使用下方系统链接设置新密码。':"订单号：{{order_no}}\n商品：{{product_summary}}\n\n".($key==='customer_order_created'?'您的订单已提交，请登录查看订单进度。':'您的订单已完成发货，请核对下方交付信息。'),'button_text'=>$key==='password_reset'?'重置密码':'查看订单','color'=>'#7762D7');
+        $titles=array('password_reset'=>'密码重置','customer_order_created'=>'订单已提交','customer_order_delivered'=>'订单已发货','customer_payment_confirmed'=>'付款已确认');
+        return array('subject'=>'{{brand}} · '.$titles[$key],'title'=>$titles[$key],'body'=>$key==='password_reset'?'我们收到了您的密码重置申请。请使用下方系统链接设置新密码。':"订单号：{{order_no}}\n商品：{{product_summary}}\n\n".($key==='customer_order_created'?'您的订单已提交，请登录查看订单进度。':($key==='customer_payment_confirmed'?'您的付款已确认，临时订阅地址已发放，请查看下方信息。':'您的订单已完成发货，请核对下方交付信息。')),'button_text'=>$key==='password_reset'?'重置密码':'查看订单','color'=>'#7762D7');
     }
     public function variables($key){$this->assertKey($key);return $key==='password_reset'?array('brand'):array('brand','order_no','product_summary');}
     public function validate($key,$config){
@@ -58,6 +58,9 @@ class EmailTemplateService
             if(isset($modules['delivery'])&&is_array($modules['delivery'])){$d=$modules['delivery'];$extra="正式订阅地址（完整复制使用）：\n".$d['subscription']."\n\n开通时间：".$d['opened_at']."\n到期时间：".$d['expires_at']."\n\n使用说明：\n".$d['instructions'];}
             else $extra='请登录网站查看订单详情及交付内容。此邮件不包含交付密钥或支付凭据。';
             $extra.="\n\n交付信息可能含敏感凭据，请勿转发。邮件发送后无法撤回，交付更新以订单详情为准。";
+        }elseif($key==='customer_payment_confirmed'){
+            if(isset($modules['temporary_subscription'])&&is_array($modules['temporary_subscription'])){$d=$modules['temporary_subscription'];$extra="临时订阅地址（完整复制使用）：\n".$d['subscription']."\n\n付款已确认，临时订阅地址现已可用。正式人工发货、取消订单或退款后，该地址将失效。\n请勿转发此地址。";}
+            else $extra='付款已确认，请登录网站查看订单详情。';
         }
         if($key!=='password_reset'&&!empty($modules['order_link']))$link=$this->safeLink($modules['order_link']);
         $extraHtml=$extra!==''?'<div style="margin-top:24px;padding:16px;background:#f6f3fd;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-all">'.$esc($extra).'</div>':'';
@@ -70,6 +73,7 @@ class EmailTemplateService
         if(!in_array($variant,array('vpn','account'),true))throw new InvalidArgumentException('预览类型无效。');
         $modules=$key==='password_reset'?array('reset_link'=>'https://example.test/password/reset?token=preview-only'):array('order_link'=>'https://example.test/orders/EXAMPLE-0001');
         if($key==='customer_order_delivered'&&$variant==='vpn')$modules['delivery']=array('subscription'=>'https://example.test/subscription?key=fictional&client=demo','opened_at'=>'2026-01-01 12:00:00','expires_at'=>'2099-01-01 12:00:00','instructions'=>"复制完整地址导入客户端。\n此处为虚构示例数据。");
+        if($key==='customer_payment_confirmed'&&$variant==='vpn')$modules['temporary_subscription']=array('subscription'=>'https://example.test/temporary?key=fictional&client=demo');
         return $this->render($key,array('brand'=>'示例商店','order_no'=>'EXAMPLE-0001','product_summary'=>$variant==='vpn'?'示例 VPN / 月度方案':'示例账号 / 标准方案'),$modules,$config);
     }
 }

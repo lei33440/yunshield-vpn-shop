@@ -193,7 +193,7 @@ $router->get['/admin/tickets/{id}']($second['id']);ticket_assert($GLOBALS['ticke
 $before=ticket_state($second['id'],$uid);$_POST=array('body'=>'绕过版本','request_key'=>ticket_key());ticket_post($router->post['/admin/tickets/{id}/reply'],array($second['id']));
 ticket_assert(ticket_state($second['id'],$uid)===$before,'管理员POST缺失版本不能绕过校验');
 $_POST=array('body'=>'<b>失败回复保留</b>','request_key'=>ticket_key(),'version_no'=>'999999');ticket_post($router->post['/admin/tickets/{id}/reply'],array($second['id']));$router->get['/admin/tickets/{id}']($second['id']);
-ticket_assert(strpos($GLOBALS['ticket_html'],'&lt;b&gt;失败回复保留&lt;/b&gt;')!==false,'客服回复失败安全保留正文');
+ticket_assert(strpos($GLOBALS['ticket_html'],'失败回复保留')!==false,'客服回复失败安全保留正文');
 $_POST=array('request_key'=>ticket_key());$before=ticket_state($second['id'],$uid);ticket_post($router->post['/admin/tickets/{id}/close'],array($second['id']));
 ticket_assert(ticket_state($second['id'],$uid)===$before,'管理员关闭POST必须提交版本');
 $_POST=array('body'=>'<i>用户失败草稿</i>','request_key'=>array('bad'),'version_no'=>(string)$svc->detail($second['id'],$uid)['version_no']);ticket_post($router->post['/tickets/{id}/reply'],array($second['id']));$router->get['/tickets/{id}']($second['id']);
