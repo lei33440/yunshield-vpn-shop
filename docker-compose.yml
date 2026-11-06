@@ -1,9 +1,10 @@
 services:
   app:
-    build: .
+    image: &app-image chaoxi-app
+    build: &app-build .
     ports:
       - "8081:8080"
-    environment:
+    environment: &app-environment
       # 仅开发环境示例；生产环境请使用受保护的环境注入配置。
       VPN_BASE_URL: http://127.0.0.1:8081
       VPN_APP_DEBUG: "1"
@@ -13,8 +14,22 @@ services:
       VPN_ENCRYPTION_KEY: 9bS6ukQ5fT0bminVdCsDZ1up8QSdevg87mE/jOb1B4w=
       VPN_UPDATE_INSTALL_ENABLED: "1"
       VPN_UPDATE_PUBLIC_KEY: mjuxap9G3LhgtRNO8RtI2f/DXaZreboNPpP2AP45owI=
-    volumes:
+    volumes: &app-volumes
       - .:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+
+  subboost-worker:
+    image: *app-image
+    build: *app-build
+    environment:
+      <<: *app-environment
+      # 仅覆盖 TCP 连接目的；公开 URL、Host 和 source_hash 不变。
+      SUBBOOST_CONNECT_HOST: host.docker.internal
+    volumes: *app-volumes
+    command: ["php", "scripts/subboost_worker.php", "--loop"]
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy

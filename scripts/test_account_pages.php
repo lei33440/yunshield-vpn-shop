@@ -26,7 +26,7 @@ for($i=0,$n=count($extractorTokens);$i<$n;$i++){
 }
 if(count($extractorFound)!==count($extractorNames))throw new RuntimeException('Missing cost test extractor');
 $source=file_get_contents($root.'/public/index.php');
-pc_functions($root.'/public/index.php',array('product_form','plan_description_html','money','status_text','order_timeline','order_detail_secret','order_detail_script','post_csrf','copy_subscription_script','delivery_email_notice','delivery_duration_presets','delivery_duration_script','product_plans_input','save_product_plans','product_input','user_nav_icon','shop_plan_period','shop_plan_key','shop_plan_daily','shop_traffic_gb','shop_tagline'));
+pc_functions($root.'/public/index.php',array('product_form','plan_description_html','money','status_text','order_timeline','order_detail_secret','order_detail_subscription','order_detail_script','post_csrf','copy_subscription_script','delivery_email_notice','delivery_duration_presets','delivery_duration_script','product_plans_input','save_product_plans','product_input','user_nav_icon','shop_plan_period','shop_plan_key','shop_plan_daily','shop_traffic_gb','shop_tagline','account_orders_page','account_subscriptions_page'));
 $config=array('security'=>array('encryption_key'=>bin2hex(random_bytes(32))),'app'=>array('timezone'=>'UTC','name'=>'isolated'));
 $router=new Router();account_catalog_routes($router,$pdo,$config);
 // Complete registration statements also support the multi-line public catalog route.
@@ -57,7 +57,7 @@ ap_sql('UPDATE products SET account_specification="" WHERE id=?',array($pid));ap
 $service=new OrderService($pdo);$service->confirmPayment($no,$aid);$body=ap_run('GET','/admin/orders/'.$no);ap_ok(strpos($body,'账号交付内容')!==false&&strpos($body,'name="subscription"')===false&&strpos($body,'name="duration_preset"')===false,'admin account form no VPN inputs');$secret='PRIVATE_'.$tag.'<script>alert(1)</script>';
 ap_run('POST','/admin/orders/'.$no.'/deliver',array(),array('account'=>$secret,'opened_at'=>'','expires_at'=>'','instructions'=>'private help'));ap_ok(empty($GLOBALS['test_flash']['error']),'real delivery POST nullable dates');$body=ap_run('GET','/orders/'.$no,array('view'=>'detail'));ap_ok(strpos($body,e($secret))!==false&&strpos($body,$secret)===false&&strpos($body,'PUBLIC_SPEC_'.$tag)!==false&&strpos($body,'CHANGED_SPEC')===false&&strpos($body,'0 天')===false,'buyer escaped encrypted text and original public snapshot');$record=ap_sql('SELECT * FROM delivery_records WHERE order_id=(SELECT id FROM orders WHERE order_no=?) AND is_current=1',array($no))->fetch();ap_ok(strpos($record['content_ciphertext'],$secret)===false&&$record['opened_at']===null&&$record['expires_at']===null,'delivery persisted encrypted and dates NULL');
 $_SESSION['user_id']=$uid+999999;$body=ap_run('GET','/orders/'.$no,array('view'=>'detail'));ap_ok(strpos($body,'PRIVATE_'.$tag)===false,'other buyer cannot see delivery');$_SESSION['user_id']=$uid;
-$body=ap_run('GET','/orders',array('product_type'=>'account'));ap_ok(strpos($body,'1<small> 笔订单')!==false&&strpos($body,$no)!==false&&strpos($body,'0天')===false,'user account filter count and display');$body=ap_run('GET','/orders',array('product_type'=>'vpn'));ap_ok(strpos($body,'0<small> 笔订单')!==false&&strpos($body,$no)===false,'user VPN filter count excludes account');
+$body=ap_run('GET','/orders',array('product_type'=>'account'));ap_ok(strpos($body,'共 <strong>1</strong> 笔订单')!==false&&strpos($body,$no)!==false&&strpos($body,'0天')===false,'user account filter count and display');$body=ap_run('GET','/orders',array('product_type'=>'vpn'));ap_ok(strpos($body,'共 <strong>0</strong> 笔订单')!==false&&strpos($body,$no)===false,'user VPN filter count excludes account');
 $body=ap_run('GET','/admin/orders',array('product_type'=>'account','q'=>$no));ap_ok(strpos($body,'筛选匹配 1 笔')!==false&&strpos($body,$no)!==false,'actual overridden admin orders handler count');$body=ap_run('GET','/admin/subscriptions',array('q'=>$no));ap_ok(strpos($body,'href="/admin/orders/'.$no.'"')===false,'undated delivered account excluded from subscription list');
 $active=(int)ap_sql('SELECT COUNT(DISTINCT o.id) FROM orders o JOIN delivery_records d ON d.order_id=o.id AND d.is_current=1 WHERE o.status="delivered" AND o.product_type_snapshot="vpn" AND (d.expires_at IS NULL OR d.expires_at>=NOW())')->fetchColumn();ap_ok(strpos($body,'共 '.$active.' 个有效订阅')!==false,'subscription displayed count equals VPN-only query');
 class MissingAccountColumns {public function query($sql){return array(array('Field'=>'product_type'));}}
@@ -190,10 +190,10 @@ $detail=ap_run('GET','/accounts/'.$specProduct);ap_ok(strpos($detail,$hiddenLine
 $stored=ap_sql('SELECT account_specification FROM products WHERE id=?',array($specProduct))->fetchColumn();ap_ok($stored===$fullSpec,'card rendering leaves stored specification unchanged');
 $form=account_product_form($p,'/test','test');ap_ok(strpos($form,'aria-describedby="account-spec-help"')!==false&&strpos($form,'每行填写一项公开规格')!==false,'admin form explains per-line specification tags');
 // 四页展示回归仅写本脚本创建的隔离账户与订单。
-$walletBody=ap_run('GET','/wallet');ap_ok(strpos($walletBody,'account-reference-wallet')!==false&&strpos($walletBody,'暂无余额变动记录')!==false,'余额空态与新外壳');
+$walletBody=ap_run('GET','/wallet');ap_ok(strpos($walletBody,'class="mw-page"')!==false&&strpos($walletBody,'暂无匹配的余额变动记录')!==false,'余额空态与新外壳');
 $testWallet=new WalletService($pdo);$testWallet->adjust($uid,1234,'隔离界面测试',$tag.'_credit',$aid);$testWallet->adjust($uid,-234,'隔离界面测试',$tag.'_debit',$aid);
-$walletBody=ap_run('GET','/wallet');ap_ok(strpos($walletBody,'¥10.00')!==false&&strpos($walletBody,'+12.34')!==false&&strpos($walletBody,'-2.34')!==false&&strpos($walletBody,'共 2 条')!==false,'钱包金额与真实流水一致');
-ap_ok(strpos($walletBody,'name="from"')===false&&strpos($walletBody,'name="type"')===false,'钱包不显示未支持筛选');
+$walletBody=ap_run('GET','/wallet');ap_ok(strpos($walletBody,'¥10.00')!==false&&strpos($walletBody,'+¥12.34')!==false&&strpos($walletBody,'-¥2.34')!==false&&strpos($walletBody,'共 2 条')!==false,'钱包金额与真实流水一致');
+ap_ok(strpos($walletBody,'name="from"')===false&&strpos($walletBody,'name="type"')!==false&&strpos($walletBody,'name="range"')!==false,'钱包仅提供已实现的来源和范围筛选');
 $emptySubscriptions=ap_run('GET','/account/subscriptions');ap_ok(strpos($emptySubscriptions,'还没有已交付订阅')!==false&&strpos($emptySubscriptions,e($secret))===false,'订阅不包含账号订单或凭据');
 ap_sql('INSERT INTO product_plans(product_id,name,duration_days,price_cents,status,created_at,updated_at) VALUES(?,?,30,1000,"active",NOW(),NOW())',array($vpn,'界面测试方案'));$vpnPlan=(int)$pdo->lastInsertId();$vpnOrders=array();
 foreach(array('active','expired','unknown') as $expiryCase){
@@ -203,12 +203,12 @@ foreach(array('active','expired','unknown') as $expiryCase){
     if($expiryCase==='unknown')ap_sql('UPDATE delivery_records SET expires_at=NULL WHERE order_id=(SELECT id FROM orders WHERE order_no=?)',array($vpnNo));
     $vpnOrders[]=$vpnNo;
 }
-$subscriptionsBody=ap_run('GET','/account/subscriptions');ap_ok(substr_count($subscriptionsBody,'class="workspace-subscription-card account-subscription-card"')===3&&strpos($subscriptionsBody,'已到期')!==false&&strpos($subscriptionsBody,'期限未设置')!==false&&strpos($subscriptionsBody,'有效期内')!==false,'订阅横卡覆盖三种真实期限状态');
-ap_ok(strpos($subscriptionsBody,'?view=detail')!==false&&strpos($subscriptionsBody,'#order-delivery')!==false&&strpos($subscriptionsBody,'/payment-result')===false&&strpos($subscriptionsBody,'https://example.test/isolated-subscription')===false,'订阅卡保留双入口且不输出交付秘密');
+$subscriptionsBody=ap_run('GET','/account/subscriptions');ap_ok(substr_count($subscriptionsBody,'class="ms-subscription')===3&&strpos($subscriptionsBody,'已到期')!==false&&strpos($subscriptionsBody,'期限未设置')!==false&&strpos($subscriptionsBody,'有效 · 剩余')!==false,'订阅横卡覆盖三种真实期限状态');
+ap_ok(strpos($subscriptionsBody,'查看订单')!==false&&strpos($subscriptionsBody,'#order-delivery')!==false&&strpos($subscriptionsBody,'/payment-result')===false&&strpos($subscriptionsBody,'https://example.test/isolated-subscription')===false,'订阅卡保留双入口且不输出交付秘密');
 ap_sql('UPDATE users SET display_name=? WHERE id=?',array('<script>昵称</script>',$uid));
-$overviewBody=ap_run('GET','/account/overview');ap_ok(strpos($overviewBody,'account-welcome-avatar')!==false&&strpos($overviewBody,'UID：'.$uid)!==false&&strpos($overviewBody,e('<script>昵称</script>'))!==false&&strpos($overviewBody,'<script>昵称</script>')===false,'总览头像编号和昵称转义');
-ap_ok(substr_count($overviewBody,'class="account-stat-copy"')===4&&strpos($overviewBody,'¥10.00')!==false&&strpos($overviewBody,'<span>已交付</span><strong>4</strong>')!==false,'总览四统计与余额交付数量一致');
-ap_ok(strpos($overviewBody,'account-recent-table')!==false&&strpos($overviewBody,'最近消息')!==false&&strpos($overviewBody,e($secret))===false,'总览订单表和消息不泄露交付内容');
+$overviewBody=ap_run('GET','/account/overview');ap_ok(strpos($overviewBody,'ao-welcome')!==false&&strpos($overviewBody,e('<script>昵称</script>'))!==false&&strpos($overviewBody,'<script>昵称</script>')===false,'总览问候和昵称转义');
+ap_ok(strpos($overviewBody,'aria-label="账户状态统计"')!==false&&strpos($overviewBody,'</span>10.00')!==false&&strpos($overviewBody,'<span>有效订阅</span><strong>1</strong>')!==false&&strpos($overviewBody,'<span>等待成团</span>')!==false,'总览四统计与余额及真实有效订阅一致');
+ap_ok(strpos($overviewBody,'ao-orders-table')!==false&&strpos($overviewBody,'最近消息')!==false&&strpos($overviewBody,e($secret))===false,'总览订单表和消息不泄露交付内容');
 $secretSample="\n0\n<script>不能执行</script>\n";
 $secretMarkup=order_detail_secret('secret-regression','交付正文',$secretSample,true);
 ap_ok(strpos($secretMarkup,'<div class="order-secret-value"')!==false&&strpos($secretMarkup,'>'.e($secretSample).'</div>')!==false&&strpos($secretMarkup,'<script>不能执行</script>')===false,'多行交付保留首换行与零值且转义');

@@ -75,35 +75,91 @@ function account_catalog_routes($router, $pdo, $config) {
             http_response_code(400);return page('搜索参数无效','<section class="empty service-ui-empty"><h1>无法使用此搜索条件</h1><p>请输入100字以内的搜索关键词。</p><a class="button" href="/accounts">返回海外账号商城</a></section>',$config);
         }
         $query=trim($query);
-        $where = 'product_type="account" AND status="active"'; $args = array();
-        if ($platform !== '') { $where .= ' AND account_platform=?'; $args[] = $platform; }
-        if($query!==''){
-            $match='%'.strtr($query,array('!'=>'!!','%'=>'!%','_'=>'!_')).'%';
-            $where.=" AND (p.name LIKE ? ESCAPE '!' OR p.description LIKE ? ESCAPE '!' OR p.account_specification LIKE ? ESCAPE '!')";
-            array_push($args,$match,$match,$match);
+        $sort=isset($_GET['sort'])?$_GET['sort']:'default';
+        $sorts=array('default'=>'p.sort_order,p.id','price_asc'=>'min_price ASC,p.sort_order,p.id','price_desc'=>'min_price DESC,p.sort_order,p.id');
+        if(!is_string($sort)||!isset($sorts[$sort])) {
+            http_response_code(400);return page('排序参数无效','<section class="empty service-ui-empty"><h1>无法使用此排序条件</h1><p>请返回商城选择页面中的排序方式。</p><a href="/accounts">返回海外账号商城</a></section>',$config);
         }
-        $s=$pdo->prepare('SELECT p.*,(SELECT MIN(price_cents) FROM product_plans WHERE product_id=p.id AND status="active") min_price FROM products p WHERE '.$where.' ORDER BY sort_order,id'); $s->execute($args);
-        $names=array();foreach($platforms as $item)$names[$item['code']]=$item['name'];$cards=''; foreach($s as $p) { if ($p['min_price']===null) continue; $cards.='<article class="account-catalog-card"><span class="account-platform-mark" aria-hidden="true">'.e(mb_substr(isset($names[$p['account_platform']])?$names[$p['account_platform']]:$p['name'],0,1,'UTF-8')).'</span><span class="eyebrow">'.e(isset($names[$p['account_platform']])?$names[$p['account_platform']]:$p['account_platform']).' · 海外账号</span><h2>'.e($p['name']).'</h2>'.account_card_specification($p['account_specification']).'<p class="account-card-description">'.nl2br(e($p['description'])).'</p><div class="account-card-footer"><strong>'.money($p['min_price']).' 起</strong><a class="button" href="/accounts/'.(int)$p['id'].'">查看详情</a></div></article>'; }
-        $catalogUrl=function($code,$term){$params=array();if($code!=='')$params['platform']=$code;if($term!=='')$params['q']=$term;return '/accounts'.($params?'?'.http_build_query($params):'');};
+        $names=array();foreach($platforms as $item)$names[$item['code']]=$item['name'];
+        $where='p.product_type="account" AND p.status="active"';$args=array();
+        if($platform!==''){$where.=' AND p.account_platform=?';$args[]=$platform;}
+        if($query!=='') {
+            $match='%'.strtr($query,array('!'=>'!!','%'=>'!%','_'=>'!_')).'%';
+            $searchWhere="p.name LIKE ? ESCAPE '!' OR p.description LIKE ? ESCAPE '!' OR p.account_specification LIKE ? ESCAPE '!'";
+            array_push($args,$match,$match,$match);
+            $matchingPlatforms=array();
+            foreach($platforms as $item)if(mb_stripos($item['name'],$query,0,'UTF-8')!==false||mb_stripos($item['code'],$query,0,'UTF-8')!==false)$matchingPlatforms[]=$item['code'];
+            if($matchingPlatforms){$searchWhere.=' OR p.account_platform IN ('.implode(',',array_fill(0,count($matchingPlatforms),'?')).')';$args=array_merge($args,$matchingPlatforms);}
+            $where.=' AND ('.$searchWhere.')';
+        }
+        $s=$pdo->prepare('SELECT p.*,(SELECT MIN(price_cents) FROM product_plans WHERE product_id=p.id AND status="active") min_price FROM products p WHERE '.$where.' ORDER BY '.$sorts[$sort]);
+        $s->execute($args);
+        $catalogUrl=function($code,$term)use($sort){$params=array();if($code!=='')$params['platform']=$code;if($term!=='')$params['q']=$term;if($sort!=='default')$params['sort']=$sort;return '/accounts'.($params?'?'.http_build_query($params):'');};
         $clearUrl=$catalogUrl($platform,'');
-        $search='<form class="account-catalog-search" method="get" action="/accounts" role="search" aria-label="搜索账号商品"><label for="account-search">搜索账号商品</label>'.($platform!==''?'<input type="hidden" name="platform" value="'.e($platform).'">':'').'<div class="account-search-controls"><input id="account-search" type="search" name="q" value="'.e($query).'" maxlength="100" placeholder="搜索账号名称、介绍或规格"><button class="button" type="submit">搜索</button>'.($query!==''?'<a class="account-search-clear" href="'.e($clearUrl).'">清除搜索</a>':'').'</div></form>';
-        $bodyPlatform='<nav class="account-platform-filter" aria-label="账号平台筛选"><a href="'.e($catalogUrl('',$query)).'"'.($platform===''?' aria-current="page"':'').'>全部平台</a>';
-        $platformLabel=$platform!==''?$names[$platform]:'选择平台';
-        $bodyPlatform.='<details class="account-platform-picker"><summary'.($platform!==''?' class="is-selected"':'').'><span>'.e($platformLabel).'</span><span class="account-platform-chevron" aria-hidden="true">⌄</span></summary><div class="account-platform-options" aria-label="选择账号平台"><div class="account-platform-search"><input type="search" placeholder="搜索平台分组" aria-label="搜索平台分组" autocomplete="off"></div><div class="account-platform-list">';
-        foreach($platforms as $item)$bodyPlatform.='<a href="'.e($catalogUrl($item['code'],$query)).'"'.($platform===$item['code']?' aria-current="page"':'').'>'.e($item['name']).'</a>';
-        if(!$platforms)$bodyPlatform.='<p class="muted">暂无可选平台</p>';
-        $bodyPlatform.='</div><p class="account-platform-no-match muted" role="status" hidden>没有找到匹配的平台</p></div></details></nav><script>(function(){var picker=document.querySelector(".account-platform-picker"),search=picker.querySelector("input"),links=picker.querySelectorAll(".account-platform-list a"),empty=picker.querySelector(".account-platform-no-match");function filter(){var term=search.value.trim().toLocaleLowerCase(),count=0;links.forEach(function(link){link.hidden=link.textContent.toLocaleLowerCase().indexOf(term)===-1;if(!link.hidden)count++});empty.hidden=!links.length||count>0}search.addEventListener("input",filter);picker.addEventListener("toggle",function(){if(picker.open){search.focus()}else{search.value="";filter()}});document.addEventListener("click",function(event){if(!picker.contains(event.target))picker.open=false});picker.addEventListener("keydown",function(event){if(event.key==="Escape"){picker.open=false;picker.querySelector("summary").focus()}})})();</script>';
-        $empty=$query!==''?'<section class="empty service-ui-empty"><h2>没有找到匹配的账号商品</h2><p>请尝试其他关键词，或清除搜索后查看当前平台商品。</p><div class="product-form-actions"><a class="button" href="'.e($clearUrl).'">清除搜索</a><a class="secondary-button" href="/accounts">查看全部平台</a></div></section>':'<section class="empty service-ui-empty"><h2>'.($platform!==''?'当前平台暂无在售商品':'暂无可购买的账号商品').'</h2><p>可以查看其他平台，或稍后再来浏览。</p><div class="product-form-actions"><a class="button" href="/accounts">查看全部平台</a><a class="secondary-button" href="/">返回商城首页</a></div></section>';
-        $desktopPlatforms='<aside class="account-desktop-platforms"><h2>商品分类</h2><nav aria-label="桌面账号平台筛选"><a href="'.e($catalogUrl('',$query)).'"'.($platform===''?' aria-current="page"':'').'>全部平台</a>';
-        foreach($platforms as $item)$desktopPlatforms.='<a href="'.e($catalogUrl($item['code'],$query)).'"'.($platform===$item['code']?' aria-current="page"':'').'><span aria-hidden="true">'.e(mb_substr($item['name'],0,1,'UTF-8')).'</span>'.e($item['name']).'</a>';
-        $desktopPlatforms.='</nav></aside>';
-        page('海外账号','<div class="account-catalog">'.$desktopPlatforms.'<header class="ux-page-head"><div><h1>海外账号商城</h1><p>公开规格与售后规则清晰可见，付款确认后人工加密交付。</p></div></header>'.$search.$bodyPlatform.'<p class="muted">仅提供合法来源且允许转让的商品。每单一个账号，不参与优惠券、返佣或拼团。</p><div class="account-catalog-grid">'.($cards?:$empty).'</div></div>',$config);
+        $cards='';$count=0;
+        foreach($s as $p) {
+            if($p['min_price']===null)continue;
+            $count++;
+            $platformName=isset($names[$p['account_platform']])?$names[$p['account_platform']]:$p['account_platform'];
+            $code=strtolower($p['account_platform']);
+            if($code==='google')$mark='<span class="ac-letter" aria-hidden="true">G</span>';
+            elseif($code==='x'||$code==='twitter')$mark='<span class="ac-letter" aria-hidden="true">X</span>';
+            else $mark=home_outline_icon($code==='apple'?'apple':($code==='telegram'?'send':(preg_match('/ai|gpt|claude|gemini/',$code)?'layers':'cube')));
+            $caption=trim(preg_replace('/\s+/u',' ',(string)$p['description']));
+            if($caption==='')$caption='查看账号规格与可选方案';
+            $cards.='<article class="ep-card ac-card"><div class="ep-card-category">'.$mark.'<span title="'.e($platformName).'">'.e($platformName).'</span></div><div class="ep-card-title"><h2 title="'.e($p['name']).'">'.e($p['name']).'</h2></div><p class="ep-caption" title="'.e($caption).'">'.e(mb_substr($caption,0,80,'UTF-8')).'</p><p class="ac-card-meta"><span>账号商品</span><span>人工交付</span></p><a class="ep-button" href="/accounts/'.(int)$p['id'].'">查看商品 ↗</a></article>';
+        }
+        $platformNav='<nav class="ep-categories ac-platforms" aria-label="账号平台筛选"><a href="'.e($catalogUrl('',$query)).'"'.($platform===''?' aria-current="page"':'').'>全部平台</a>';
+        foreach($platforms as $item)$platformNav.='<a href="'.e($catalogUrl($item['code'],$query)).'"'.($platform===$item['code']?' aria-current="page"':'').'>'.e($item['name']).'</a>';
+        $platformNav.='</nav>';
+        $search='<form class="ac-search" method="get" action="/accounts" role="search" aria-label="搜索平台或商品">'.($platform!==''?'<input type="hidden" name="platform" value="'.e($platform).'">':'').($sort!=='default'?'<input type="hidden" name="sort" value="'.e($sort).'">':'').'<button type="submit" aria-label="搜索平台或商品">'.home_outline_icon('search').'</button><input type="search" name="q" value="'.e($query).'" maxlength="100" aria-label="平台或商品关键词" placeholder="搜索平台或商品…"></form>';
+        $sortForm='<form class="ep-sort ac-sort" method="get" action="/accounts">'.($platform!==''?'<input type="hidden" name="platform" value="'.e($platform).'">':'').($query!==''?'<input type="hidden" name="q" value="'.e($query).'">':'').'<select name="sort" aria-label="商品排序">';
+        foreach(array('default'=>'默认排序','price_asc'=>'价格从低到高','price_desc'=>'价格从高到低') as $key=>$label)$sortForm.='<option value="'.$key.'"'.($sort===$key?' selected':'').'>'.$label.'</option>';
+        $sortForm.='</select><button type="submit">应用</button></form>';
+        $empty='<section class="ep-empty"><h2>'.($query!==''?'没有找到匹配的账号商品':($platform!==''?'当前平台暂无在售商品':'暂无可购买的账号商品')).'</h2><p>请尝试其他平台或关键词，稍后再来查看最新商品。</p><a href="'.e($query!==''?$clearUrl:'/accounts').'">'.($query!==''?'清除搜索':'查看全部平台').' →</a></section>';
+        $appName=e($config['app']['name']);
+        $body='<div class="ep-page ac-page"><nav class="ep-crumb" aria-label="面包屑"><a href="/">首页</a><span>/</span><span>海外账号</span></nav><header class="ep-intro"><div><span class="ep-kicker">OVERSEAS ACCOUNTS</span><h1><span>更多数字服务，</span><span>一个入口就够了。</span></h1><p>按平台挑选账号商品，查看方案与售后说明。</p></div><a href="#account-delivery">购买与交付说明 ↗</a></header>'
+            .'<section class="ep-toolbar ac-toolbar" aria-label="账号商品筛选">'.$platformNav.'<div class="ep-tools">'.$search.$sortForm.'</div></section>'
+            .'<p class="ep-results" role="status">共 '.$count.' 款商品 · 商品价格以具体方案为准。'.($query!==''?' 搜索：'.e($query).'　<a href="'.e($clearUrl).'">清除搜索</a>':'').'</p>'
+            .'<div class="ep-grid ac-grid">'.($cards?:$empty).'</div>'
+            .'<section class="ac-delivery" id="account-delivery"><h2>选好商品，<br>交付我们来处理。</h2><div><ol><li><span>01</span><b>选择商品与方案</b></li><li><span>02</span><b>下单并完成付款</b></li><li><span>03</span><b>等待管理员人工交付</b></li></ol><p>交付后，登录本人账号，在订单详情查看交付内容与使用说明。<br>每单1件；账号商品不参与优惠券、返佣与拼团活动。仅提供合法来源且允许转让的商品。</p></div></section>'
+            .'<section class="ep-faq"><h2>购买前，<br>你可能想了解</h2><div><details><summary>付款后在哪里查看账号信息？</summary><p>交付完成后，请登录本人账号，在订单详情中主动显示或复制交付内容；邮件只作发货提醒，不直发账号密码。</p></details><details><summary>购买前需要确认哪些商品规格？</summary><p>请进入商品详情，确认所属平台、公开规格、可选方案及交付内容，再选择适合自己的方案。商品页不展示账号凭据。</p></details><details><summary>账号售后规则在哪里查看？</summary><p>商品详情的「售后与购买须知」展示该商品的具体售后规则。遇到问题可提交关联订单的工单，处理结果以实际订单状态为准。</p></details></div></section>'
+            .'<section class="ep-help"><div><h2>需要帮助？</h2></div><a href="/articles">查看购买指南 ↗</a><a href="/tickets">提交咨询工单 ↗</a></section><footer class="ep-footer"><div><a href="/">'.home_outline_icon('cloud').'<span>'.$appName.'</span></a><p>数字服务，简单一点。</p></div><nav aria-label="页脚导航"><a href="/articles">帮助中心</a><a href="/announcements">系统公告</a></nav><p>© '.e(date('Y')).' '.$appName.' 版权所有</p></footer></div>'
+            .'<script>(function(){var form=document.querySelector(".ac-sort");if(!form)return;form.classList.add("is-enhanced");form.querySelector("select").addEventListener("change",function(){form.requestSubmit();});})();</script>';
+        page('海外账号',$body,$config);
     });
     $router->get('/accounts/{id}', function($id) use ($pdo,$config) {
         $p=false; if(account_catalog_ready($pdo)) { $s=$pdo->prepare('SELECT * FROM products WHERE id=? AND product_type="account" AND status="active"');$s->execute(array((int)$id));$p=$s->fetch(); }
         if(!$p){http_response_code(404);return page('商品不存在','<section class="empty service-ui-empty"><h1>商品暂不可查看</h1><p>商品不存在或已下架，请返回商城查看其他在售账号。</p><a class="button" href="/accounts">返回海外账号商城</a></section>',$config);}
-        $s=$pdo->prepare('SELECT * FROM product_plans WHERE product_id=? AND status="active" ORDER BY sort_order,id');$s->execute(array($p['id']));$options='';foreach($s as $i=>$plan)$options.='<label class="plan-option"><input type="radio" name="plan_id" value="'.(int)$plan['id'].'"'.($i===0?' checked':'').' required><span>'.e($plan['name']).'</span><strong>'.money($plan['price_cents']).'</strong></label>';
-        page($p['name'],'<div class="account-product-detail"><nav class="account-product-back" aria-label="商品详情导航"><a href="/accounts">← 返回选购</a></nav><header class="ux-page-head"><div><h1>'.e($p['name']).'</h1><p>海外账号 · 公开规格 · 人工加密交付</p></div></header><div class="account-product-layout"><div class="pc-account-cover"><span>'.e(mb_substr($p['account_platform'],0,1,'UTF-8')).'</span><h2>'.e($p['name']).'</h2><p>'.e($p['account_platform']).'</p><small>海外账号 · 人工加密交付</small></div><section class="account-product-overview"><h2>商品介绍</h2><p>'.nl2br(e($p['description'])).'</p>'.account_public_details($p).'</section><aside class="account-product-purchase"><h2>选择购买方案</h2><p>每单一个账号，付款确认后人工加密交付。日期以实际交付内容为准。账号密码仅限登录本人订单查看，邮件只作发货提醒，不直发账号密码。</p>'.($options?'<form method="get" action="/order-confirm"><input type="hidden" name="product_id" value="'.(int)$p['id'].'"><div class="plan-picker" role="group" aria-label="选择购买方案">'.$options.'</div><button class="button">确认所选方案</button></form>':'<section class="empty service-ui-empty"><h2>暂无可购买方案</h2><p>此商品当前没有可选方案，暂时无法下单。可以返回商城查看其他商品。</p><a class="button" href="/accounts">返回海外账号商城</a></section>').'</aside></div></div>',$config);
+        $s=$pdo->prepare('SELECT * FROM product_plans WHERE product_id=? AND status="active" ORDER BY sort_order,id');
+        $s->execute(array($p['id']));
+        $plans=$s->fetchAll();
+        $first=$plans ? $plans[0] : null;
+        $platformName=$p['account_platform'];
+        foreach((new AccountPlatformService($pdo))->all() as $platform) {
+            if($platform['code']===$p['account_platform']) { $platformName=$platform['name']; break; }
+        }
+        $options='';
+        foreach($plans as $i=>$plan) {
+            $options.='<label class="ed-choice"><input type="radio" name="plan_id" value="'.(int)$plan['id'].'" data-price="'.(int)$plan['price_cents'].'" data-name="'.e($plan['name']).'"'.($i===0?' checked':'').' required><span class="ed-choice-copy"><b>'.e($plan['name']).'</b><small>单个账号 · 人工交付</small></span><strong class="ed-choice-price">'.e(money($plan['price_cents'])).'</strong></label>';
+        }
+        $loggedIn=!empty($_SESSION['user_id']);
+        $firstCents=$first ? (int)$first['price_cents'] : 0;
+        $buy=$first ? '<form class="ed-buy" id="ed-account-purchase" method="get" action="/order-confirm"><input type="hidden" name="product_id" value="'.(int)$p['id'].'"><input type="hidden" name="quantity" value="1"><h2>选择购买方案</h2><div class="ed-choices" role="group" aria-label="账号购买方案">'.$options.'</div><div class="ed-total"><span>方案价格</span><div class="ed-money"><span>¥</span><strong data-account-price-integer>'.intdiv($firstCents,100).'</strong><b data-account-price-fraction>.'.str_pad((string)($firstCents%100),2,'0',STR_PAD_LEFT).'</b></div></div><p class="ed-selected">数量 1件 · <span data-account-plan-name>'.e($first['name']).'</span></p><p class="ed-quantity-note">每笔订单购买1件，可分开下单购买多个账号。</p><button class="ed-buy-button" type="submit">'.($loggedIn?'确认方案，继续下单 ↗':'登录后购买 ↗').'</button><p class="ed-login-note">'.($loggedIn?'核对方案后进入确认订单页。':'已有账号？请先登录后下单。').'</p><div class="ed-pay-notes"><ul><li>支付渠道以订单实际可用项为准。</li><li>余额不足时请选择可用在线渠道。</li><li>付款确认后由管理员人工交付。</li></ul><p>账号商品不参与优惠券、返佣与拼团活动。</p><a href="/tickets">购买前咨询 ↗</a></div></form>'
+            : '<section class="ed-buy"><h2>暂无可购买方案</h2><p>此商品当前没有启用的方案，暂时无法下单。</p><a class="ed-back" href="/accounts">返回海外账号商城 ↗</a></section>';
+        $appName=e($config['app']['name']);
+        $body='<div class="ed-page ed-account-page"><nav class="ed-crumb" aria-label="面包屑"><a href="/">首页</a><span>/</span><a href="/accounts">海外账号</a><span>/</span><span>'.e($p['name']).'</span></nav>'
+            .'<div class="ed-layout"><div class="ed-main"><header class="ed-hero"><span class="ed-kicker">OVERSEAS ACCOUNT · '.e($platformName).'</span><div class="ed-title"><h1>'.e($p['name']).'</h1><span>账号商品</span></div><p class="ed-tagline">先了解规格，再选择适合你的方案。</p><p class="ed-intro">购买前请确认账号规格、交付内容与售后规则，交付后在本人订单中查看账号信息。</p><p class="ed-account-reminder">仅提供合法来源且允许转让的商品。</p><div class="ed-stats"><div><strong>人工交付</strong></div><div><strong>订单内查看</strong></div><div><strong>每单1件</strong></div></div></header>'
+            .'<nav class="ed-tabs" aria-label="商品内容"><a href="#account-specs" aria-current="location">商品详情</a><a href="#account-notes">购买须知</a><a href="#account-after-sales">售后说明</a></nav>'
+            .'<section class="ed-specs" id="account-specs"><h2>商品规格</h2><div class="ed-table-wrap"><table><tbody><tr><th scope="row">所属平台</th><td>'.e($platformName).'</td></tr><tr><th scope="row">商品类型</th><td>数字账号</td></tr><tr><th scope="row">可选方案</th><td data-account-plan-name>'.($first?e($first['name']):'暂无可购买方案').'</td></tr><tr><th scope="row">规格说明</th><td>'.nl2br(e($p['account_specification'])).'</td></tr><tr><th scope="row">交付内容</th><td>账号信息与使用说明，以商品说明及实际交付为准。</td></tr><tr><th scope="row">交付方式</th><td>管理员人工交付</td></tr><tr><th scope="row">查看位置</th><td>登录后进入本人订单详情。</td></tr></tbody></table></div></section>'
+            .(trim((string)$p['description'])!==''?'<section class="ed-description"><details><summary>商品介绍</summary><div class="ed-description-content">'.nl2br(e($p['description'])).'</div></details></section>':'')
+            .'<section class="ed-delivery" id="account-notes"><h2>交付与使用说明</h2><ol><li><span>01</span><h3>选择方案并下单</h3><p>请确认商品说明后创建订单。</p></li><li><span>02</span><h3>付款后等待交付</h3><p>管理员人工处理，具体进度请查看订单。</p></li><li><span>03</span><h3>查看交付内容</h3><p>在本人订单中主动显示或复制账号信息。</p></li></ol><p class="ed-delivery-note">商品页不展示账号凭据；交付完成后，仅购买者登录可查看。邮件只作发货提醒，不直发账号密码。</p></section>'
+            .'<section class="ed-account-after-sales" id="account-after-sales"><h2>售后与购买须知</h2><div class="ed-account-rules">'.nl2br(e($p['account_after_sales'])).'</div><ul><li>购买前请阅读当前商品的规格与售后规则。</li><li>遇到交付或使用问题，可提交关联订单的工单。</li><li>退款申请需填写原因，审核结果以订单状态为准。</li></ul></section></div>'
+            .'<aside class="ed-aside">'.$buy.'<section class="ed-aside-help"><h2>需要帮助？</h2><a href="/articles">查看购买指南 ↗</a><a href="/tickets">提交咨询工单 ↗</a></section></aside></div>'
+            .'<section class="ed-faq" id="account-faq"><h2>购买前，<br>你可能想了解</h2><div><details open><summary>付款后在哪里查看账号信息？</summary><p>交付完成后，登录本人账号，在订单详情中主动显示或复制交付内容。</p></details><details><summary>账号商品支持优惠券或拼团吗？</summary><p>账号商品每单1件，不参与优惠券、返佣或拼团活动。</p></details><details><summary>遇到问题如何申请售后？</summary><p>请阅读商品售后规则，并通过本人订单中的可用入口或关联订单工单申请，处理结果以实际订单状态为准。</p></details></div></section>'
+            .'<a class="ed-back" href="/accounts">← 返回海外账号商城</a><footer class="ed-footer"><div><a href="/">'.home_outline_icon('cloud').'<span>'.$appName.'</span></a><p>数字服务，简单一点。</p></div><nav aria-label="页脚导航"><a href="/articles">帮助中心</a><a href="/announcements">系统公告</a></nav><p>© '.e(date('Y')).' '.$appName.' 版权所有</p></footer></div>';
+        $body.='<script>(function(){var root=document.querySelector(".ed-account-page");if(!root)return;var form=root.querySelector("#ed-account-purchase");function sync(){if(!form)return;var radio=form.querySelector("input[name=plan_id]:checked");if(!radio)return;var cents=Number(radio.dataset.price);root.querySelectorAll("[data-account-plan-name]").forEach(function(el){el.textContent=radio.dataset.name;});root.querySelector("[data-account-price-integer]").textContent=Math.floor(cents/100);root.querySelector("[data-account-price-fraction]").textContent="."+String(cents%100).padStart(2,"0");}if(form){form.addEventListener("change",function(event){if(event.target.matches("input[name=plan_id]"))sync();});sync();}var tabs=root.querySelectorAll(".ed-tabs a");tabs.forEach(function(tab){tab.addEventListener("click",function(){tabs.forEach(function(link){link.removeAttribute("aria-current");});tab.setAttribute("aria-current","location");});});})();</script>';
+        page($p['name'],$body,$config);
     });
 }
 function register_account_platform_routes($router,$pdo,$config){

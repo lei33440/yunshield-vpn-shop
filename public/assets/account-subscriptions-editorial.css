@@ -1,0 +1,63 @@
+/* 仅我的订阅列表使用，交付内容仍在受鉴权保护的订单详情中查看。 */
+.account-subscriptions-editorial .ao-main{min-height:0}
+.account-subscriptions-editorial .ao-footer{color:#242830}
+.account-subscriptions-editorial .ms-welcome{margin-bottom:14px}
+body.account-subscriptions-editorial .ms-welcome h1{font-size:36px;line-height:1.5}
+.account-subscriptions-editorial .ms-stats{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:20px;padding:6px 0}
+.ms-toolbar{display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:1px solid #d4dbe6;margin-bottom:15px;flex-wrap:wrap}
+body.account-subscriptions-editorial .ms-tabs{display:flex;align-items:center;gap:15px;flex-wrap:wrap}
+.ms-tabs>a{position:relative;display:block;padding:10px 8px 11px;font-size:17px;white-space:nowrap}
+.ms-tabs>a[aria-current=page]{font-weight:700}
+.ms-tabs>a[aria-current=page]:after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:#2b1cff}
+body.account-subscriptions-editorial .ms-search{display:flex;align-items:stretch;gap:10px;flex:1;min-width:0;max-width:450px;margin:0;padding:0;background:none;border:0;border-radius:0;box-shadow:none}
+.ms-search label{display:flex;align-items:center;gap:10px;flex:1;min-width:110px;margin:0;padding:4px 10px;border:1px solid #bec8da;border-radius:6px}
+.ms-search svg{width:18px;height:18px}
+body.account-subscriptions-editorial .ms-search input[type=search]{display:block;width:100%;min-width:0;margin:0;padding:0;border:0;border-radius:0;background:none;color:#171717;font:inherit;font-size:14px;line-height:1.6;box-shadow:none}
+body.account-subscriptions-editorial .ms-search select{display:block;width:auto;max-width:150px;margin:0;padding:3px 22px 3px 9px;border:1px solid #9099aa;border-radius:5px;background-color:#fff;color:#24262c;font:inherit;font-size:13px;line-height:1.5;box-shadow:none}
+body.account-subscriptions-editorial .ms-search button{margin:0;padding:3px 12px;border:1px solid #929baa;border-radius:5px;background:#fff;color:#171717;font-size:14px;line-height:1.6;white-space:nowrap}
+.ms-results-note{margin:0 0 14px!important;font-size:13px;color:#5e6674;overflow-wrap:anywhere}
+.ms-results-note a{color:#291bff}
+.ms-list{display:flex;flex-direction:column;gap:13px}
+.ms-subscription{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(170px,.95fr) minmax(250px,1.1fr);align-items:center;gap:25px;padding:12px 22px;border:1px solid #cbd3e0;border-radius:10px;background:#fff;min-height:111px}
+.ms-product{min-width:0}
+body.account-subscriptions-editorial .ms-product h2{font-size:24px;font-weight:700;line-height:1.45;overflow-wrap:anywhere}
+.ms-product h2 small{display:inline-block;vertical-align:middle;font-size:14px;line-height:1.3;font-weight:400;border:1px solid #c5cedd;border-radius:20px;padding:1px 10px;margin-left:13px}
+.ms-product>p{margin-top:4px;font-size:14px;line-height:1.6;overflow-wrap:anywhere}
+.ms-product>p>a:hover{text-decoration:underline}
+.ms-dates{display:flex;flex-wrap:wrap;gap:0 12px;color:#404651}
+.ms-dates i{font-style:normal;color:#7f8794}
+.ms-state{border-left:1px solid #d3dbe7;padding:8px 0 8px 30px;min-width:0}
+.ms-state strong{position:relative;display:block;font-size:19px;line-height:1.5;overflow-wrap:anywhere}
+.ms-state p{margin-top:3px;font-size:13px;color:#626a77;line-height:1.5}
+.is-soon .ms-state strong:before,.is-expired .ms-state strong:before,.is-unknown .ms-state strong:before{content:"";position:absolute;left:-15px;top:10px;width:8px;height:8px;border-radius:50%;background:#909aaa}
+.is-soon .ms-state strong:before{background:#f49c00}
+body.account-subscriptions-editorial .ms-actions{display:flex;align-items:center;justify-content:center;gap:18px;min-width:0}
+.ms-actions>div{display:flex;flex-direction:column;gap:7px;min-width:0;flex:1;max-width:158px}
+body.account-subscriptions-editorial .ms-actions .ao-button{min-height:31px;padding:3px 10px;font-size:16px;line-height:1.5;border-color:#8d94a2;border-radius:5px}
+body.account-subscriptions-editorial .ms-actions .ao-primary{border-color:#2820ff;background:#2820ff;color:#fff}
+.ms-repurchase{border-left:1px solid #cbd3e1;padding:8px 0 8px 18px;color:#291bff!important;font-weight:600;font-size:14px;white-space:nowrap}
+.ms-private-note{display:flex;align-items:flex-start;gap:10px;margin-top:14px!important;color:#3c414b;font-size:14px}
+.ms-private-note svg{width:21px;height:21px;margin-top:2px}
+.ms-scope-note{font-size:11px;color:#727a88;line-height:1.6;margin-top:7px!important}
+.ms-help{display:flex;align-items:center;justify-content:space-between;gap:25px;background:#f4f5f8;border-radius:11px;padding:20px 25px;margin-top:23px}
+.ms-help>div{min-width:0}
+body.account-subscriptions-editorial .ms-help h2{font-size:24px;line-height:1.5}
+.ms-help p{font-size:14px;color:#535a67;margin-top:3px;line-height:1.6}
+body.account-subscriptions-editorial .ms-help nav{display:flex;gap:20px;flex-shrink:0}
+.ms-help nav a{color:#291bff;font-size:15px;font-weight:600;white-space:nowrap}
+.ms-help nav a+a{border-left:1px solid #b9c2d1;padding-left:20px}
+.account-subscriptions-editorial .ms-list-footer{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;margin:22px 0 0;padding:0;border:0;background:none;color:#292c33;font-size:14px;text-align:left}
+.ms-list-footer>p{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px}
+.ms-list-footer>p>a{color:#291bff;font-weight:600}
+body.account-subscriptions-editorial .ms-pagination{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px;margin-left:auto}
+.ms-pagination>a,.ms-pagination>b,.ms-pagination>[aria-disabled]{display:inline-block;border:1px solid #d3d9e5;border-radius:5px;padding:3px 9px;font-size:13px;white-space:nowrap;font-weight:400}
+.ms-pagination>b{background:#2820ff;border-color:#2820ff;color:#fff}
+.ms-pagination>[aria-disabled]{background:#f8f9fb;color:#949aa6}
+.ms-empty{border:1px solid #d4dbe5;border-radius:10px;padding:35px 24px;background:#f8f9fb}
+.ms-empty h1,.ms-empty h2{font-size:26px}
+.ms-empty p{margin-top:6px;font-size:15px;color:#626b79}
+.ms-empty a{display:inline-block;color:#2b1cff;font-size:14px;margin:16px 18px 0 0}
+@media(max-width:1250px){.ms-toolbar{gap:12px;padding-bottom:12px}body.account-subscriptions-editorial .ms-tabs{gap:10px}body.account-subscriptions-editorial .ms-search{max-width:none;flex-basis:100%}.ms-search label{flex:1}.ms-subscription{grid-template-columns:minmax(0,1.6fr) minmax(140px,.8fr) minmax(120px,.7fr);gap:18px;padding:15px 20px}.ms-state{padding-left:22px}.ms-state strong{font-size:17px}body.account-subscriptions-editorial .ms-product h2{font-size:22px}.ms-product>p{font-size:13px}.ms-subscription.is-expired{grid-template-columns:minmax(0,1.6fr) minmax(140px,.8fr) minmax(160px,.9fr)}body.account-subscriptions-editorial .ms-actions{flex-direction:column;gap:8px}.ms-actions>div{width:100%;max-width:none}.ms-repurchase{border-left:0;padding:2px 0}.ms-help{flex-wrap:wrap;gap:14px}body.account-subscriptions-editorial .ms-help nav{gap:18px}.ms-help nav a+a{padding-left:18px}}
+@media(max-width:1000px){.ms-subscription,.ms-subscription.is-expired{grid-template-columns:minmax(0,1fr) 140px;gap:12px 22px}.ms-product{grid-column:1/-1}.ms-state{border-left:0;padding:6px 0 6px 15px}body.account-subscriptions-editorial .ms-actions{grid-column:2;grid-row:2}.ms-dates{gap:0 8px}.ms-state strong{font-size:18px}.ms-product h2 small{margin-left:10px}.ms-help{padding:18px 22px}}
+@media(max-width:720px){body.account-subscriptions-editorial .ms-welcome h1{font-size:32px}.account-subscriptions-editorial .ms-welcome{margin-bottom:23px}.account-subscriptions-editorial .ms-stats{padding:12px 0;margin-bottom:18px}.account-subscriptions-editorial .ms-stats>a{padding:0;border-bottom:0;border-right:1px solid #d5dbe5}.account-subscriptions-editorial .ms-stats>a:last-child{border:0}.ms-stats span{font-size:15px}.ms-stats strong{font-size:32px}.ms-toolbar{gap:10px;padding-bottom:13px;margin-bottom:14px}body.account-subscriptions-editorial .ms-tabs{gap:0 10px;width:100%;justify-content:flex-start}.ms-tabs>a{font-size:14px;padding:9px 4px;line-height:1.6}body.account-subscriptions-editorial .ms-search{flex-wrap:wrap;gap:8px}.ms-search label{flex-basis:100%;padding:7px 10px}body.account-subscriptions-editorial .ms-search select{max-width:none;flex:1;padding:5px 25px 5px 10px;font-size:13px}body.account-subscriptions-editorial .ms-search button{padding:5px 19px;font-size:14px}.ms-subscription,.ms-subscription.is-expired{grid-template-columns:minmax(0,1fr) 120px;gap:13px 14px;padding:16px}.ms-product{grid-column:1/-1}body.account-subscriptions-editorial .ms-product h2{font-size:22px}.ms-product h2 small{font-size:12px;padding:1px 8px}.ms-product>p{font-size:12px;margin-top:6px}.ms-dates{gap:3px 8px}.ms-dates i{display:none}.ms-dates>span{display:block;flex-basis:100%}.ms-state{padding:5px 0 5px 13px}.ms-state strong{font-size:16px;line-height:1.6}.ms-state p{font-size:11px}.is-soon .ms-state strong:before,.is-expired .ms-state strong:before,.is-unknown .ms-state strong:before{left:-13px;top:9px;width:6px;height:6px}body.account-subscriptions-editorial .ms-actions .ao-button{font-size:14px;min-height:31px;padding:4px 8px}.ms-repurchase{font-size:13px}.ms-private-note{font-size:12px;gap:8px}.ms-private-note svg{width:18px;height:18px}.ms-scope-note{font-size:10px}.ms-help{margin-top:20px;padding:20px;gap:14px}body.account-subscriptions-editorial .ms-help h2{font-size:22px}.ms-help p{font-size:12px}body.account-subscriptions-editorial .ms-help nav{flex-wrap:wrap;gap:10px 14px}.ms-help nav a{font-size:13px}.ms-help nav a+a{padding-left:14px}.account-subscriptions-editorial .ms-list-footer{font-size:12px;gap:18px}body.account-subscriptions-editorial .ms-pagination{margin:0;justify-content:flex-start;gap:7px}.ms-pagination>a,.ms-pagination>b,.ms-pagination>[aria-disabled]{font-size:12px;padding:3px 8px}.ms-empty{padding:25px 18px}.ms-empty p{font-size:13px}}
+@media(max-width:360px){.ms-stats span{font-size:14px}.ms-tabs>a{font-size:13px}.ms-subscription,.ms-subscription.is-expired{grid-template-columns:minmax(0,1fr);gap:12px}.ms-product{grid-column:1}body.account-subscriptions-editorial .ms-actions{grid-column:1;grid-row:auto;align-items:stretch}.ms-actions>div{flex-direction:row;max-width:none;gap:10px}.ms-actions>div>a{flex:1}.ms-repurchase{align-self:flex-end}.ms-help nav a+a{border:0;padding:0}.ms-help nav{flex-direction:column}}

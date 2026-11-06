@@ -1,0 +1,62 @@
+/* 账户设置独立布局，不改变资料及密码提交接口。 */
+.account-settings-editorial .ao-main{min-height:0}
+body.account-settings-editorial .ao-footer{color:#222830}
+body.account-settings-editorial .as-welcome{margin-bottom:12px}
+body.account-settings-editorial .as-welcome h1{font-size:36px;line-height:1.35}
+body.account-settings-editorial .as-welcome .ao-kicker{font-size:14px;color:#171717;line-height:1.5;letter-spacing:1.5px;margin-bottom:5px}
+body.account-settings-editorial .as-welcome p{line-height:1.5}
+body.account-settings-editorial .as-tabs{display:flex;gap:15px;border-bottom:1px solid #cbd2df;margin-bottom:21px}
+.as-tabs a{display:block;position:relative;font-size:18px;padding:8px 13px 11px;white-space:nowrap}
+.as-tabs a[aria-current=page]{font-weight:700}
+.as-tabs a[aria-current=page]:after{position:absolute;content:'';height:3px;bottom:-1px;left:0;right:0;background:#281bff}
+.as-grid{display:grid;grid-template-columns:minmax(0,1.48fr) minmax(0,1fr);gap:20px 18px;align-items:stretch}
+.as-card{border:1px solid #c6d1e5;border-radius:10px;padding:12px 21px 14px;min-width:0;scroll-margin-top:20px}
+body.account-settings-editorial .as-grid h2{font-size:26px;line-height:1.45}
+.as-card>p{font-size:15px;line-height:1.6}
+.as-identity{display:flex;align-items:center;gap:17px;margin:13px 0 9px;padding-left:20px;min-width:0}
+.as-identity>span{display:flex;align-items:center;justify-content:center;border:1.5px solid #171717;border-radius:50%;width:51px;height:51px;flex-shrink:0}
+.as-identity svg{width:43px;height:43px}
+.as-identity strong{font-size:26px;line-height:1.5;overflow-wrap:anywhere;min-width:0}
+body.account-settings-editorial .as-facts{margin:0;padding:0 20px 12px;border-bottom:1px solid #d4dce9}
+.as-facts>div{display:grid;grid-template-columns:104px minmax(0,1fr);gap:15px;line-height:1.7;margin-top:3px}
+.as-facts dt{font-size:16px;font-weight:600}
+.as-facts dd{margin:0;font-size:16px;overflow-wrap:anywhere}
+.as-facts dd>span{display:inline-block;font-size:12px;background:#f0f0f2;border:1px solid #e0e1e4;border-radius:4px;padding:0 8px;margin-left:12px;line-height:1.5;color:#646974;white-space:nowrap}
+body.account-settings-editorial .as-page form{padding:0;margin:13px 0 0;border:0;border-radius:0;background:none;box-shadow:none}
+.as-field{display:grid;grid-template-columns:104px minmax(0,1fr);gap:15px;align-items:start;margin-top:10px;min-width:0}
+.as-field>label{font-size:16px;font-weight:600;line-height:1.7;margin:3px 0 0;white-space:nowrap}
+body.account-settings-editorial .as-page input{width:100%;max-width:100%;min-width:0;margin:0;padding:5px 15px;border:1px solid #b9c6df;border-radius:6px;background:#fff;color:#292d35;font:inherit;font-size:16px;line-height:1.5;box-shadow:none}
+body.account-settings-editorial .as-profile-form .as-field{padding-left:20px;grid-template-columns:81px minmax(0,1fr)}
+body.account-settings-editorial .as-hint{font-size:13px;color:#6b707a;line-height:1.6;margin-top:4px}
+.as-form-actions{display:flex;align-items:center;gap:9px 20px;flex-wrap:wrap;padding-left:119px;margin-top:12px}
+body.account-settings-editorial .as-form-actions .ao-primary{font-size:18px;line-height:1.4;min-height:36px;padding:5px 30px;border-radius:6px}
+.as-form-actions>a{font-size:15px;font-weight:600;color:#291bff;border-left:1px solid #aab2c2;padding-left:20px;white-space:nowrap}
+.as-form-actions .as-hint{flex-basis:100%;margin-top:0!important}
+.as-submit-status{font-size:12px;color:#526075;line-height:1.5}
+.as-submit-status:empty{display:none}
+.as-account-info{background:#f3f4f8;border-radius:11px;padding:14px 20px;min-width:0}
+body.account-settings-editorial .as-account-info ul{list-style:none;margin:13px 0 15px;padding:0}
+.as-account-info li{border-bottom:1px solid #d8deeb;padding:11px 0;font-size:15px;line-height:1.7}
+.as-account-info li:last-child{border-bottom:0}
+body.account-settings-editorial .as-account-info .ao-button{font-size:15px;min-height:32px;padding:3px 14px}
+.as-notifications{display:block;color:#291bff!important;font-size:13px;margin-top:13px}
+.as-password-input{position:relative;min-width:0}
+body.account-settings-editorial .as-password-input input{padding-right:43px}
+body.account-settings-editorial .as-reveal{display:flex;align-items:center;justify-content:center;position:absolute;right:1px;top:1px;bottom:1px;width:39px;min-height:32px;margin:0;padding:5px;border:0;border-radius:5px;background:none;color:#242830;box-shadow:none;cursor:pointer}
+.as-reveal svg{width:20px;height:20px}
+.as-reveal[aria-pressed=true]{background:#f1f0ff;color:#291bff!important}
+body.account-settings-editorial .as-security-note{border-top:1px solid #d4dce9;margin-top:12px;padding-top:8px;font-size:13px;line-height:1.7}
+.as-password-tips{padding:12px 20px;min-width:0}
+body.account-settings-editorial .as-password-tips ol{list-style:none;margin-top:12px;padding:0}
+.as-password-tips li{display:flex;align-items:center;gap:17px;padding:10px 0;border-bottom:1px solid #d6ddea;font-size:15px;line-height:1.7}
+.as-password-tips li>span{border:1px solid #bdc9df;border-radius:5px;padding:0 7px;font-size:16px;line-height:1.3;flex-shrink:0;background:#fbfcfe}
+.as-password-tips>a{display:inline-block;color:#291bff;font-size:16px;font-weight:600;margin-top:22px}
+body.account-settings-editorial .as-unsaved-note{border:1px solid #dce0e9;border-radius:8px;background:#f5f5f7;font-size:13px;line-height:1.7;padding:7px 16px;margin-top:18px}
+.as-help{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:14px}
+.as-help strong{font-size:19px}
+body.account-settings-editorial .as-help .ao-button{font-size:15px;padding:3px 15px;min-height:31px}
+.as-page :is(input,button,summary,a):focus-visible{outline:2px solid #3021ff;outline-offset:3px}
+.as-page button:disabled{opacity:.6;cursor:wait}
+@media(max-width:1200px){.as-grid{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}.as-card{padding:12px 15px}.as-account-info,.as-password-tips{padding:13px 15px}.as-identity{padding-left:0}.as-facts>div{grid-template-columns:80px minmax(0,1fr);gap:10px}body.account-settings-editorial .as-facts{padding-left:0;padding-right:0}.as-field{grid-template-columns:95px minmax(0,1fr);gap:10px}body.account-settings-editorial .as-profile-form .as-field{padding-left:0;grid-template-columns:95px minmax(0,1fr)}.as-form-actions{padding-left:105px}.as-form-actions>a{border:0;padding-left:0}.as-facts dd>span{margin-left:0}.as-identity strong{font-size:23px}.as-account-info li,.as-password-tips li{font-size:14px}body.account-settings-editorial .as-grid h2{font-size:24px}}
+@media(max-width:1050px){.as-grid{grid-template-columns:1fr}.as-profile{grid-row:1}.as-password{grid-row:3}.as-account-info{grid-row:2}.as-password-tips{grid-row:4}.as-account-info ul{display:flex;gap:20px;flex-wrap:wrap}.as-account-info li{flex:1;min-width:150px;border:0;padding:4px 0}.as-password-tips ol{display:flex;flex-wrap:wrap;gap:10px 20px}.as-password-tips li{border:0}.as-password-tips>a{margin-top:12px}}
+@media(max-width:720px){body.account-settings-editorial .as-welcome h1{font-size:32px}body.account-settings-editorial .as-welcome p{font-size:14px}.as-tabs a{font-size:16px;padding:7px 11px 9px}body.account-settings-editorial .as-tabs{margin-bottom:17px}.as-grid{gap:16px}.as-card{padding:12px 14px 15px}.as-card>p{font-size:13px}.as-identity{gap:13px;margin:12px 0}.as-identity>span{width:45px;height:45px}.as-identity svg{width:36px;height:36px}.as-identity strong{font-size:23px}.as-facts>div{grid-template-columns:75px minmax(0,1fr);gap:9px;margin-top:7px}.as-facts dt,.as-facts dd{font-size:14px}.as-facts dd>span{font-size:11px;margin:4px 0 0}.as-field,body.account-settings-editorial .as-profile-form .as-field{grid-template-columns:1fr;gap:5px;margin-top:11px}.as-field>label{font-size:14px;margin:0}body.account-settings-editorial .as-page input{font-size:15px;padding:7px 11px}body.account-settings-editorial .as-password-input input{padding-right:44px}.as-form-actions{padding:0;gap:10px 15px;margin-top:13px}body.account-settings-editorial .as-form-actions .ao-primary{font-size:15px;padding:5px 21px}.as-form-actions>a{font-size:13px}.as-account-info ul{display:block!important;margin:8px 0 12px!important}.as-account-info li{padding:6px 0}.as-password-tips ol{display:block!important}.as-password-tips li{padding:7px 0}.as-password-tips>a{font-size:14px}.as-help{gap:10px}.as-help strong{font-size:17px}body.account-settings-editorial .as-help .ao-button{font-size:13px;padding:3px 10px}.as-hint,body.account-settings-editorial .as-security-note{font-size:12px}body.account-settings-editorial .as-unsaved-note{font-size:12px;padding:8px 11px}}

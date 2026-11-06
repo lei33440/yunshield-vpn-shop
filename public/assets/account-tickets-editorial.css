@@ -1,0 +1,69 @@
+/* 我的工单列表独立样式，不改变提交、回复及关闭工单的业务规则。 */
+.account-tickets-editorial .ao-main{min-height:0}
+.account-tickets-editorial .ao-footer{color:#242830}
+.account-tickets-editorial .mt-welcome{margin-bottom:12px}
+body.account-tickets-editorial .mt-welcome h1{font-size:36px;line-height:1.3}
+body.account-tickets-editorial .mt-welcome .ao-kicker{font-size:14px;line-height:1.65;color:#141414;margin-bottom:5px}
+body.account-tickets-editorial .mt-welcome>.ao-primary{font-size:17px;min-height:43px;padding:7px 24px;border-radius:7px}
+.mt-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;margin-bottom:20px}
+.mt-stats>a{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #cbd3e0;border-radius:7px;padding:6px 22px;font-size:18px;font-weight:600;min-width:0}
+.mt-stats strong{font-family:Georgia,serif;font-size:27px;line-height:1.45}
+.mt-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border-bottom:1px solid #d4dbe6;margin-bottom:20px}
+body.account-tickets-editorial .mt-tabs{display:flex;gap:19px;align-items:center;flex-wrap:wrap}
+.mt-tabs>a{position:relative;display:block;padding:8px 5px 11px;font-size:17px;white-space:nowrap}
+.mt-tabs>a[aria-current=page]{font-weight:700}
+.mt-tabs>a[aria-current=page]:after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:#291bff}
+body.account-tickets-editorial .mt-search{display:flex;gap:10px;align-items:stretch;flex:1;min-width:0;max-width:450px;margin:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none}
+.mt-search label{display:flex;align-items:center;gap:9px;flex:1;min-width:0;margin:0;padding:4px 10px;border:1px solid #bac5d7;border-radius:5px}
+.mt-search svg{width:18px;height:18px}
+body.account-tickets-editorial .mt-search input[type=search]{width:100%;min-width:0;margin:0;padding:0;border:0;border-radius:0;background:none;color:#171717;font:inherit;font-size:13px;line-height:1.6;box-shadow:none}
+body.account-tickets-editorial .mt-search select{display:block;width:auto;max-width:140px;margin:0;padding:4px 23px 4px 10px;border:1px solid #929baa;border-radius:5px;background-color:#fff;color:#24262d;font:inherit;font-size:13px;line-height:1.5;box-shadow:none}
+body.account-tickets-editorial .mt-search button{margin:0;padding:4px 10px;border:1px solid #929baa;border-radius:5px;background:#fff;color:#252b35;font:inherit;font-size:12px;line-height:1.6}
+.mt-results{font-size:13px;color:#626a77;margin-bottom:12px!important;overflow-wrap:anywhere}
+.mt-results a{color:#291bff}
+.mt-list{border:1px solid #cbd3e0;border-radius:10px;overflow:hidden}
+.mt-ticket{display:grid;grid-template-columns:61px minmax(0,1fr) 145px;gap:24px;align-items:center;padding:9px 18px;min-height:88px}
+.mt-ticket+.mt-ticket{border-top:1px solid #d5dce7}
+.mt-ticket.is-waiting{background:#f4f5fb}
+.mt-icon{display:flex;justify-content:center;border-right:1px solid #bfc8d7;padding-right:18px}
+.mt-icon svg{width:31px;height:31px}
+.mt-copy{min-width:0}
+.mt-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+body.account-tickets-editorial .mt-title h2{font-size:22px;line-height:1.4;font-weight:700;overflow-wrap:anywhere}
+.mt-title h2 a:hover{text-decoration:underline}
+.mt-status{font-size:13px;line-height:1.4;border:1px solid #ccd5e4;border-radius:20px;padding:1px 10px;white-space:nowrap;background:#fff}
+.is-waiting .mt-status:before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#291bff;margin-right:6px}
+.mt-copy>p{font-size:14px;line-height:1.5;margin-top:2px;overflow-wrap:anywhere}
+.mt-copy .mt-meta{font-size:13px;line-height:1.6}
+.mt-meta a:hover{text-decoration:underline}
+body.account-tickets-editorial .mt-ticket>.ao-button{font-size:15px;min-height:31px;padding:3px 10px;line-height:1.5;border-radius:5px}
+.mt-history{text-align:center;color:#291bff!important;font-size:16px;font-weight:600}
+body.account-tickets-editorial .mt-pagination{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:12px;margin:12px 0 0;font-size:14px}
+.mt-pagination>a,.mt-pagination>b,.mt-pagination>[aria-disabled]{border:1px solid #d3d9e5;border-radius:5px;padding:3px 9px;font-size:13px;white-space:nowrap;font-weight:400}
+.mt-pagination>b{background:#2820ff;border-color:#2820ff;color:#fff}
+.mt-pagination>[aria-disabled]{background:#f8f9fb;color:#949aa6}
+.mt-help-grid{display:grid;grid-template-columns:1.45fr 1fr;gap:26px;margin-top:25px}
+.mt-help-grid>section{border:1px solid #cfd7e4;border-radius:10px;padding:13px 19px;min-width:0}
+body.account-tickets-editorial .mt-help-grid h2{font-size:23px;line-height:1.5}
+.mt-help-grid ol{list-style:none;margin-top:7px;padding:0}
+.mt-help-grid li{display:flex;align-items:flex-start;gap:13px;font-size:13px;line-height:1.7;margin-top:5px}
+.mt-help-grid li>span{font-family:Georgia,serif;font-size:17px;flex-shrink:0}
+body.account-tickets-editorial .mt-help-grid nav{display:flex;flex-direction:column;gap:6px;margin-top:8px;font-size:15px;font-weight:600;color:#291bff}
+.mt-note{font-size:12px;line-height:1.7;color:#505967;margin-top:16px!important}
+body.account-tickets-editorial .mt-create{margin-top:15px;padding:0;border:1px solid #cfd7e4;border-radius:8px;background:#fff;scroll-margin-top:18px}
+.mt-create summary{cursor:pointer;padding:10px 18px;font-size:18px;font-weight:600}
+.mt-create summary>span{font-size:12px;color:#66707f;font-weight:400;margin-left:12px}
+body.account-tickets-editorial .mt-create form{margin:0;padding:4px 20px 20px;border:0;border-radius:0;background:none;box-shadow:none}
+.mt-create label{display:block;font-size:15px;margin:12px 0 5px}
+body.account-tickets-editorial .mt-create :is(input:not([type=hidden]),select,textarea){display:block;width:100%;max-width:100%;margin:5px 0 0;padding:8px 10px;border:1px solid #b9c5d7;border-radius:5px;background:#fff;color:#20242b;font:inherit;font-size:14px;line-height:1.6;box-shadow:none}
+body.account-tickets-editorial .mt-create textarea{min-height:150px;resize:vertical}
+.mt-create form>p{font-size:12px;color:#66707f;line-height:1.7;margin-top:6px}
+body.account-tickets-editorial .mt-create button{margin-top:14px;font-size:15px;padding:7px 20px}
+.mt-sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+.mt-empty{padding:30px 22px;background:#f8f9fb}
+.mt-empty h1,.mt-empty h2{font-size:24px}
+.mt-empty p{font-size:14px;color:#66707f;margin-top:5px}
+.mt-empty a{display:inline-block;margin-top:12px;color:#291bff;font-size:14px}
+@media(max-width:1300px){body.account-tickets-editorial .mt-search{max-width:none;flex-basis:100%;margin-bottom:12px}.mt-toolbar{gap:7px}.mt-ticket{grid-template-columns:45px minmax(0,1fr) 125px;gap:17px;padding:11px 15px}.mt-icon{padding-right:13px}.mt-title{gap:6px 10px}body.account-tickets-editorial .mt-title h2{font-size:21px}.mt-copy>p{font-size:13px}.mt-stats{gap:16px}.mt-stats>a{padding:7px 15px;font-size:16px}.mt-help-grid{grid-template-columns:1fr;gap:18px}}
+@media(max-width:1000px){.mt-ticket{grid-template-columns:36px minmax(0,1fr);gap:9px 16px}.mt-icon{grid-column:1;grid-row:1/3;border:0;padding:0;align-self:start;margin-top:5px}.mt-copy{grid-column:2}.mt-ticket>.ao-button,.mt-history{grid-column:2;justify-self:start}.mt-help-grid li{font-size:13px}body.account-tickets-editorial .mt-tabs{gap:6px 14px}.mt-tabs>a{font-size:15px}}
+@media(max-width:720px){body.account-tickets-editorial .mt-welcome h1{font-size:32px}body.account-tickets-editorial .mt-welcome>.ao-primary{font-size:14px;min-height:36px;padding:5px 16px}.mt-stats{gap:8px;margin-bottom:16px}.mt-stats>a{flex-direction:column;justify-content:center;gap:3px;padding:9px 3px;font-size:12px;text-align:center}.mt-stats strong{font-size:27px}.mt-toolbar{margin-bottom:15px}body.account-tickets-editorial .mt-tabs{gap:0 12px}.mt-tabs>a{font-size:13px;padding:7px 2px 9px}body.account-tickets-editorial .mt-search{flex-wrap:wrap;gap:8px}.mt-search label{flex-basis:100%;padding:7px 9px}body.account-tickets-editorial .mt-search select{max-width:none;flex:1;font-size:13px}body.account-tickets-editorial .mt-search button{font-size:13px;padding:5px 16px}.mt-ticket{grid-template-columns:25px minmax(0,1fr);gap:9px 13px;padding:15px 13px}.mt-icon svg{width:25px;height:25px}.mt-icon{margin-top:2px}.mt-title{gap:6px}body.account-tickets-editorial .mt-title h2{font-size:21px}.mt-status{font-size:12px}.mt-copy>p{font-size:13px;margin-top:6px}.mt-copy .mt-meta{font-size:11px;line-height:1.8}body.account-tickets-editorial .mt-ticket>.ao-button{font-size:14px;padding:4px 13px}.mt-history{font-size:14px}body.account-tickets-editorial .mt-pagination{justify-content:flex-start;gap:8px;font-size:12px}.mt-pagination>span:first-child{flex-basis:100%}.mt-pagination>a,.mt-pagination>b,.mt-pagination>[aria-disabled]{font-size:12px;padding:3px 7px}.mt-help-grid{margin-top:22px;gap:16px}.mt-help-grid>section{padding:16px}body.account-tickets-editorial .mt-help-grid h2{font-size:21px}.mt-help-grid li{font-size:12px;gap:10px}.mt-help-grid li>span{font-size:16px}body.account-tickets-editorial .mt-help-grid nav{font-size:14px}.mt-note{font-size:11px}.mt-create summary{font-size:17px;padding:10px 14px}.mt-create summary>span{font-size:11px;margin-left:5px}body.account-tickets-editorial .mt-create form{padding:2px 14px 16px}}

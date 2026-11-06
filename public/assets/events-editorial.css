@@ -1,0 +1,78 @@
+/* 活动概览独立样式，不改变活动子页及资金流程。 */
+body.user-page.events-overview-page.pc-storefront.public-page .home-main-column>main.user-main{display:block;width:100%;max-width:none;margin:0;padding:0;background:#fff;border:0;box-shadow:none}
+.ev-page{padding-bottom:0}
+.ev-page section,.ev-page aside,.ev-page details{scroll-margin-top:24px}
+.ev-page .ep-crumb{padding:24px 0 14px;font-size:14px}
+.ev-page .ep-intro{padding:0 6px 20px}
+.ev-page .ep-intro h1{font-size:clamp(30px,4.2vw,57px);line-height:1.45}
+.ev-page .ep-intro p{font-size:clamp(14px,1.6vw,21px)}
+.ev-page .ep-intro>a{margin-bottom:20px;font-size:16px}
+.ev-page .ep-kicker{font-size:13px;margin-bottom:7px;letter-spacing:.18em}
+.ev-tabs>a{flex-shrink:0;font-size:15px}
+.ev-tabs .ep-categories{gap:clamp(18px,3vw,42px)}
+.ev-tabs .ep-categories a{font-size:17px;padding:10px 10px 12px}
+.ev-featured{display:grid;grid-template-columns:1.5fr 1fr;gap:24px;margin-top:22px;align-items:stretch}
+.ev-draw,.ev-invite{min-width:0;padding:22px 30px;border-radius:12px}
+.ev-draw{border:1px solid #d2d7e1;background:#fff}
+.ev-page h2{font-size:clamp(27px,3.2vw,43px);line-height:1.3;font-weight:700}
+.ev-page .ev-card-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ev-state{color:#757a85;font-size:12px;white-space:nowrap}
+.ev-draw>p,.ev-invite>p{font-size:17px;color:#535965;margin-top:3px}
+.ev-prize-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:22px 0 18px}
+.ev-prize,.ev-page a.ev-draw-entry{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;min-height:78px;padding:10px 5px;border:1px solid #c3c8d2;border-radius:7px;font-size:clamp(17px,2vw,25px);font-weight:600;text-align:center;overflow-wrap:anywhere}
+.ev-prize small{font-size:12px;font-weight:400;color:#737985}
+body.user-page.events-overview-page.pc-storefront.public-page .ev-page a.ev-draw-entry{background:#2720ff;border-color:#2720ff;color:#fff;box-shadow:0 3px 10px #3020ff18;white-space:nowrap;font-size:clamp(14px,1.8vw,24px)}
+.ev-page a.ev-draw-entry:hover{background:#1711d6}
+.ev-draw-bottom{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:12px;color:#646a74}
+.ev-draw-bottom>div{display:flex;gap:20px;color:#222;font-weight:600}
+.ev-invite{display:flex;flex-direction:column;background:#f5f6f8;padding:22px 34px}
+.ev-invite h2{margin-top:4px}
+.ev-invite ol{list-style:none;padding:20px 0 30px;display:grid;gap:17px}
+.ev-invite li{display:flex;align-items:center;gap:24px;font-size:16px}
+.ev-invite li span{padding-right:24px;border-right:1px solid #aeb3bf;color:#767c88;font-family:Georgia,serif;font-size:22px;line-height:1}
+.ev-invite li b{font-weight:500}
+body.user-page.events-overview-page.pc-storefront.public-page .ev-page .ep-button{min-height:36px;padding:5px 14px;border-radius:5px;font-size:15px;gap:8px;white-space:nowrap}
+.ev-invite>small{display:block;margin-top:24px;color:#737985;font-size:12px;line-height:1.9}
+.ev-groups{margin-top:30px}
+.ev-groups>header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+.ev-groups>header h2{font-size:30px}
+.ev-groups>header a{font-size:15px;white-space:nowrap}
+.ev-group-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+.ev-group-card{padding:17px 25px;border:1px solid #d2d7e1;border-radius:12px;min-width:0}
+.ev-group-title{display:flex;align-items:flex-start;gap:20px;border-bottom:1px solid #d7dbe3;padding-bottom:12px}
+.ev-group-title>div{min-width:0}
+.ev-group-title svg{margin-top:4px}
+.ev-group-title h3{font-size:23px;line-height:1.5;overflow-wrap:anywhere}
+.ev-group-title h3 small{font-size:16px;font-weight:400;color:#5b626f}
+.ev-group-title p{font-size:14px;color:#646a77}
+.ev-group-meta{display:flex;align-items:center;justify-content:space-between;gap:20px;padding-top:12px}
+.ev-group-meta dl{flex:1;font-size:14px;min-width:0}
+.ev-group-meta dl>div{display:flex;justify-content:space-between;gap:16px}
+.ev-group-meta dt{color:#616672;white-space:nowrap}
+.ev-group-meta dd{margin:0;text-align:right}
+.ev-group-meta dd small{font-size:11px;color:#6e7480}
+.ev-group-note{margin-top:12px!important;font-size:13px;color:#727783}
+.ev-group-empty{grid-column:1/-1;padding:24px 28px;border:1px solid #d2d7e1;border-radius:12px;background:#fafbfc}
+.ev-group-empty h3{font-size:23px}
+.ev-group-empty p{margin:8px 0!important;color:#6a707b;font-size:14px}
+.ev-group-empty a{font-size:14px;text-decoration:underline!important;text-underline-offset:4px}
+.ev-leader{display:flex;align-items:center;gap:28px;margin-top:24px;padding:17px 28px;background:#f5f6f8;border-radius:8px}
+.ev-leader h2{flex-shrink:0;font-size:25px}
+.ev-leader p{flex:1;border-left:1px solid #b7bdc8;padding-left:28px;color:#6c7380;font-size:13px}
+.ev-page .ep-faq{margin-top:28px;border-top:0;padding:0 0 24px;grid-template-columns:28% 1fr;gap:4%}
+.ev-page .ep-faq>h2{font-size:28px;padding:4px 20px 0 0}
+.ev-page .ep-faq summary{font-size:16px}
+.ev-page .ep-faq details{padding:5px 0}
+.ev-page .ep-faq details p{font-size:13px;padding:8px 24px 6px 0}
+.ev-page .ep-faq details a{font-size:13px;text-decoration:underline!important}
+.ev-records{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:16px 4px;font-size:13px;color:#646b78}
+.ev-records nav{display:flex;gap:20px;flex-shrink:0;color:#222}
+.ev-page .ep-help{padding:10px 0 22px;justify-content:flex-end;gap:30px}
+.ev-page .ep-help h2,.ev-page .ep-help>a{font-size:15px}
+.ev-page .ep-footer{margin-top:0;padding-top:18px;padding-bottom:20px}
+.ev-page .ep-footer-brand{display:flex;align-items:center;gap:7px;white-space:nowrap;font-size:18px;color:#111}
+.ev-page .ep-footer>p{padding-left:20px;border-left:1px solid #bfc3cc;font-size:13px}
+@media(max-width:720px){.ev-group-meta{display:grid;grid-template-columns:1fr}.ev-group-meta dl{width:100%}.ev-group-meta .ep-button{justify-self:end}.ev-page .ep-footer>p{padding-left:12px;font-size:11px}}
+.ev-page a:focus-visible,.ev-page summary:focus-visible{outline:2px solid #3831ff;outline-offset:4px}
+@media(max-width:1050px){.ev-draw,.ev-invite{padding:22px}.ev-draw-bottom{align-items:flex-start}.ev-invite li{gap:14px;font-size:14px}.ev-invite li span{padding-right:16px}.ev-leader{gap:18px}.ev-leader h2{font-size:21px}.ev-leader p{padding-left:18px}.ev-group-meta{flex-wrap:wrap}.ev-group-meta .ep-button{margin-left:auto}.ev-records{flex-wrap:wrap}}
+@media(max-width:720px){.ev-page .ep-crumb{padding-top:22px}.ev-page .ep-intro{padding:5px 0 20px;align-items:flex-start;gap:12px}.ev-page .ep-intro h1{font-size:clamp(26px,7.4vw,43px);line-height:1.5}.ev-page .ep-intro p{font-size:14px;max-width:30em;margin-top:10px}.ev-page .ep-intro>a{font-size:13px;margin:0}.ev-tabs{display:block}.ev-tabs .ep-categories{flex-wrap:nowrap;gap:5px;justify-content:space-between}.ev-tabs .ep-categories a{padding:12px 2px;font-size:14px}.ev-tabs>a{display:block;text-align:right;padding:9px 0;font-size:12px}.ev-featured{grid-template-columns:1fr;gap:18px;margin-top:18px}.ev-draw,.ev-invite{padding:22px 18px}.ev-page h2{font-size:31px}.ev-page .ev-state{font-size:11px}.ev-draw>p,.ev-invite>p{font-size:14px}.ev-prize-grid{gap:8px;margin:18px 0}.ev-prize,.ev-page a.ev-draw-entry{font-size:17px;min-height:72px}.ev-prize small{font-size:10px}.ev-invite h2 br{display:none}.ev-invite ol{gap:18px;padding:24px 0}.ev-invite li{font-size:15px}.ev-invite>small{margin-top:18px}.ev-groups{margin-top:24px}.ev-groups>header h2{font-size:27px}.ev-groups>header a{font-size:12px}.ev-group-grid{grid-template-columns:1fr;gap:16px}.ev-group-card{padding:18px}.ev-group-title{gap:12px}.ev-group-title h3{font-size:21px}.ev-group-meta{gap:12px}.ev-group-note{font-size:12px}.ev-leader{display:flex;align-items:flex-start;flex-direction:column;padding:20px;gap:12px}.ev-leader h2{font-size:23px;flex-shrink:1}.ev-leader p{border:0;padding:0}.ev-page .ep-faq{grid-template-columns:1fr;gap:22px;margin-top:28px}.ev-page .ep-faq>h2{border:0;font-size:26px}.ev-page .ep-faq summary{font-size:15px}.ev-page .ep-faq details{padding:9px 0}.ev-records{padding:18px 0;gap:12px}.ev-records nav{gap:17px;flex-wrap:wrap}.ev-page .ep-help{justify-content:flex-start;gap:20px;flex-wrap:wrap}.ev-page .ep-help h2,.ev-page .ep-help>a{font-size:13px}.ev-page .ep-footer{gap:15px}}

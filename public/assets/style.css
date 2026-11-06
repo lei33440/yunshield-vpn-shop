@@ -2358,6 +2358,9 @@ body.user-page .order-reference-page .order-reference-status .order-status-badge
 .order-reference-page .order-reference-note h3{margin:0 0 7px;color:#4760da;font-size:12px}
 .order-reference-page .order-reference-note p{margin:0;font-size:12px;line-height:1.9;overflow-wrap:anywhere}
 .order-reference-page .order-secret-row{display:grid;grid-template-columns:105px minmax(0,1fr) auto;align-items:start;gap:10px;padding:10px 12px;border-radius:5px;background:#f4f6fc;margin:8px 0;font-size:12px;line-height:1.7;min-width:0}
+.order-reference-page .order-client-choice{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:8px 0;font-size:12px;color:#73809b}
+.order-reference-page .order-client-choice select{width:100%;max-width:340px;min-width:0;box-sizing:border-box;padding:9px 12px;border:1px solid #e0e6f1;border-radius:5px;background:#f4f6fc;color:#35405b;font:inherit}
+.order-reference-page .order-client-choice select:focus-visible{outline:2px solid #5367ff;outline-offset:3px}
 .order-reference-page .order-secret-label{color:#73809b;padding:3px 0}
 .order-reference-page .order-secret-value{display:block;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;font-family:inherit;font-size:12px;line-height:1.9;color:#35405b;margin:0;padding:3px 0;border:0;background:transparent;min-width:0;max-width:100%;border-radius:0}
 .order-reference-page .order-secret-mask{display:none;color:#63708b;padding:3px 0;letter-spacing:2px}

@@ -7,6 +7,12 @@ return array(
         'debug' => getenv('VPN_APP_DEBUG') === '1',
         'temporary_subscription_url' => getenv('VPN_TEMPORARY_SUBSCRIPTION_URL') ?: '',
     ),
+    // 独立 SubBoost 凭证；两项均配置时启用付款同步任务。
+    // 生产必须 HTTPS，仅允许回环地址通过 HTTP 做本地集成测试。
+    'subboost' => array(
+        'url' => getenv('SUBBOOST_URL') ?: '',
+        'api_secret' => getenv('SUBBOOST_API_SECRET') ?: '',
+    ),
     'db' => array(
         'dsn' => getenv('VPN_DB_DSN') ?: 'mysql:host=127.0.0.1;port=3306;dbname=vpn_shop;charset=utf8mb4',
         'username' => getenv('VPN_DB_USER') ?: 'vpn_shop',

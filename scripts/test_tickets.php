@@ -168,6 +168,7 @@ class TicketTestRouter {
 }
 class TicketTestRedirect extends Error {}
 function e($value){return htmlspecialchars((string)$value,ENT_QUOTES,'UTF-8');}
+function user_nav_icon($name){return '<svg aria-hidden="true"></svg>';}
 function csrf_field(){return '<input name="_csrf" value="test">';}
 function post_csrf(){}
 function page($title,$body,$config){$GLOBALS['ticket_html']=$body;$GLOBALS['ticket_layout']='user';}
@@ -201,8 +202,11 @@ ticket_assert(strpos($GLOBALS['ticket_html'],'&lt;i&gt;用户失败草稿&lt;/i&
 ticket_assert(strpos($GLOBALS['ticket_html'],'失败回复保留')===false,'用户页面不得看到管理员失败草稿');
 for($i=0;$i<21;$i++)ticket_exec('INSERT INTO support_tickets(ticket_no,user_id,subject,status,version_no,created_at,updated_at) VALUES(?,?,?,"open",1,?,?)',array('PAGE'.bin2hex(random_bytes(12)),$uid,'分页测试',$now,$now));
 $_GET=array('status'=>'open');$router->get['/tickets']();
-ticket_assert(strpos($GLOBALS['ticket_html'],'下一页')!==false&&strpos($GLOBALS['ticket_html'],'status=open')!==false&&strpos($GLOBALS['ticket_html'],'page=2')!==false,'用户列表可点击保留状态分页');
-ticket_assert(strpos($GLOBALS['ticket_html'],'id="new-ticket"')!==false,'订单详情锚点能定位新建工单');
+ticket_assert(strpos($GLOBALS['ticket_html'],'class="mt-page"')!==false&&preg_match('/<article class="mt-ticket(?: is-waiting)?">.*?<span class="mt-status">待客服回复<\/span>.*?<\/article>/s',$GLOBALS['ticket_html'])===1,'用户列表使用新工单文章与真实状态标记');
+$nextQuery=array();
+if(preg_match('/<nav class="mt-pagination"[^>]*>.*?<a rel="next" href="([^"]+)">下一页<\/a>/s',$GLOBALS['ticket_html'],$nextLink))parse_str((string)parse_url(html_entity_decode($nextLink[1],ENT_QUOTES,'UTF-8'),PHP_URL_QUERY),$nextQuery);
+ticket_assert(isset($nextQuery['status'],$nextQuery['page'])&&$nextQuery['status']==='open'&&$nextQuery['page']==='2','用户列表可点击保留状态分页');
+ticket_assert(preg_match('/<details class="mt-create" id="new-ticket"(?: open)?>.*?<form method="post" action="\/tickets" data-submit-lock>/s',$GLOBALS['ticket_html'])===1,'订单详情锚点能定位可展开的新建工单表单');
 $router->get['/admin/tickets']();ticket_assert(strpos($GLOBALS['ticket_html'],'下一页')!==false&&strpos($GLOBALS['ticket_html'],'status=open')!==false,'后台列表可点击保留状态分页');
 for($i=0;$i<21;$i++)ticket_exec('INSERT INTO ticket_messages(ticket_id,sender_type,sender_user_id,body,created_at) VALUES(?,"user",?,"分页正文",?)',array($second['id'],$uid,$now));
 $_GET=array();$router->get['/tickets/{id}']($second['id']);ticket_assert(strpos($GLOBALS['ticket_html'],'message_page=2')!==false,'用户对话有可点击分页');

@@ -124,6 +124,7 @@ function user_nav_icon($name) {
         'tickets'=>'<path d="M4 12h3l2-7 4 14 2-7h5"/>',
         'account'=>'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
         'events'=>'<path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6-5.4-2.9-5.4 2.9 1-6-4.4-4.3 6.1-.9L12 3Z"/>',
+        'logout'=>'<path d="M9 4H4v16h5M10 12h11m-4-4 4 4-4 4"/>',
         'bell'=>'<path d="M18 9a6 6 0 1 0-12 0c0 4.2-1.5 5.4-1.5 5.4h15S18 13.2 18 9Z"/><path d="M10.3 18a2 2 0 0 0 3.4 0"/>'
     );
     return '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'.(isset($paths[$name])?$paths[$name]:'').'</svg>';
@@ -131,6 +132,23 @@ function user_nav_icon($name) {
 function user_nav_item($href, $label, $icon, $active=false, $badge='', $sub=false) {
     return '<a class="user-nav-link'.($active?' active':'').($sub?' user-nav-sub':'').'" href="'.e($href).'"'.($active?' aria-current="page"':'').'>'.($sub?'<i aria-hidden="true"></i>':user_nav_icon($icon)).'<span>'.e($label).'</span>'.($badge!==''?'<em class="user-nav-chip'.($badge==='NEW'?' user-nav-new':'').'">'.e($badge).'</em>':'').'</a>';
 }
+function home_outline_icon($name)
+{
+    $paths = array(
+        'search' => '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
+        'cloud' => '<path d="M6 19a4 4 0 0 1-.7-7.9A6.5 6.5 0 0 1 18 9a5 5 0 0 1 0 10H6Z"/>',
+        'globe' => '<circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18M5 7.5h14M5 16.5h14"/>',
+        'apple' => '<path d="M12.5 6c.1-2.4 1.5-4 3.6-4-.1 2.2-1.5 3.8-3.6 4ZM12 8c-2.5-1.8-6.4-1-7 3.5-.5 3.6 2.3 9.5 4.2 9.5 1.2 0 1.5-.7 2.8-.7s1.7.7 2.8.7c1.5 0 3.3-2.5 4.2-4.8-3.4-1.7-3.4-5.6-.5-7.3-2.1-2-4.3-2-6.5-.9Z"/>',
+        'send' => '<path d="m3 10 18-7-5 18-5-7-8-4Zm8 4L21 3m-10 11-1 6 4-3"/>',
+        'cube' => '<path d="m12 2 9 5v10l-9 5-9-5V7l9-5Zm0 10 9-5M3 7l9 5v10M7.5 4.5l9 5"/>',
+        'layers' => '<path d="m12 3 10 5-10 5L2 8l10-5Zm-9 9 9 5 9-5M3 16l9 5 9-5"/>',
+        'windows' => '<path d="m3 5 8-1v7H3V5Zm10-1 8-1v8h-8V4ZM3 13h8v7l-8-1v-6Zm10 0h8v8l-8-1v-7Z"/>',
+        'android' => '<path d="m7 5-2-3m12 3 2-3M5 11a7 7 0 0 1 14 0H5Zm0 2h14v7H5v-7Zm3 7v2m8-2v2M2 13v5m20-5v5"/><path d="M9 8h.01M15 8h.01"/>',
+        'linux' => '<path d="M8 10c-2 2-3 5-2 8m10-8c2 2 3 5 2 8M9 10V6a3 3 0 0 1 6 0v4c0 3 3 5 2 9-2 2-8 2-10 0-1-4 2-6 2-9Z"/><path d="m10 10 2 2 2-2M7 18l-4 3h6m8-3 4 3h-6M11 7h.01M13 7h.01"/>',
+    );
+    return '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">'.(isset($paths[$name]) ? $paths[$name] : $paths['globe']).'</svg>';
+}
+
 function page($title, $body, $config) {
     global $pdo;
     $user = !empty($_SESSION['user_id']); $admin = !empty($_SESSION['admin_id']);
@@ -138,6 +156,11 @@ function page($title, $body, $config) {
     if ($user) $unread=(new NotificationService($pdo))->unreadCount((int)$_SESSION['user_id']);
     $ok = get_flash('success'); $err = get_flash('error');
     $path = parse_url(isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/', PHP_URL_PATH);
+    $isVpnDetail = (bool)preg_match('~^/products/[0-9]+$~', $path);
+    $isAccountDetail = (bool)preg_match('~^/accounts/[0-9]+$~', $path);
+    $isEditorialDetail = $isVpnDetail || $isAccountDetail;
+    $isEditorialDownloads = $path === '/downloads';
+    $isEditorialHelp = $path === '/articles';
     $notice = ($ok ? '<div class="notice success">'.e($ok).'</div>' : '').($err ? '<div class="notice error">'.e($err).'</div>' : '');
     if ($path === '/admin/login') {
         admin_login_page($body, $notice, $config);
@@ -151,24 +174,34 @@ function page($title, $body, $config) {
         auth_page($title, $body, $notice, $config);
         return;
     }
+    if (preg_match('~^/orders/[^/]+$~', $path)) {
+        account_overview_shell($title, $body, $notice, $unread, $pdo, $config, '/orders', 'order-detail');
+        return;
+    }
+    if (in_array($path, array('/account/overview','/account','/account/security','/orders','/account/subscriptions','/wallet','/notifications','/tickets','/feedback'), true) || ($path==='/events' && ($_GET['view']??null)==='referral')) {
+        account_overview_shell($title, $body, $notice, $unread, $pdo, $config, $path==='/events'?'/events?view=referral':($path==='/account'?'/account/security':$path));
+        return;
+    }
     $pageClasses = array('/'=>'home-page','/products'=>'products-page','/order-confirm'=>'checkout-body','/downloads'=>'downloads-page','/orders'=>'orders-page','/articles'=>'articles-page','/tickets'=>'tickets-page','/account'=>'account-page-body','/account/security'=>'account-page-body','/account/notifications'=>'account-page-body','/benefits'=>'benefits-page','/events'=>'events-page','/login'=>'auth-page','/register'=>'auth-page','/admin/login'=>'admin-login-body');
     $pageClass = isset($pageClasses[$path]) ? $pageClasses[$path] : (strpos($path, '/products/') === 0 ? 'products-page' : '');
     $isHelpCenter = in_array($path,array('/articles','/announcements','/downloads'),true) || preg_match('~^/(articles|announcements)/[^/]+$~',$path);
-    if ($isHelpCenter) $pageClass .= ' help-reference-body';
-    $desktopEvents = $path === '/events' && (!isset($_GET['view']) || (is_string($_GET['view']) && !in_array($_GET['view'], array('lottery','referral','group','free'), true)));
-    if (in_array($path, array('/','/products','/accounts'), true) || $desktopEvents) $pageClass .= ' pc-storefront';
+    if ($isHelpCenter && !$isEditorialDownloads && !$isEditorialHelp) $pageClass .= ' help-reference-body';
+    $desktopEvents = $path === '/events' && (!isset($_GET['view']) || !is_string($_GET['view']) || !in_array($_GET['view'], array('lottery','referral','group','free'), true));
+    if (in_array($path, array('/','/products','/accounts'), true) || $desktopEvents || $isEditorialDownloads || $isEditorialHelp) $pageClass .= ' pc-storefront';
     if ($path === '/accounts') $pageClass .= ' accounts-page';
     $desktopDetail = preg_match('~^/(products|accounts)/[0-9]+$~', $path);
     $desktopAccount = in_array($path, array('/account/overview','/account/subscriptions','/wallet','/orders','/notifications','/account','/account/security','/account/notifications'), true) || preg_match('~^/orders/[^/]+$~', $path) || preg_match('~^/(tickets|feedback)(/|$)~', $path);
     if ($desktopDetail || $path === '/order-confirm') $pageClass .= ' pc-commerce';
+    if ($isEditorialDetail) $pageClass .= ' pc-storefront '.($isAccountDetail ? 'account-detail-page' : 'vpn-detail-page');
     if ($desktopAccount) $pageClass .= ' pc-account';
     if ($path === '/account/overview') $pageClass .= ' pc-overview';
     if ($path === '/account/subscriptions') $pageClass .= ' pc-subscriptions';
     if ($desktopEvents) $pageClass .= ' events-overview-page';
+    if ($isEditorialHelp) $pageClass .= ' help-overview-page';
     if (preg_match('~^/orders/[^/]+/payment-result$~', $path)) $pageClass = 'payment-result-body';
     if ($path === '/tickets' || strpos($path, '/tickets/') === 0) $pageClass .= ' pc-tickets';
     if ($path === '/feedback' || strpos($path, '/feedback/') === 0) $pageClass .= ' pc-feedback';
-    if ($path !== '/' && $path !== '/order-confirm' && $pageClass !== 'payment-result-body') $pageClass .= ' user-ui';
+    if ($path !== '/' && $path !== '/products' && $path !== '/accounts' && !$isEditorialDetail && !$desktopEvents && !$isEditorialDownloads && !$isEditorialHelp && $path !== '/order-confirm' && $pageClass !== 'payment-result-body') $pageClass .= ' user-ui';
     $productCount = (int)$pdo->query('SELECT COUNT(*) FROM products WHERE status="active" AND '.catalog_vpn_condition($pdo))->fetchColumn();
     $sectionNav = '<span class="user-nav-label">服务</span>'
         .user_nav_item('/','首页','home',$path==='/')
@@ -201,7 +234,7 @@ function page($title, $body, $config) {
     }
     $body=$announcementBanner.$body;
     $isShopPath = $path === '/products' || strpos($path, '/products/') === 0;
-    $isPublic = $isHelpCenter || $path === '/' || $isShopPath || $path === '/accounts' || strpos($path,'/accounts/') === 0 || in_array($path,array('/order-confirm','/downloads','/benefits'),true) || preg_match('~^/orders/[^/]+/payment-result$~',$path);
+    $isPublic = $isHelpCenter || $desktopEvents || $path === '/' || $isShopPath || $path === '/accounts' || strpos($path,'/accounts/') === 0 || in_array($path,array('/order-confirm','/downloads','/benefits'),true) || preg_match('~^/orders/[^/]+/payment-result$~',$path);
     $pageClass .= $isPublic ? ' public-page' : ' workspace-page';
     $breadcrumb = '';
     $isHome = $isPublic;
@@ -216,6 +249,7 @@ function page($title, $body, $config) {
         array('/articles', '帮助中心', strpos($path, '/articles') === 0 || strpos($path, '/announcements') === 0),
     );
     foreach ($homeItems as $item) {
+        if ((in_array($path, array('/', '/products', '/accounts'), true) || $isEditorialDetail || $desktopEvents || $isEditorialDownloads || $isEditorialHelp) && $item[0] === '/benefits') continue;
         $homeNav .= '<a class="home-nav-link'.($item[2] ? ' is-active' : '').'" href="'.e($item[0]).'"'.($item[2] ? ' aria-current="page"' : '').'>'.e($item[1]).'</a>';
     }
     $isAccountSearch=$path==='/accounts'||strpos($path,'/accounts/')===0;
@@ -223,7 +257,15 @@ function page($title, $body, $config) {
     $homeSearchPlatform=$path==='/accounts'&&isset($_GET['platform'])&&is_string($_GET['platform'])&&strlen($_GET['platform'])<=32?trim($_GET['platform']):'';
     $homeSearchLabel=$isAccountSearch?'搜索海外账号':'搜索订阅套餐';
     $homeRight = '<form class="home-nav-search" action="'.($isAccountSearch?'/accounts':'/products').'" method="get" role="search"><button type="submit" aria-label="'.($isAccountSearch?'搜索海外账号':'搜索套餐').'"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></button><input type="search" name="q" placeholder="'.$homeSearchLabel.'" aria-label="'.$homeSearchLabel.'"'.($isAccountSearch?' value="'.e($homeSearchTerm).'" maxlength="100"':'').'>'.($homeSearchPlatform!==''?'<input type="hidden" name="platform" value="'.e($homeSearchPlatform).'">':'').'</form>';
-    if ($isHelpCenter) $homeRight = '<form class="home-nav-search" action="/articles" method="get" role="search"><button type="submit" aria-label="搜索帮助文章">'.help_icon('search').'</button><input type="search" name="q" maxlength="100" placeholder="搜索帮助文章" aria-label="搜索帮助文章"></form>';
+    if ((in_array($path, array('/', '/products', '/accounts'), true) || $isEditorialDetail || $desktopEvents || $isEditorialDownloads || $isEditorialHelp)) $homeRight = '<details class="editorial-nav-search"><summary aria-label="展开套餐搜索">'.home_outline_icon('search').'</summary><form action="/products" method="get" role="search"><label for="editorial-search">搜索订阅套餐</label><div><input id="editorial-search" type="search" name="q" placeholder="输入套餐名称" maxlength="100"><button type="submit">搜索 →</button></div></form></details>';
+    $homeSearchSort=$path==='/accounts'&&isset($_GET['sort'])&&is_string($_GET['sort'])&&in_array($_GET['sort'],array('price_asc','price_desc'),true)?$_GET['sort']:'';
+    if ($path === '/accounts' || $isAccountDetail) $homeRight = '<details class="editorial-nav-search"><summary aria-label="展开账号搜索">'.home_outline_icon('search').'</summary><form action="/accounts" method="get" role="search">'.($homeSearchPlatform!==''?'<input type="hidden" name="platform" value="'.e($homeSearchPlatform).'">':'').($homeSearchSort!==''?'<input type="hidden" name="sort" value="'.e($homeSearchSort).'">':'').'<label for="editorial-account-search">搜索海外账号</label><div><input id="editorial-account-search" type="search" name="q" value="'.e($homeSearchTerm).'" placeholder="输入账号商品名称" maxlength="100"><button type="submit">搜索 →</button></div></form></details>';
+    if ($isHelpCenter && !$isEditorialDownloads && !$isEditorialHelp) $homeRight = '<form class="home-nav-search" action="/articles" method="get" role="search"><button type="submit" aria-label="搜索帮助文章">'.help_icon('search').'</button><input type="search" name="q" maxlength="100" placeholder="搜索帮助文章" aria-label="搜索帮助文章"></form>';
+    if ($isEditorialHelp) {
+        $helpNavTerm=isset($_GET['q'])&&is_string($_GET['q'])&&mb_check_encoding($_GET['q'],'UTF-8')&&mb_strlen($_GET['q'],'UTF-8')<=100?trim($_GET['q']):'';
+        $helpNavCategory=isset($_GET['category'])&&is_string($_GET['category'])&&isset(help_categories()[$_GET['category']])?$_GET['category']:'';
+        $homeRight='<details class="editorial-nav-search"><summary aria-label="展开帮助搜索">'.home_outline_icon('search').'</summary><form action="/articles" method="get" role="search"><input type="hidden" name="view" value="all">'.($helpNavCategory!==''?'<input type="hidden" name="category" value="'.e($helpNavCategory).'">':'').'<label for="editorial-help-search">搜索帮助文章</label><div><input id="editorial-help-search" type="search" name="q" value="'.e($helpNavTerm).'" placeholder="输入问题或关键词" maxlength="100"><button type="submit">搜索 →</button></div></form></details>';
+    }
     if ($user) {
         $homeRight .= '<a class="home-nav-bell" href="/notifications" aria-label="消息中心">'.user_nav_icon('bell').($unread ? '<b>'.$unread.'</b>' : '').'</a>';
         $homeRight .= '<a class="home-nav-user" href="/account"><span>'.e(mb_substr($identity, 0, 1, 'UTF-8')).'</span><b>'.e($identity).'</b></a>';
@@ -233,7 +275,8 @@ function page($title, $body, $config) {
         $homeRight .= '<a class="home-nav-login" href="/login">登录 / 注册</a>';
         $homeRight .= '<a class="home-nav-cta" href="/register">免费注册</a>';
     }
-    $homeShell = '<header class="home-topnav"><div class="home-topnav-inner"><a class="home-nav-brand" href="/"><img src="/assets/xiaoyun-logo.png" alt="'.e($config['app']['name']).'"></a><nav class="home-nav" aria-label="主导航">'.$homeNav.'</nav><div class="home-nav-actions">'.$homeRight.'<button class="home-nav-toggle" type="button" aria-label="打开导航" aria-expanded="false">☰</button></div></div><div class="home-nav-drawer"><nav class="home-drawer-nav">'.$sectionNav.$accountNav.$eventNav.'</nav></div></header>';
+    $homeBrand = (in_array($path, array('/', '/products', '/accounts'), true) || $isEditorialDetail || $desktopEvents || $isEditorialDownloads || $isEditorialHelp) ? home_outline_icon('cloud').'<span>'.e($config['app']['name']).'</span>' : '<img src="/assets/xiaoyun-logo.png" alt="'.e($config['app']['name']).'">';
+    $homeShell = '<header class="home-topnav"><div class="home-topnav-inner"><a class="home-nav-brand" href="/">'.$homeBrand.'</a><nav class="home-nav" aria-label="主导航">'.$homeNav.'</nav><div class="home-nav-actions">'.$homeRight.'<button class="home-nav-toggle" type="button" aria-label="打开导航" aria-expanded="false">☰</button></div></div><div class="home-nav-drawer"><nav class="home-drawer-nav">'.$sectionNav.$accountNav.$eventNav.'</nav></div></header>';
     $workspaceNav='';
     foreach(array(array('/account/overview','用户控制台','dashboard',$path==='/account/overview'),array('/account/subscriptions','我的订阅','radio',$path==='/account/subscriptions'),array('/events','活动中心','events',$path==='/events'),array('/orders','订单与交付','receipt',strpos($path,'/orders')===0),array('/articles','帮助与工单','help',strpos($path,'/articles')===0||strpos($path,'/tickets')===0)) as $item){
         $workspaceNav.='<a class="workspace-nav-link'.($item[3]?' is-active':'').'" href="'.$item[0].'"'.($item[3]?' aria-current="page"':'').'>'.($item[2]==='events'?user_nav_icon('events'):'<img src="/assets/space-'.$item[2].'.svg" width="18" height="18" alt="">').$item[1].'</a>';
@@ -250,10 +293,28 @@ function page($title, $body, $config) {
         }
         $shellOpen = '<div class="desktop-account-header">'.$homeShell.'</div>'.str_replace('<nav class="workspace-primary-nav"', '<nav class="desktop-account-nav" aria-label="账户导航"><span class="user-nav-label">个人中心</span>'.$desktopNav.'</nav><nav class="workspace-primary-nav"', $shellOpen);
     }
-    if ($desktopEvents) $shellOpen = '<div class="desktop-events-header">'.$homeShell.'</div>'.$shellOpen;
+    if ($desktopEvents && !$isHome) $shellOpen = '<div class="desktop-events-header">'.$homeShell.'</div>'.$shellOpen;
     $publicMobileNav='<nav class="public-mobile-nav" aria-label="快捷导航"><a href="/"'.($path==='/'?' aria-current="page"':'').'><img src="/assets/mobile-home.svg" alt="">首页</a><a href="/products"'.($isShopPath?' aria-current="page"':'').'><img src="/assets/mobile-shop.svg" alt="">套餐商店</a><a class="mobile-event-entry" href="/events"'.($path==='/events'?' aria-current="page"':'').'><span class="mobile-event-icon">'.user_nav_icon('events').'</span>活动中心</a><a href="/accounts"'.(strpos($path,'/accounts')===0?' aria-current="page"':'').'><img src="/assets/mobile-globe.svg" alt="">海外账号</a><a href="/account/overview"'.(!$isPublic&&$path!=='/events'?' aria-current="page"':'').'><img src="/assets/mobile-user.svg" alt="">个人中心</a></nav>';
     $mobileNav=$path==='/order-confirm'||($isShopPath&&$path!=='/products')?'':$publicMobileNav;
-    echo '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" type="image/png" href="/assets/site-icon.png?v=xiaoyun-icon-20261001"><link rel="apple-touch-icon" href="/assets/site-icon.png?v=xiaoyun-icon-20261001"><title>'.e($title).' - '.e($config['app']['name']).'</title><link rel="stylesheet" href="/assets/style.css?v='.filemtime(__DIR__.'/assets/style.css').'"></head><body class="user-page '.e($pageClass).'" data-page-title="'.e($title).'">'.$shellOpen.'<main class="user-main">'.$notice.$breadcrumb.$body.'</main><footer class="user-footer">人工确认付款 · 人工交付 · 请勿在公开场合分享交付信息</footer></div></div>'.$mobileNav.'<script>document.querySelectorAll("[data-confirm]").forEach(function(e){e.addEventListener("click",function(t){if(!confirm(e.dataset.confirm))t.preventDefault()})});var userMenu=document.querySelector(".user-menu-toggle");if(userMenu)userMenu.addEventListener("click",function(){var opened=document.body.classList.toggle("user-sidebar-open");userMenu.setAttribute("aria-expanded",String(opened));userMenu.setAttribute("aria-label",opened?"关闭导航":"打开导航")});document.addEventListener("click",function(event){if(!document.body.classList.contains("user-sidebar-open")||event.target.closest(".user-sidebar")||event.target.closest(".user-menu-toggle"))return;document.body.classList.remove("user-sidebar-open");userMenu.setAttribute("aria-expanded","false");userMenu.setAttribute("aria-label","打开导航")});document.addEventListener("keydown",function(event){if(event.key!=="Escape"||!document.body.classList.contains("user-sidebar-open"))return;document.body.classList.remove("user-sidebar-open");userMenu.setAttribute("aria-expanded","false");userMenu.setAttribute("aria-label","打开导航");userMenu.focus()});var homeMenu=document.querySelector(".home-nav-toggle");function closeHomeNav(){document.body.classList.remove("home-nav-open");if(homeMenu){homeMenu.setAttribute("aria-expanded","false");homeMenu.setAttribute("aria-label","打开导航")}}if(homeMenu){homeMenu.addEventListener("click",function(){var opened=document.body.classList.toggle("home-nav-open");homeMenu.setAttribute("aria-expanded",String(opened));homeMenu.setAttribute("aria-label",opened?"关闭导航":"打开导航")});document.addEventListener("click",function(event){if(!document.body.classList.contains("home-nav-open")||event.target.closest(".home-topnav"))return;closeHomeNav()});document.addEventListener("keydown",function(event){if(event.key==="Escape"&&document.body.classList.contains("home-nav-open")){closeHomeNav();homeMenu.focus()}});document.querySelectorAll(".home-nav-drawer a").forEach(function(link){link.addEventListener("click",closeHomeNav)})}document.querySelectorAll("form[data-submit-lock]").forEach(function(form){var button=form.querySelector("[type=submit]");if(!button)return;var label=button.getAttribute("data-idle-label")||button.textContent;var hint=form.querySelector(".pc-submit-hint");form.addEventListener("submit",function(){if(!form.checkValidity())return;button.disabled=true;button.setAttribute("aria-busy","true");button.textContent="提交中…";if(hint)hint.hidden=false});window.addEventListener("pageshow",function(){button.disabled=false;button.removeAttribute("aria-busy");button.textContent=label;if(hint)hint.hidden=true})})</script></body></html>';
+    echo '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" type="image/png" href="/assets/site-icon.png?v=xiaoyun-icon-20261001"><link rel="apple-touch-icon" href="/assets/site-icon.png?v=xiaoyun-icon-20261001"><title>'.e($title).' - '.e($config['app']['name']).'</title><link rel="stylesheet" href="/assets/style.css?v='.filemtime(__DIR__.'/assets/style.css').'">'.($path==='/'?'<link rel="stylesheet" href="/assets/home-editorial.css?v='.filemtime(__DIR__.'/assets/home-editorial.css').'">':'').($path==='/products'||$path==='/accounts'||$isEditorialDetail||$desktopEvents||$isEditorialDownloads||$isEditorialHelp?'<link rel="stylesheet" href="/assets/products-editorial.css?v='.filemtime(__DIR__.'/assets/products-editorial.css').'">':'').($isEditorialHelp?'<link rel="stylesheet" href="/assets/help-editorial.css?v='.filemtime(__DIR__.'/assets/help-editorial.css').'">':'').($isEditorialDownloads?'<link rel="stylesheet" href="/assets/downloads-editorial.css?v='.filemtime(__DIR__.'/assets/downloads-editorial.css').'">':'').($desktopEvents?'<link rel="stylesheet" href="/assets/events-editorial.css?v='.filemtime(__DIR__.'/assets/events-editorial.css').'">':'').($isEditorialDetail?'<link rel="stylesheet" href="/assets/vpn-detail-editorial.css?v='.filemtime(__DIR__.'/assets/vpn-detail-editorial.css').'">':'').'</head><body class="user-page '.e($pageClass).'" data-page-title="'.e($title).'">'.$shellOpen.'<main class="user-main">'.$notice.$breadcrumb.$body.'</main><footer class="user-footer">人工确认付款 · 人工交付 · 请勿在公开场合分享交付信息</footer></div></div>'.$mobileNav.'<script>document.querySelectorAll("[data-confirm]").forEach(function(e){e.addEventListener("click",function(t){if(!confirm(e.dataset.confirm))t.preventDefault()})});var userMenu=document.querySelector(".user-menu-toggle");if(userMenu)userMenu.addEventListener("click",function(){var opened=document.body.classList.toggle("user-sidebar-open");userMenu.setAttribute("aria-expanded",String(opened));userMenu.setAttribute("aria-label",opened?"关闭导航":"打开导航")});document.addEventListener("click",function(event){if(!document.body.classList.contains("user-sidebar-open")||event.target.closest(".user-sidebar")||event.target.closest(".user-menu-toggle"))return;document.body.classList.remove("user-sidebar-open");userMenu.setAttribute("aria-expanded","false");userMenu.setAttribute("aria-label","打开导航")});document.addEventListener("keydown",function(event){if(event.key!=="Escape"||!document.body.classList.contains("user-sidebar-open"))return;document.body.classList.remove("user-sidebar-open");userMenu.setAttribute("aria-expanded","false");userMenu.setAttribute("aria-label","打开导航");userMenu.focus()});var homeMenu=document.querySelector(".home-nav-toggle");function closeHomeNav(){document.body.classList.remove("home-nav-open");if(homeMenu){homeMenu.setAttribute("aria-expanded","false");homeMenu.setAttribute("aria-label","打开导航")}}if(homeMenu){homeMenu.addEventListener("click",function(){var opened=document.body.classList.toggle("home-nav-open");homeMenu.setAttribute("aria-expanded",String(opened));homeMenu.setAttribute("aria-label",opened?"关闭导航":"打开导航")});document.addEventListener("click",function(event){if(!document.body.classList.contains("home-nav-open")||event.target.closest(".home-topnav"))return;closeHomeNav()});document.addEventListener("keydown",function(event){if(event.key==="Escape"&&document.body.classList.contains("home-nav-open")){closeHomeNav();homeMenu.focus()}});document.querySelectorAll(".home-nav-drawer a").forEach(function(link){link.addEventListener("click",closeHomeNav)})}document.querySelectorAll("form[data-submit-lock]").forEach(function(form){var button=form.querySelector("[type=submit]");if(!button)return;var label=button.getAttribute("data-idle-label")||button.textContent;var hint=form.querySelector(".pc-submit-hint");form.addEventListener("submit",function(){if(!form.checkValidity())return;button.disabled=true;button.setAttribute("aria-busy","true");button.textContent="提交中…";if(hint)hint.hidden=false});window.addEventListener("pageshow",function(){button.disabled=false;button.removeAttribute("aria-busy");button.textContent=label;if(hint)hint.hidden=true})})</script></body></html>';
+}
+function account_overview_shell($title, $body, $notice, $unread, $pdo, $config, $active='/account/overview', $variant='') {
+    $uid=(int)$_SESSION['user_id'];
+    $s=$pdo->prepare('SELECT display_name,email FROM users WHERE id=?'); $s->execute(array($uid)); $profile=$s->fetch();
+    $name=$profile['display_name']?:$profile['email'];
+    $brand=home_outline_icon('cloud').'<b>'.e($config['app']['name']).'</b>';
+    $nav='';
+    foreach (array('/'=>'首页','/products'=>'VPN订阅','/accounts'=>'海外账号','/events'=>'活动','/downloads'=>'软件下载','/articles'=>'帮助中心') as $url=>$label) $nav.='<a href="'.$url.'">'.$label.'</a>';
+    $sidebar='<aside class="ao-sidebar" id="ao-sidebar"><h2>个人中心</h2><div class="ao-profile"><span class="ao-avatar" aria-hidden="true">'.user_nav_icon('account').'</span><div><b>'.e($name).'</b><small>'.e($profile['email']).'</small><small>UID：'.$uid.'</small></div></div>';
+    foreach (array('我的账户'=>array('/account/overview'=>'个人总览','/orders'=>'我的订单','/account/subscriptions'=>'我的订阅','/wallet'=>'我的余额'),'消息与服务'=>array('/notifications'=>'消息中心','/tickets'=>'售后工单','/feedback'=>'反馈建议'),'活动与安全'=>array('/events?view=referral'=>'拉人返佣','/account/security'=>'账户与安全')) as $label=>$links) {
+        $sidebar.='<nav class="ao-account-nav" aria-label="'.$label.'"><span>'.$label.'</span>';
+        foreach ($links as $url=>$text) $sidebar.='<a href="'.e($url).'"'.($url===$active?' aria-current="page"':'').'>'.$text.($url==='/notifications'&&$unread?'<b class="ao-count">'.(int)$unread.'</b>':'').'</a>';
+        $sidebar.='</nav>';
+    }
+    $sidebar.='<nav class="ao-site-links" aria-label="网站导航">'.$nav.'</nav><form class="ao-logout" method="post" action="/logout">'.csrf_field().'<button type="submit">'.user_nav_icon('logout').'退出登录</button></form></aside>';
+    $accountMenu='<details class="ao-account-menu"><summary>'.user_nav_icon('account').'<span>我的账户</span><i aria-hidden="true"></i></summary><nav aria-label="账户快捷入口"><a href="/account/overview"'.($active==='/account/overview'?' aria-current="page"':'').'>个人总览</a><a href="/account">个人资料</a><a href="/account/security">账户安全</a><a href="/orders"'.($active==='/orders'?' aria-current="page"':'').'>我的订单</a></nav></details>';
+    $footer='<footer class="ao-footer"><a href="/">'.$brand.'</a><p>数字服务，简单一点。</p><nav aria-label="页脚导航"><a href="/announcements">系统公告</a><a href="/articles">帮助中心</a></nav><small>© '.date('Y').' '.e($config['app']['name']).'</small></footer>';
+    echo '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" type="image/png" href="/assets/site-icon.png"><title>'.e($title).' - '.e($config['app']['name']).'</title><link rel="stylesheet" href="/assets/style.css?v='.filemtime(__DIR__.'/assets/style.css').'"><link rel="stylesheet" href="/assets/account-overview-editorial.css?v='.filemtime(__DIR__.'/assets/account-overview-editorial.css').'">'.($active==='/orders'&&$variant!=='order-detail'?'<link rel="stylesheet" href="/assets/account-orders-editorial.css?v='.filemtime(__DIR__.'/assets/account-orders-editorial.css').'">':'').($active==='/account/subscriptions'?'<link rel="stylesheet" href="/assets/account-subscriptions-editorial.css?v='.filemtime(__DIR__.'/assets/account-subscriptions-editorial.css').'">':'').($active==='/wallet'?'<link rel="stylesheet" href="/assets/account-wallet-editorial.css?v='.filemtime(__DIR__.'/assets/account-wallet-editorial.css').'">':'').($active==='/notifications'?'<link rel="stylesheet" href="/assets/account-messages-editorial.css?v='.filemtime(__DIR__.'/assets/account-messages-editorial.css').'">':'').($active==='/tickets'?'<link rel="stylesheet" href="/assets/account-tickets-editorial.css?v='.filemtime(__DIR__.'/assets/account-tickets-editorial.css').'">':'').($active==='/feedback'?'<link rel="stylesheet" href="/assets/account-feedback-editorial.css?v='.filemtime(__DIR__.'/assets/account-feedback-editorial.css').'">':'').($active==='/events?view=referral'?'<link rel="stylesheet" href="/assets/account-referral-editorial.css?v='.filemtime(__DIR__.'/assets/account-referral-editorial.css').'">':'').($active==='/account/security'?'<link rel="stylesheet" href="/assets/account-settings-editorial.css?v='.filemtime(__DIR__.'/assets/account-settings-editorial.css').'">':'').($variant==='order-detail'?'<link rel="stylesheet" href="/assets/order-detail-editorial.css?v='.filemtime(__DIR__.'/assets/order-detail-editorial.css').'">':'').'</head><body class="user-page account-overview-editorial'.($active==='/orders'&&$variant!=='order-detail'?' account-orders-editorial':'').($active==='/account/subscriptions'?' account-subscriptions-editorial':'').($active==='/wallet'?' account-wallet-editorial':'').($active==='/notifications'?' account-messages-editorial':'').($active==='/tickets'?' account-tickets-editorial':'').($active==='/feedback'?' account-feedback-editorial':'').($active==='/events?view=referral'?' account-referral-editorial':'').($active==='/account/security'?' account-settings-editorial':'').($variant==='order-detail'?' order-detail-editorial':'').'"><header class="ao-header"><div><a class="ao-brand" href="/">'.$brand.'</a><nav class="ao-main-nav" aria-label="主导航">'.$nav.'</nav><div class="ao-header-actions"><a class="ao-bell" href="/notifications" aria-label="消息中心'.($unread?'，'.(int)$unread.'条未读':'').'">'.user_nav_icon('bell').($unread?'<i aria-hidden="true"></i>':'').'</a>'.$accountMenu.'<button class="ao-menu-toggle" type="button" aria-controls="ao-sidebar" aria-expanded="false" aria-label="打开个人导航">☰</button></div></div></header><div class="ao-layout">'.$sidebar.'<main class="ao-main">'.$notice.$body.'</main></div>'.$footer.'<script>(function(){var button=document.querySelector(".ao-menu-toggle");function close(){document.body.classList.remove("ao-navigation-open");button.setAttribute("aria-expanded","false");button.setAttribute("aria-label","打开个人导航")}button.addEventListener("click",function(){var open=document.body.classList.toggle("ao-navigation-open");button.setAttribute("aria-expanded",String(open));button.setAttribute("aria-label",open?"关闭个人导航":"打开个人导航")});document.addEventListener("keydown",function(event){if(event.key==="Escape"){if(document.body.classList.contains("ao-navigation-open")){close();button.focus()}document.querySelector(".ao-account-menu").open=false}})})();</script></body></html>';
 }
 function auth_icon($name, $size = 20) {
     return '<img src="/assets/auth-'.$name.'.svg" width="'.$size.'" height="'.$size.'" alt="" aria-hidden="true">';
@@ -375,168 +436,64 @@ JS;
 $router->get('/', function() use($config,$pdo){
     $products=$pdo->query('SELECT * FROM products WHERE status="active" AND '.catalog_vpn_condition($pdo).' ORDER BY sort_order,id')->fetchAll();
     $articleRows=$pdo->query('SELECT * FROM articles WHERE status="published" ORDER BY published_at DESC,id DESC LIMIT 3')->fetchAll();
-    $cardData=array();
-    $lowestMonthly=null;
-    foreach($products as $p){
-        $ps=$pdo->prepare('SELECT name,duration_days,price_cents FROM product_plans WHERE product_id=? AND status="active" ORDER BY sort_order,id');
-        $ps->execute(array($p['id']));
-        $plans=$ps->fetchAll();
-        if(!$plans)continue;
-        $minPlan=$plans[0];
-        foreach($plans as $plan){if((int)$plan['price_cents']<(int)$minPlan['price_cents'])$minPlan=$plan;}
-        $days=max(1,(int)$minPlan['duration_days']);
-        $monthly=(int)$minPlan['price_cents']/100/($days/30);
-        $category=mb_strpos($p['name'],'体验')!==false?'体验':(mb_strpos($p['name'],'畅享')!==false?'畅享':'其他');
-        $features='';
-        if(trim((string)$p['traffic'])!=='')$features.='<li>每月 '.e($p['traffic']).' 流量</li>';
-        $features.='<li>'.(int)$p['device_limit'].' 台设备同时使用</li>';
-        if(trim((string)$p['region'])!=='')$features.='<li>'.e($p['region']).'线路</li>';
-        $features.='<li>订单进度随时可查</li>';
-        $cardData[]=array('p'=>$p,'plan'=>$minPlan,'days'=>$days,'monthly'=>$monthly,'category'=>$category,'features'=>$features);
-        if($lowestMonthly===null||$monthly<$lowestMonthly)$lowestMonthly=$monthly;
+    $cards=''; $shownPlans=0;
+    foreach($products as $product){
+        $planQuery=$pdo->prepare('SELECT name,duration_days,price_cents FROM product_plans WHERE product_id=? AND status="active" ORDER BY price_cents,sort_order,id LIMIT 1');
+        $planQuery->execute(array($product['id']));
+        $plan=$planQuery->fetch();
+        if(!$plan)continue;
+        $amount=explode('.',number_format($plan['price_cents']/100,2,'.',','));
+        $cards.='<article class="editorial-plan"><div class="editorial-plan-category">'.home_outline_icon('globe').'<span>'.e(trim((string)$product['region'])!==''?$product['region']:'VPN 订阅').'</span></div><div class="editorial-plan-title"><h3 title="'.e($product['name']).'">'.e($product['name']).'</h3><span>'.e($plan['name']).'</span></div><p class="editorial-plan-caption">'.e($plan['name']).' · '.(int)$plan['duration_days'].' 天 · 人工交付</p><div class="editorial-price"><span>¥</span><strong>'.e($amount[0]).'</strong><b>.'.e($amount[1]).'</b><small>/ '.e($plan['name']).'</small></div><dl><div><dt>套餐流量</dt><dd>'.e(trim((string)$product['traffic'])!==''?$product['traffic']:'以商品说明为准').'</dd></div><div><dt>同时使用设备</dt><dd>'.(int)$product['device_limit'].' 台</dd></div></dl><a class="editorial-outline" href="/products/'.(int)$product['id'].'">查看套餐 <span aria-hidden="true">↗</span></a></article>';
+        if(++$shownPlans===2)break;
     }
-    $cards='';
-    foreach($cardData as $entry){
-        $p=$entry['p'];$minPlan=$entry['plan'];$days=$entry['days'];$monthly=$entry['monthly'];
-        $category=$entry['category'];$features=$entry['features'];
-        $badge=$lowestMonthly!==null&&abs($monthly-$lowestMonthly)<0.005?'轻量入门':'更多流量';
-        $cards.='<article class="home-plan-card" data-category="'.e($category).'">'
-            .'<div class="home-plan-top"><span class="home-plan-icon">'.user_nav_icon('shop').'</span><span class="home-plan-badge">'.$badge.'</span></div>'
-            .'<h3>'.e($p['name']).'</h3>'
-            .'<div class="home-plan-price-row"><strong class="home-plan-price">'.money($minPlan['price_cents']).'</strong><small>/ '.e($minPlan['name']).'</small></div>'
-            .'<div class="home-plan-sub">¥'.number_format($monthly,2).'/月 · '.e($minPlan['name']).' '.$days.' 天</div>'
-            .'<div class="home-plan-divider"></div>'
-            .'<ul class="home-plan-features">'.$features.'</ul>'
-            .'<div class="home-plan-bottom"><span>人工确认与交付</span><a href="/products/'.(int)$p['id'].'">查看套餐 <i aria-hidden="true">↗</i></a></div>'
-            .'</article>';
-    }
+    if($cards==='')$cards='<div class="editorial-empty">暂无在售套餐，欢迎稍后再来。<a href="/products">查看套餐商店 →</a></div>';
     $articleHtml='';
-    $arts=array('blue'=>'art-node','purple'=>'art-guide','orange'=>'art-help');
-    foreach($articleRows as $article){
-        $articleHtml.='<article><a class="home-article-link" href="/articles/'.(int)$article['id'].'"><div class="article-art '.(isset($arts[$article['cover_style']])?$arts[$article['cover_style']]:$arts['blue']).'">'.e(mb_substr($article['category'],0,1,'UTF-8')).'</div><div><span>'.e($article['category']).'</span><h3>'.e($article['title']).'</h3><p>'.e($article['summary']).'</p><small>▣　'.e(substr($article['published_at'],0,10)).'</small></div></a></article>';
-    }
-    if($articleHtml==='')$articleHtml='<div class="home-empty">暂时还没有已发布文章。</div>';
-    $activeAnnouncements=(new AnnouncementService($pdo))->listActive(3);
+    foreach($articleRows as $article)$articleHtml.='<a href="/articles/'.(int)$article['id'].'"><span>'.e($article['title']).'</span><span aria-hidden="true">↗</span></a>';
+    if($articleHtml==='')$articleHtml='<p class="editorial-list-empty">暂时没有已发布指南。</p><a href="/articles">前往帮助中心 <span aria-hidden="true">↗</span></a>';
+    $activeAnnouncements=(new AnnouncementService($pdo))->listActive(2);
     $homeNotice='';
-    foreach($activeAnnouncements as $announcement){$homeNotice.='<a class="home-notice-row" href="/announcements/'.(int)$announcement['id'].'"><span class="home-notice-icon">'.user_nav_icon('help').'</span><span class="home-notice-copy"><b>'.e($announcement['title']).'</b><small>'.e(mb_substr($announcement['body'],0,90,'UTF-8')).'</small></span><time>'.e(substr($announcement['starts_at'],0,10)).'</time><i aria-hidden="true">→</i></a>';}
-    if($homeNotice==='')$homeNotice='<div class="home-notice-empty">暂无生效公告，站点通知将在这里展示。</div>';
+    foreach($activeAnnouncements as $announcement)$homeNotice.='<a href="/announcements/'.(int)$announcement['id'].'"><span>'.e($announcement['title']).'</span><span aria-hidden="true">↗</span></a>';
+    if($homeNotice==='')$homeNotice='<p class="editorial-list-empty">暂无生效公告。</p><a href="/announcements">查看全部公告 <span aria-hidden="true">↗</span></a>';
     $appName=e($config['app']['name']);
-    $homeServices='';
-    if(!empty($_SESSION['user_id'])){
-        $homeUserId=(int)$_SESSION['user_id'];
-        $serviceQuery=$pdo->prepare('SELECT o.order_no,o.product_name_snapshot,o.plan_name_snapshot,d.opened_at,d.expires_at FROM orders o JOIN delivery_records d ON d.order_id=o.id AND d.is_current=1 WHERE o.user_id=? AND o.product_type_snapshot="vpn" AND o.status="delivered" ORDER BY o.id DESC LIMIT 3');
-        $serviceQuery->execute(array($homeUserId));
-        foreach($serviceQuery as $service){
-            $expiry=$service['expires_at']?'至 '.substr($service['expires_at'],0,10):'已交付';
-            $homeServices.='<li><span class="home-service-dot"></span><div><b>'.e($service['product_name_snapshot']).'</b><small>'.e($service['plan_name_snapshot']).' · '.e($expiry).'</small></div><a href="/orders/'.rawurlencode($service['order_no']).'" aria-label="查看订单 '.e($service['order_no']).'">→</a></li>';
-        }
-        if($homeServices==='')$homeServices='<li class="home-service-empty"><b>还没有已交付服务</b><small>选择一个套餐，开始你的连接体验。</small></li>';
-        $homeServiceCard='<section class="home-my-service"><header><div><span class="home-section-kicker">MY SERVICE</span><h2>我的服务</h2></div><a href="/orders">查看订单</a></header><ul>'.$homeServices.'</ul><a class="home-service-action" href="/products">浏览订阅套餐 <i aria-hidden="true">↗</i></a></section>';
-    }else{
-        $homeServiceCard='<section class="home-my-service"><header><div><span class="home-section-kicker">MY SERVICE</span><h2>我的服务</h2></div><a href="/login">登录</a></header><div class="home-service-login"><p>登录后即可查看已交付服务、订单进度和售后记录。</p><div><a class="button" href="/login">登录账户</a><a class="home-secondary-button" href="/register">注册账户</a></div></div></section>';
-    }
-    $accountPlatformSection='<section class="home-section home-platforms"><div class="home-section-heading"><div><span class="home-section-kicker">OVERSEAS ACCOUNTS</span><h2>海外账号精选</h2><span>热门海外平台账号，满足学习、工作与娱乐需求。</span></div><a class="home-text-link" href="/accounts">查看全部 <i aria-hidden="true">→</i></a></div><div class="home-platform-grid">';
+    $platformCards=''; $shownPlatforms=0;
     if(account_catalog_ready($pdo)){
-        $platforms=(new AccountPlatformService($pdo))->all();$platformProducts=$pdo->query('SELECT account_platform,COUNT(*) AS product_count FROM products WHERE product_type="account" AND status="active" GROUP BY account_platform')->fetchAll(PDO::FETCH_KEY_PAIR);$shown=0;
-        foreach($platforms as $platform){if(empty($platformProducts[$platform['code']]))continue;$shown++;$accountPlatformSection.='<a class="home-platform-card" href="/accounts?platform='.rawurlencode($platform['code']).'"><span class="home-platform-mark">'.e(mb_strtoupper(mb_substr($platform['name'],0,1,'UTF-8'),'UTF-8')).'</span><div><b>'.e($platform['name']).'</b><small>查看在售商品</small><strong>查看商品 <i aria-hidden="true">→</i></strong></div></a>';}
-        if(!$shown)$accountPlatformSection.='<a class="home-platform-card is-empty" href="/accounts"><span class="home-platform-mark">＋</span><div><b>浏览账号商城</b><small>当前暂无在售平台商品</small><strong>查看全部商品 <i aria-hidden="true">→</i></strong></div></a>';
-    }else $accountPlatformSection.='<a class="home-platform-card is-empty" href="/accounts"><span class="home-platform-mark">→</span><div><b>进入海外账号商城</b><small>查看当前可用商品</small><strong>浏览账号 <i aria-hidden="true">→</i></strong></div></a>';
-    $accountPlatformSection.='</div></section>';
+        $platforms=(new AccountPlatformService($pdo))->all();
+        $platformProducts=$pdo->query('SELECT account_platform,COUNT(*) AS product_count FROM products WHERE product_type="account" AND status="active" GROUP BY account_platform')->fetchAll(PDO::FETCH_KEY_PAIR);
+        foreach($platforms as $platform){
+            $mark=home_outline_icon('cube');
+            if(stripos($platform['code'],'apple')!==false)$mark=home_outline_icon('apple');
+            elseif(stripos($platform['code'],'google')!==false)$mark='<span class="editorial-google" aria-hidden="true">G</span>';
+            elseif($platform['code']==='telegram')$mark=home_outline_icon('send');
+            elseif($platform['code']==='x')$mark='<span class="editorial-google" aria-hidden="true">X</span>';
+            $platformCards.='<a href="/accounts?platform='.rawurlencode($platform['code']).'">'.$mark.'<span>'.e($platform['name']).'</span>'.(empty($platformProducts[$platform['code']])?'<small>暂无在售</small>':'').'</a>';
+            if(++$shownPlatforms===3)break;
+        }
+    }
+    foreach(array(array('/articles','选购指南','cube'),array('/tickets','售后支持','cloud'),array('/accounts','浏览海外账号','globe')) as $entry){
+        if($shownPlatforms>=3)break;
+        $platformCards.='<a href="'.$entry[0].'">'.home_outline_icon($entry[2]).'<span>'.$entry[1].'</span></a>';
+        $shownPlatforms++;
+    }
+    $platformCards.='<a href="/accounts">'.home_outline_icon('layers').'<span>更多平台</span></a>';
+    $accountPlatformSection='<section class="editorial-container editorial-accounts" aria-labelledby="editorial-accounts-title"><div class="editorial-platforms">'.$platformCards.'</div><div class="editorial-account-copy"><span class="editorial-kicker">OVERSEAS ACCOUNTS</span><h2 id="editorial-accounts-title">更多数字服务，<br>一个入口就够了。</h2><p>按平台浏览账号商品，查看方案与售后说明；付款后由管理员人工交付。</p><a class="editorial-text-link" href="/accounts">浏览海外账号 <span aria-hidden="true">↗</span></a></div></section>';
 
-    $hero='<section class="home-hero" id="home">'
-        .'<div class="home-hero-copy">'
-        .'<span class="home-kicker">'.user_nav_icon('home').'数字服务 · 轻松起航</span>'
-        .'<h1>更轻松的连接，<br>更自由的数字生活</h1>'
-        .'<p>VPN订阅、海外账号与使用指南，一站式管理你的数字服务。<br>为工作、学习与日常娱乐，提供更轻松的网络体验。</p>'
-        .'<div class="home-hero-actions"><a class="button" href="/products">浏览套餐　→</a><a class="home-secondary-button" href="/accounts">查看海外账号</a></div>'
-        .'<div class="home-trust"><span><b>'.user_nav_icon('home').'</b><strong>稳定连接</strong></span><span><b>'.user_nav_icon('orders').'</b><strong>隐私保护</strong></span><span><b>'.user_nav_icon('downloads').'</b><strong>多端使用</strong></span></div>'
-        .'</div>'
-        .'<div class="home-subscription-preview"><img class="home-preview-orbit" src="/assets/home-preview-orbit.svg" alt=""><div class="home-preview-heading"><span>'.$appName.' / 服务空间</span><small>购买与交付</small></div>'
-        .'<div class="home-preview-card"><header><h2>一个账户，管理每次购买</h2><span>私密交付</span></header><p>从选择方案，到查看交付内容</p><strong>选购 → 付款 → 交付</strong><div class="home-preview-line"></div><footer><span>订单进度与售后</span><a href="/account/overview">前往个人空间 →</a></footer></div>'
-        .'<div class="home-preview-links"><a href="/orders"><img src="/assets/home-preview-shield.svg" alt="">安全交付</a><a href="/account/subscriptions"><img src="/assets/home-preview-radio.svg" alt="">订阅管理</a><a href="/articles"><img src="/assets/home-preview-key.svg" alt="">使用指引</a></div></div>'
-        .'</section>';
+    $hero='<section class="editorial-container editorial-hero" id="home"><div class="editorial-hero-copy"><span class="editorial-kicker">DIGITAL SERVICES</span><h1>连接世界，<br>简单一点。</h1><p>精选VPN订阅与海外账号，从选购到交付，<br>让数字服务清晰，省心。</p><div class="editorial-actions"><a class="editorial-primary" href="/products">浏览订阅套餐 <span aria-hidden="true">↗</span></a><a class="editorial-text-link" href="/accounts">探索海外账号 <span aria-hidden="true">→</span></a></div></div><div class="editorial-hero-art"><img src="/assets/home-editorial-globe.svg" alt="环绕轨道的地球经纬线插画" width="600" height="520" fetchpriority="high"></div></section><div class="editorial-container editorial-trust" aria-label="服务特点"><span>方案清晰</span><span>交付可查</span><span>售后有回应</span></div>';
 
-    $services='<section class="home-section home-services">'
-        .'<div class="home-section-heading"><div><span class="home-section-kicker">TWO SERVICES, ONE CLEAR PATH</span><h2>两种服务，一样清晰</h2></div><span class="home-section-note">先确认需求，再选择适合你的服务方式。</span></div>'
-        .'<div class="home-service-cards">'
-        .'<article class="home-service-card"><div class="home-service-copy"><span class="home-service-label">VPN 订阅</span><h3>按月流量与设备数选择订阅方案</h3><p>适合日常浏览、影音与工作学习，套餐周期与流量额度公开可查。</p><a href="/products">立即选购 <i aria-hidden="true">↗</i></a></div><span class="home-service-art">'.user_nav_icon('shop').'</span></article>'
-        .'<article class="home-service-card"><div class="home-service-copy"><span class="home-service-label">海外账号</span><h3>按平台与规格挑选现成账号</h3><p>公开规格与售后规则，付款确认后人工加密交付，每单一个。</p><a href="/accounts">查看商品状态 <i aria-hidden="true">↗</i></a></div><span class="home-service-art">'.user_nav_icon('account').'</span></article>'
-        .'</div>'
-        .'</section>';
+    $services='<section class="editorial-container editorial-why" aria-labelledby="editorial-why-title"><span class="editorial-kicker">WHY XIAOYUNPU</span><h2 id="editorial-why-title">把复杂留给我们，<br>把简单交给你。</h2><div class="editorial-benefits"><article><span>01</span><h3>清晰选购</h3><p>价格、周期与规格，购买前一目了然。</p></article><article><span>02</span><h3>私密交付</h3><p>交付信息仅本人登录后可见，<br>在订单中随时查看。</p></article><article><span>03</span><h3>持续支持</h3><p>使用教程与售后工单，<br>遇到问题有处可问。</p></article></div></section>';
 
-    $plans='<section class="home-section home-plans" id="plans">'
-        .'<div class="home-section-heading"><div><span class="home-section-kicker">FIND YOUR PLAN</span><h2>热门订阅推荐</h2><span>从套餐流量、设备数量与使用周期出发，选择更适合你的方案。</span></div><a class="home-outline-link" href="/products">比较全部套餐</a></div>'
-        .'<div class="home-plan-tabs" role="group" aria-label="套餐分类"><button type="button" class="is-active" data-home-plan-filter="all" aria-pressed="true">全部订阅</button><button type="button" data-home-plan-filter="体验" aria-pressed="false">体验套餐</button><button type="button" data-home-plan-filter="畅享" aria-pressed="false">畅享套餐</button></div>'
-        .'<div class="home-plans-grid">'.($cards?:'<div class="home-empty">暂时没有可购买的套餐。<small>请稍后再来查看最新方案。</small></div>').'</div>'
-        .'<div class="home-plan-no-match" hidden>当前分类暂无套餐，请查看全部订阅。</div>'
-        .'<p class="home-plan-note">付款后由人工确认并交付，请在订单详情中查看进度。</p>'
-        .'</section>';
+    $plans='<section class="editorial-band" id="plans" aria-labelledby="editorial-plans-title"><div class="editorial-container editorial-plans"><div class="editorial-plans-copy"><span class="editorial-kicker">VPN SUBSCRIPTIONS</span><h2 id="editorial-plans-title">不同需求，<br>都有合适的选择。</h2><p>从日常浏览到多设备使用，<br>按流量与设备需求挑选。</p><a class="editorial-text-link" href="/products">查看全部套餐 <span aria-hidden="true">↗</span></a></div><div class="editorial-plan-grid">'.$cards.'</div></div></section>';
 
-    $journey='<section class="home-section home-journey">'
-        .'<div class="home-section-heading"><div><span class="home-section-kicker">A CLEAR JOURNEY</span><h2>从选购到交付，每一步都有迹可循</h2><span>下单后可在订单详情查看处理进度，付款确认后按步骤私密交付。</span></div></div>'
-        .'<ol class="home-journey-steps">'
-        .'<li><i>01</i><div><b>选择商品</b><small>确认规格与使用需求</small></div></li>'
-        .'<li><i>02</i><div><b>提交付款</b><small>按订单说明提交凭证</small></div></li>'
-        .'<li><i>03</i><div><b>人工确认</b><small>核对付款与订单信息</small></div></li>'
-        .'<li><i>04</i><div><b>私密交付</b><small>在订单详情查看交付</small></div></li>'
-        .'</ol>'
-        .'</section>';
+    $journey='<section class="editorial-container editorial-journey" aria-labelledby="editorial-journey-title"><h2 id="editorial-journey-title">从选购到交付，每一步都清楚。</h2><ol><li><span>01</span><b>选择商品与方案</b></li><li><span>02</span><b>下单并完成付款</b></li><li><span>03</span><b>等待人工确认与交付</b></li></ol><p>订阅开通与到期时间，以正式交付信息为准。</p></section>';
 
-    $downloadPlatforms=array(array('Windows','Windows','下载与使用教程'),array('macOS','macOS','下载与使用教程'),array('Android','Android','下载与使用教程'),array('Linux','Linux','下载与使用教程'));
-    $downloadCards='';foreach($downloadPlatforms as $downloadPlatform)$downloadCards.='<a class="home-platform-download" href="/downloads"><span class="download-platform-icon is-'.strtolower($downloadPlatform[0]).'">'.($downloadPlatform[0]==='Windows'?'⊞':($downloadPlatform[0]==='Android'?'◉':($downloadPlatform[0]==='Linux'?'◈':'●'))).'</span><span><b>'.e($downloadPlatform[1]).'</b><small>下载与使用教程</small><strong>查看教程 <i aria-hidden="true">→</i></strong></span></a>';
+    $downloadCards='';
+    foreach(array('windows'=>'Windows','apple'=>'macOS','android'=>'Android','linux'=>'Linux') as $icon=>$label)$downloadCards.='<a href="/downloads" aria-label="查看 '.e($label).' 下载与使用教程">'.home_outline_icon($icon).'<span>'.e($label).'</span></a>';
+    $downloads='<section class="editorial-band editorial-downloads" aria-labelledby="editorial-downloads-title"><div class="editorial-container"><span class="editorial-kicker">DOWNLOADS &amp; GUIDES</span><h2 id="editorial-downloads-title">在熟悉的设备上，轻松开始。</h2><p>下载适用客户端，按教程完成配置。</p><div class="editorial-download-links">'.$downloadCards.'</div><a class="editorial-text-link" href="/articles">查看使用教程 <span aria-hidden="true">→</span></a></div></section>';
 
-    $device='<section class="home-section home-device">'
-        .'<div class="home-device-art" aria-hidden="true">'
-        .'<div class="home-device-screen"><span class="home-device-globe">'.user_nav_icon('shop').'</span><b>你的连接，自由切换</b><small>终端使用示意</small></div>'
-        .'<div class="home-device-phone"><span>☁</span><small>'.$appName.'</small></div>'
-        .'</div>'
-        .'<div class="home-device-copy"><span class="home-section-kicker">ACROSS DEVICES</span><h2>大屏小屏，连接你的日常</h2><p>电脑处理工作，手机随身使用。先阅读对应平台的安装与导入说明，再按步骤完成连接。</p>'
-        .'<div class="home-platform-tags"><span>Windows</span><span>macOS</span><span>iOS</span><span>Android</span></div>'
-        .'<small class="home-device-note">具体客户端与系统要求以发布方说明为准。</small>'
-        .'<a class="home-outline-link" href="/downloads">前往下载与帮助中心　→</a></div>'
-        .'</section>';
-
-    $accountBanner='<section class="home-account-banner">'
-        .'<span class="home-account-icon">'.user_nav_icon('account').'</span>'
-        .'<div><h2>海外账号，现货上架 <span>每单一个账号</span></h2><p>公开平台、规格与售后规则，付款确认后人工加密交付，订单详情可随时查看。</p></div>'
-        .'<a class="home-outline-link" href="/accounts">查看海外账号商城</a>'
-        .'</section>';
-
-    $onboarding='<section class="home-section home-onboarding">'
-        .'<div class="home-section-heading"><div><h2>第一次使用？从这里开始</h2></div><a class="home-text-link" href="/downloads">下载与帮助 <i aria-hidden="true">↗</i></a></div>'
-        .'<div class="home-onboarding-cards">'
-        .'<article><span class="home-onboarding-icon">'.user_nav_icon('orders').'</span><span class="home-onboarding-tag">订购与交付</span><h3>订购与交付路径</h3><p>下单后按订单提示完成付款，人工确认后在订单详情查看交付内容。</p><a href="/articles">查看指引 <i aria-hidden="true">↗</i></a></article>'
-        .'<article><span class="home-onboarding-icon">'.user_nav_icon('downloads').'</span><span class="home-onboarding-tag">安装与配置</span><h3>安装与导入订阅</h3><p>选择你的设备平台，按对应说明完成客户端安装与订阅导入。</p><a href="/downloads">前往下载 <i aria-hidden="true">↗</i></a></article>'
-        .'<article><span class="home-onboarding-icon">'.user_nav_icon('help').'</span><span class="home-onboarding-tag">连接与检查</span><h3>连接与安全检查</h3><p>连接后先确认节点状态与设备数量，避免在公开场合分享交付信息。</p><a href="/tickets">提交工单 <i aria-hidden="true">↗</i></a></article>'
-        .'</div>'
-        .'</section>';
-
-    $features='<section class="home-feature-row" aria-label="服务保障">'
-        .'<div><span>'.user_nav_icon('orders').'</span><div><b>订单状态可查</b><small>从创建到交付，进度清晰可见。</small></div></div>'
-        .'<div><span>'.user_nav_icon('account').'</span><div><b>交付信息私密</b><small>仅登录账户可以查看交付内容。</small></div></div>'
-        .'<div><span>'.user_nav_icon('tickets').'</span><div><b>随时提交工单</b><small>遇到问题时可按订单提交售后。</small></div></div>'
-        .'</section>';
-
-    $articles='<section class="home-section home-articles" id="guide">'
-        .'<div class="home-section-heading"><div><span class="home-section-kicker">GUIDE &amp; NEWS</span><h2>最新文章</h2><span>实用教程与网络知识，帮助你更好地使用服务。</span></div><a class="home-text-link" href="/articles">查看更多文章　→</a></div>'
-        .'<div class="home-article-grid">'.$articleHtml.'</div>'
-        .'</section>';
-
-    $cta='<section class="home-end-cta"><div><span class="home-section-kicker">READY TO START?</span><h2>准备好，开启轻松连接</h2><p>从适合自己的套餐开始，按需选择，不为暂时用不到的服务买单。</p></div><div class="home-end-actions"><a class="button" href="/products">查看我的套餐　↗</a><a class="home-secondary-button" href="/articles">查看使用教程</a></div></section>';
-
-    $footer='<footer class="home-footer">'
-        .'<div class="home-footer-brand"><a class="home-footer-logo" href="/"><img src="/assets/xiaoyun-logo.png" alt="'.$appName.'"></a><p>'.$appName.' 提供清晰的订阅与海外账号服务，付款确认后由人工交付。</p><span>官网 QQ 群：10457751</span></div>'
-        .'<div class="home-footer-col"><b>服务</b><a href="/">首页</a><a href="/products">VPN 订阅</a><a href="/accounts">海外账号</a><a href="/benefits">每日公益节点</a><a href="/downloads">软件下载</a></div>'
-        .'<div class="home-footer-col"><b>账号与订单</b><a href="/account">个人中心</a><a href="/orders">订单管理</a><a href="/wallet">我的余额</a><a href="/notifications">通知中心</a><a href="/tickets">售后工单</a></div>'
-        .'<div class="home-footer-col"><b>关于与帮助</b><a href="/announcements">平台公告</a><a href="/articles">使用教程</a><a href="/feedback">意见反馈</a><a href="/events">活动中心</a></div>'
-        .'</footer>';
-
-    $noticeSummary=$activeAnnouncements?'<a class="home-notice-row" href="/announcements/'.(int)$activeAnnouncements[0]['id'].'"><span class="home-notice-icon">'.user_nav_icon('help').'</span><span class="home-notice-copy"><b>最新公告 · '.e($activeAnnouncements[0]['title']).'</b><small>'.e(mb_substr($activeAnnouncements[0]['body'],0,110,'UTF-8')).'</small></span><time>'.e(substr($activeAnnouncements[0]['starts_at'],0,10)).'</time></a>':'<div class="home-notice-empty">暂无生效公告。所有订阅及账号商品均由管理员人工确认与交付，订阅有效期以正式交付信息为准。</div>';
-    $homeNoticeSection='<section class="home-notice-banner">'.user_nav_icon('help').'<div class="home-notice-list">'.$noticeSummary.'</div><a href="/announcements">查看详情 <i aria-hidden="true">→</i></a></section>';
-    $homeNewsDownload='<div class="home-news-download-grid"><section class="home-section home-download-card"><div class="home-section-heading"><div><span class="home-section-kicker">GET STARTED</span><h2>使用指南与下载</h2><span>获取客户端软件下载与使用教程，支持多平台设备。</span></div></div><div class="home-download-links">'.$downloadCards.'</div></section><section class="home-section home-news-card"><div class="home-section-heading"><div><span class="home-section-kicker">LATEST NEWS</span><h2>最新公告</h2></div><a class="home-text-link" href="/announcements">查看更多 <i aria-hidden="true">→</i></a></div><div class="home-notice-list home-news-list">'.$homeNotice.'</div></section></div>';
-    $supportCta='<section class="home-support-cta"><div><span class="home-section-kicker">NEED HELP?</span><h2>遇到问题，随时提交售后工单</h2><p>订单问题、交付疑问或使用故障，都可以在工单中说明情况。</p></div><a class="button" href="/tickets">提交售后工单　↗</a></section>';
-    $body='<div class="home-wrap"><div class="home-hero-grid">'.$hero.$homeServiceCard.'</div>'.$features.$homeNoticeSection.'<div class="home-plan-help-grid">'.$plans.$onboarding.'</div>'.$accountPlatformSection.$journey.$homeNewsDownload.$supportCta.$footer.'</div>';
-    $body.='<script>(function(){var buttons=document.querySelectorAll("[data-home-plan-filter]"),cards=document.querySelectorAll(".home-plan-card"),empty=document.querySelector(".home-plan-no-match");buttons.forEach(function(button){button.addEventListener("click",function(){var category=button.dataset.homePlanFilter,count=0;buttons.forEach(function(item){var selected=item===button;item.classList.toggle("is-active",selected);item.setAttribute("aria-pressed",String(selected))});cards.forEach(function(card){card.hidden=category!=="all"&&card.dataset.category!==category;if(!card.hidden)count++});if(empty)empty.hidden=count!==0||cards.length===0})})})();</script>';
+    $news='<section class="editorial-container editorial-news" id="guide" aria-label="公告与指南"><div><h2>最新公告</h2><div class="editorial-link-list">'.$homeNotice.'</div></div><div><h2>使用指南</h2><div class="editorial-link-list">'.$articleHtml.'</div></div></section>';
+    $accountAction=!empty($_SESSION['user_id'])?'<a class="editorial-text-link" href="/account/overview">前往我的账户 <span aria-hidden="true">→</span></a>':'<a class="editorial-text-link" href="/login">已有账号？登录 <span aria-hidden="true">→</span></a>';
+    $cta='<section class="editorial-container editorial-cta"><h2>下一次连接，从这里开始。</h2><div class="editorial-actions"><a class="editorial-primary" href="/products">选择你的订阅 <span aria-hidden="true">↗</span></a>'.$accountAction.'</div></section>';
+    $footer='<footer class="editorial-container editorial-footer"><div class="editorial-footer-grid"><div class="editorial-footer-brand"><a href="/">'.home_outline_icon('cloud').'<b>'.$appName.'</b></a><p>数字服务，简单一点。</p></div><div><h3>产品服务</h3><a href="/products">VPN订阅</a><a href="/accounts">海外账号</a><a href="/downloads">软件下载</a><a href="/benefits">公益节点</a></div><div><h3>帮助支持</h3><a href="/articles">使用教程</a><a href="/announcements">平台公告</a><a href="/tickets">售后工单</a><a href="/feedback">意见反馈</a></div><div><h3>账户服务</h3><a href="/account/overview">个人中心</a><a href="/orders">我的订单</a><a href="/wallet">我的余额</a><a href="/events">活动中心</a></div></div><div class="editorial-copyright">©'.date('Y').' '.$appName.'<span>人工确认付款 · 人工交付 · 请勿公开分享交付信息</span></div></footer>';
+    $body='<div class="editorial-home">'.$hero.$services.$plans.$accountPlatformSection.$journey.$downloads.$news.$cta.$footer.'</div>';
     page('首页',$body,$config);
 });
 $router->get('/products', function() use($config,$pdo){
@@ -545,7 +502,12 @@ $router->get('/products', function() use($config,$pdo){
     $categoryId = null;
     $categoryName = '全部分类';
     try {
-        if (array_key_exists('q', $_GET) && !is_string($_GET['q'])) throw new InvalidArgumentException('搜索参数无效。');
+        if (array_key_exists('q', $_GET) && (!is_string($_GET['q']) || !mb_check_encoding($_GET['q'], 'UTF-8') || mb_strlen($_GET['q'], 'UTF-8') > 100)) throw new InvalidArgumentException('搜索参数无效。');
+        foreach (array('period'=>array('monthly','quarterly','yearly','all'), 'sort'=>array('default','price_asc','price_desc')) as $key => $allowed) {
+            if (array_key_exists($key, $_GET) && (!is_string($_GET[$key]) || !in_array($_GET[$key], $allowed, true))) {
+                throw new InvalidArgumentException('筛选参数无效。');
+            }
+        }
         if (array_key_exists('category', $_GET)) {
             $rawCategory = $_GET['category'];
             if ($rawCategory === 'uncategorized') {
@@ -558,7 +520,7 @@ $router->get('/products', function() use($config,$pdo){
         }
     } catch (InvalidArgumentException $exception) {
         http_response_code(400);
-        return page('参数无效', '<div class="empty">分类或搜索参数无效。</div>', $config);
+        return page('参数无效', '<div class="ep-empty">分类、搜索或筛选参数无效。</div>', $config);
     }
     if ($categoryId !== null) {
         try {
@@ -571,23 +533,14 @@ $router->get('/products', function() use($config,$pdo){
     }
     $categories = $categoryService->all();
     $categoryNames = array();
-    $categoryLinks = array(array('value'=>'','name'=>'全部分类'), array('value'=>'uncategorized','name'=>'未分类'));
+    $categoryLinks = array(array('value'=>'','name'=>'全部套餐'), array('value'=>'uncategorized','name'=>'未分类'));
     foreach ($categories as $category) {
         $categoryNames[(string)$category['id']] = $category['name'];
         $categoryLinks[] = array('value'=>(string)$category['id'],'name'=>$category['name']);
     }
-    $categoryNav = '<nav class="purchase-category-nav" aria-label="按 VPN 分类筛选">';
-    foreach ($categoryLinks as $categoryLink) {
-        $params = array();
-        if ($categoryLink['value'] !== '') $params['category'] = $categoryLink['value'];
-        if (array_key_exists('q', $_GET)) $params['q'] = $_GET['q'];
-        $queryString = http_build_query($params);
-        $categoryNav .= '<a class="purchase-category-link" href="'.e('/products'.($queryString !== '' ? '?'.$queryString : '')).'"'.($categoryFilter === $categoryLink['value'] ? ' aria-current="page"' : '').'>'.e($categoryLink['name']).'</a>';
-    }
-    $categoryNav .= '</nav>';
     $categoryIntro = '';
     if ($categoryId !== null && $selectedCategory['description'] !== null && trim($selectedCategory['description']) !== '') {
-        $categoryIntro = '<section class="purchase-category-intro" aria-labelledby="purchase-category-title"><h2 id="purchase-category-title">'.e($selectedCategory['name']).'</h2><div class="purchase-category-description">'.e($selectedCategory['description']).'</div></section>';
+        $categoryIntro = '<p class="ep-category-description">'.e($selectedCategory['description']).'</p>';
     }
     $categoryCondition = '';
     $categoryParams = array();
@@ -602,26 +555,19 @@ $router->get('/products', function() use($config,$pdo){
     $products = $productQuery->fetchAll();
     $items = array();
     $periodCounts = array('monthly'=>0,'quarterly'=>0,'yearly'=>0);
-    $periodProducts = array('monthly'=>0,'quarterly'=>0,'yearly'=>0);
-    $bestPlan = null;
+    $search = trim($_GET['q'] ?? '');
     foreach ($products as $product) {
         $stmt = $pdo->prepare('SELECT * FROM product_plans WHERE product_id=? AND status="active" ORDER BY sort_order,id');
         $stmt->execute(array($product['id']));
         $plans = $stmt->fetchAll();
         if (!$plans) continue;
-        $planMap = array();
-        $minPrice = null;
-        $seenPeriods = array();
+        if ($search !== '' && mb_stripos((string)$product['name'].' '.(string)$product['description'].' '.(string)$product['region'], $search, 0, 'UTF-8') === false) continue;
         foreach ($plans as $index => $plan) {
             $period = shop_plan_period($plan['duration_days']);
             $plans[$index]['period'] = $period;
             if (isset($periodCounts[$period])) $periodCounts[$period]++;
-            if (isset($periodProducts[$period]) && !isset($seenPeriods[$period])) { $periodProducts[$period]++; $seenPeriods[$period] = true; }
-            $planMap[shop_plan_key($plan)] = $plan;
-            if ($minPrice === null || (int)$plan['price_cents'] < $minPrice) $minPrice = (int)$plan['price_cents'];
-            if ($bestPlan === null || shop_plan_daily($plan) < shop_plan_daily($bestPlan)) $bestPlan = $plan;
         }
-        $items[] = array('product'=>$product,'plans'=>$plans,'plan_map'=>$planMap,'min_price'=>(int)$minPrice);
+        $items[] = array('product'=>$product,'plans'=>$plans);
     }
 
     $defaultPeriod = 'all';
@@ -630,114 +576,119 @@ $router->get('/products', function() use($config,$pdo){
         if ($periodCounts[$period] > $defaultCount) { $defaultCount = $periodCounts[$period]; $defaultPeriod = $period; }
     }
 
-    $total = count($items);
+    $activePeriod = $_GET['period'] ?? $defaultPeriod;
+    $sort = $_GET['sort'] ?? 'default';
+    $visibleItems = array();
+    foreach ($items as $item) {
+        $selectedPlan = null;
+        foreach ($item['plans'] as $plan) {
+            if ($activePeriod !== 'all' && $plan['period'] !== $activePeriod) continue;
+            if ($selectedPlan === null || (int)$plan['price_cents'] < (int)$selectedPlan['price_cents']) $selectedPlan = $plan;
+        }
+        if ($selectedPlan !== null) $visibleItems[] = array('product'=>$item['product'],'plan'=>$selectedPlan,'position'=>count($visibleItems));
+    }
+    $total = count($visibleItems);
     $highlight = $total >= 3 ? intdiv($total - 1, 2) : ($total === 2 ? 1 : -1);
-    $badgeFor = function($index) use ($highlight) {
-        if ($index === $highlight) return '最受欢迎';
-        return $index === 0 ? '入门推荐' : '灵活选择';
+    $featuredProductId = $highlight >= 0 ? (int)$visibleItems[$highlight]['product']['id'] : null;
+    if ($sort !== 'default') {
+        usort($visibleItems, function($a, $b) use ($sort) {
+            $comparison = (int)$a['plan']['price_cents'] <=> (int)$b['plan']['price_cents'];
+            if ($comparison === 0) return $a['position'] <=> $b['position'];
+            return $sort === 'price_desc' ? -$comparison : $comparison;
+        });
+    }
+    $filterParams = array('period'=>$activePeriod,'sort'=>$sort);
+    if ($categoryFilter !== '') $filterParams['category'] = $categoryFilter;
+    if (array_key_exists('q', $_GET)) $filterParams['q'] = $_GET['q'];
+    $filterUrl = function($params) {
+        $queryString = http_build_query($params);
+        return e('/products'.($queryString !== '' ? '?'.$queryString : ''));
     };
+    $categoryNav = '<nav class="ep-categories" aria-label="按 VPN 分类筛选">';
+    foreach ($categoryLinks as $categoryLink) {
+        $params = $filterParams;
+        unset($params['category']);
+        if ($categoryLink['value'] !== '') $params['category'] = $categoryLink['value'];
+        $categoryNav .= '<a href="'.$filterUrl($params).'"'.($categoryFilter === $categoryLink['value'] ? ' aria-current="page"' : '').'>'.e($categoryLink['name']).'</a>';
+    }
+    $categoryNav .= '</nav>';
+    $periodLabels = array('monthly'=>'月付','quarterly'=>'季付','yearly'=>'年付','all'=>'全部周期');
+    $periodNav = '<nav class="ep-periods" aria-label="按购买周期筛选">';
+    foreach ($periodLabels as $period => $label) {
+        if ($period !== 'all' && !$periodCounts[$period]) {
+            $periodNav .= '<span aria-disabled="true"'.($activePeriod === $period ? ' aria-current="page"' : '').'>'.e($label).'</span>';
+        } else {
+            $params = $filterParams;
+            $params['period'] = $period;
+            $periodNav .= '<a href="'.$filterUrl($params).'"'.($activePeriod === $period ? ' aria-current="page"' : '').'>'.e($label).'</a>';
+        }
+    }
+    $periodNav .= '</nav>';
+    $sortForm = '<form class="ep-sort" method="get" action="/products">';
+    foreach ($filterParams as $key => $value) {
+        if ($key !== 'sort') $sortForm .= '<input type="hidden" name="'.e($key).'" value="'.e($value).'">';
+    }
+    $sortForm .= '<select name="sort" aria-label="价格排序" onchange="this.form.submit()">';
+    foreach (array('default'=>'默认排序','price_asc'=>'价格从低到高','price_desc'=>'价格从高到低') as $value => $label) {
+        $sortForm .= '<option value="'.e($value).'"'.($sort === $value ? ' selected' : '').'>'.e($label).'</option>';
+    }
+    $sortForm .= '</select><noscript><button type="submit">排序</button></noscript></form>';
 
     $cards = '';
-    foreach ($items as $index => $item) {
+    foreach ($visibleItems as $item) {
         $product = $item['product'];
-        $plans = $item['plans'];
-        $first = $plans[0];
-        $featured = $index === $highlight;
-        $benefits = array();
-        if (trim((string)$product['traffic']) !== '') $benefits[] = '每 30 天 '.$product['traffic'].' 流量';
-        if ((int)$product['device_limit'] > 0) $benefits[] = '最多 '.(int)$product['device_limit'].' 台设备同时在线';
-        if (trim((string)$product['region']) !== '') $benefits[] = $product['region'].' 地区线路';
-        $benefits[] = '人工确认付款 · 人工交付';
-        $benefitHtml = '';
-        foreach ($benefits as $benefit) $benefitHtml .= '<li>'.e($benefit).'</li>';
-        if (count($plans) > 1) {
-            $planInputs = '<div class="purchase-plans">';
-            foreach ($plans as $planIndex => $plan) {
-                $planInputs .= '<label class="purchase-plan" data-period="'.$plan['period'].'"><input type="radio" name="plan_id" value="'.(int)$plan['id'].'" data-price="'.(int)$plan['price_cents'].'" data-days="'.(int)$plan['duration_days'].'" '.($planIndex === 0 ? 'checked' : '').'><span>'.e($plan['name']).'</span></label>';
-            }
-            $planInputs .= '</div>';
-        } else {
-            $planInputs = '<input type="hidden" name="plan_id" value="'.(int)$first['id'].'" data-price="'.(int)$first['price_cents'].'" data-days="'.(int)$first['duration_days'].'" data-period="'.$first['period'].'">';
-        }
-        $tagline = shop_tagline($product['description'], $product['name']);
-        $cards .= '<article class="purchase-card'.($featured ? ' is-featured' : '').'" data-gb="'.shop_traffic_gb($product['traffic']).'" data-price="'.$item['min_price'].'" data-search="'.e($product['name'].' '.$product['description'].' '.$product['region']).'">'
-            .'<div class="purchase-card-top"><span class="purchase-product-icon" aria-hidden="true">'.user_nav_icon('shop').'</span><span class="purchase-tier">VPN 订阅 · '.e(isset($product['vpn_category_id'], $categoryNames[(string)$product['vpn_category_id']]) ? $categoryNames[(string)$product['vpn_category_id']] : '未分类').'</span><span class="purchase-badge">'.$badgeFor($index).'</span></div>'
-            .'<h2>'.e($product['name']).'</h2>'
-            .'<p class="purchase-tagline">'.e($tagline).'</p>'
-            .'<div class="purchase-price-row"><strong class="purchase-price">'.money($first['price_cents']).'</strong><small class="purchase-duration">'.((int)$first['duration_days'] > 0 ? '/ '.(int)$first['duration_days'].' 天' : '').'</small></div>'
-            .'<ul class="purchase-benefits">'.$benefitHtml.'</ul>'
-            .'<form class="purchase-form" method="get" action="/order-confirm"><input type="hidden" name="product_id" value="'.(int)$product['id'].'">'.$planInputs
-            .'<button class="purchase-button" type="submit">选择此套餐</button></form>'
-            .'<small class="purchase-card-note">人工确认付款 · 支持售后退款申请</small>'
-            .'</article>';
+        $featured = (int)$product['id'] === $featuredProductId;
+        $plan = $item['plan'];
+        $days = (int)$plan['duration_days'];
+        $priceCents = (int)$plan['price_cents'];
+        $priceInteger = (string)intdiv($priceCents, 100);
+        $priceFraction = str_pad((string)abs($priceCents % 100), 2, '0', STR_PAD_LEFT);
+        $units = array('monthly'=>'/月','quarterly'=>'/季','yearly'=>'/年');
+        $priceUnit = $units[$plan['period']] ?? ($days > 0 ? '/'.$days.'天' : '/按交付说明');
+        $productCategory = isset($product['vpn_category_id'], $categoryNames[(string)$product['vpn_category_id']]) ? $categoryNames[(string)$product['vpn_category_id']] : '未分类';
+        $specs = array(
+            '每30天流量'=>trim((string)$product['traffic']) !== '' ? $product['traffic'] : '按方案说明',
+            '同时设备数'=>(int)$product['device_limit'] > 0 ? (int)$product['device_limit'].' 台' : '按方案说明',
+            '有效期'=>$days > 0 ? $days.' 天' : '按交付说明',
+            '线路地区'=>trim((string)$product['region']) !== '' ? $product['region'] : '按方案说明'
+        );
+        $specHtml = '';
+        foreach ($specs as $label => $value) $specHtml .= '<div><dt>'.e($label).'</dt><dd>'.e($value).'</dd></div>';
+        $cards .= '<article class="ep-card'.($featured ? ' is-featured' : '').'">'
+            .'<div class="ep-card-category">'.home_outline_icon('globe').'<span>'.e($productCategory).'</span>'.($featured ? '<em>精选</em>' : '').'</div>'
+            .'<div class="ep-card-title"><h2 title="'.e($product['name']).'">'.e($product['name']).'</h2><span title="'.e($plan['name']).'">'.e($plan['name']).'</span></div>'
+            .'<p class="ep-caption">'.e(shop_tagline($product['description'], $product['name'])).'</p>'
+            .'<div class="ep-price"><span>¥</span><strong>'.e($priceInteger).'</strong><b>.'.e($priceFraction).'</b><small>'.e($priceUnit).'</small></div>'
+            .'<dl>'.$specHtml.'</dl><a class="ep-button" href="'.e('/products/'.(int)$product['id']).'">查看套餐 ↗</a></article>';
     }
-
-    $periodPills = '';
-    foreach (array('monthly'=>'月付','quarterly'=>'季付','yearly'=>'年付') as $period => $label) {
-        $periodPills .= '<button type="button" class="purchase-period'.($period === $defaultPeriod ? ' is-active' : '').'" data-period="'.$period.'" aria-pressed="'.($period === $defaultPeriod ? 'true' : 'false').'"'.($periodProducts[$period] ? '' : ' disabled').'>'.$label.'</button>';
+    $results = '<p class="ep-results" role="status">共 '.e((string)$total).' 款套餐 · 当前周期：'.e($periodLabels[$activePeriod]).' · '.($search !== '' ? '搜索：'.e($search) : '未限定搜索');
+    if (array_key_exists('q', $_GET)) {
+        $params = $filterParams;
+        unset($params['q']);
+        $results .= ' <a href="'.$filterUrl($params).'">清除搜索</a>';
     }
-    $bestTag = '';
-    if ($bestPlan && (int)$bestPlan['duration_days'] > 0) {
-        $bestTag = '<span class="purchase-save">'.e($bestPlan['name']).'更省 · 每日约 ¥'.number_format(shop_plan_daily($bestPlan) / 100, 2).'</span>';
-    }
-
-    $help = '<section class="purchase-help">'
-        .'<article><span class="purchase-help-icon">'.user_nav_icon('help').'</span><h3>第一次使用？</h3><p>从注册、下单到导入订阅，按步骤完成第一次连接，遇到问题随时提交工单。</p><a href="/articles">查看新手教程　→</a></article>'
-        .'<article><span class="purchase-help-icon">'.user_nav_icon('tickets').'</span><h3>不确定如何选择？</h3><p>告诉我们使用场景与设备数量，我们会协助你挑选更合适的流量与周期组合。</p><a href="/tickets">提交咨询工单　→</a></article>'
-        .'</section>';
-
-    $faq = '<section class="purchase-faq"><div class="purchase-faq-heading"><div><h2>常见问题</h2><p>下单前你可能关心的问题</p></div><a href="/articles">帮助中心　→</a></div><div class="purchase-faq-grid">'
-        .'<details open><summary>付款后多久可以收到订阅？</summary><p>付款确认后进入人工交付流程，具体进度请在订单详情中查看。</p></details>'
-        .'<details><summary>每个套餐支持多少台设备？</summary><p>可使用设备数以所选套餐页面展示的设备限制为准。</p></details>'
-        .'<details><summary>订阅有效期从什么时候开始计算？</summary><p>订阅有效期以正式交付信息为准，请在订单详情中查看。</p></details>'
-        .'<details><summary>遇到使用问题如何联系？</summary><p>请前往售后工单提交问题，我们会根据订单信息协助处理。</p></details>'
+    $results .= '</p>';
+    $allParams = $filterParams;
+    $allParams['period'] = 'all';
+    $empty = '<div class="ep-empty"><h2>暂无符合条件的套餐</h2><p>'.e($categoryName).'：请调整分类、搜索或周期。</p><a href="'.$filterUrl($allParams).'">查看全部周期</a></div>';
+    $purchaseFlow = '<section class="ep-flow" id="purchase-guide"><h2>从选购到交付，每一步都清楚。</h2><ol>'
+        .'<li><span>01</span><h3>选择方案并下单</h3><p>查看套餐详情，选择适合的方案并创建订单。</p></li>'
+        .'<li><span>02</span><h3>完成付款</h3><p>按照订单提示完成付款，等待确认。</p></li>'
+        .'<li><span>03</span><h3>管理员人工交付</h3><p>登录后在订单详情中查看交付内容。</p></li>'
+        .'</ol><div class="ep-flow-bottom"><p>订阅开通时间、有效期与使用信息，以正式交付信息为准。</p><a href="/articles">了解购买流程 ↗</a></div></section>';
+    $faq = '<section class="ep-faq"><h2>购买前，<br>你可能想了解</h2><div>'
+        .'<details><summary>付款后在哪里查看交付内容？</summary><p>付款确认后由管理员人工交付，请登录本人账户，在订单详情中查看交付内容与处理进度。</p></details>'
+        .'<details><summary>每个套餐支持多少台设备？</summary><p>同时在线设备数以商品详情及正式交付说明为准，请按实际设备需求选择方案。</p></details>'
+        .'<details><summary>订阅有效期从什么时候开始计算？</summary><p>方案天数请查看套餐详情，实际开通时间与到期时间以正式交付信息为准。</p></details>'
         .'</div></section>';
-
-    $purchaseFlow = '<section class="purchase-flow" aria-label="购买流程"><h2>购买后，接下来会发生什么？</h2><ol>'
-        .'<li><span>'.user_nav_icon('shop').'</span><div><b><i>01</i> 选择套餐</b><small>选择适合的方案并创建订单。</small></div></li>'
-        .'<li><span>'.user_nav_icon('orders').'</span><div><b><i>02</i> 完成付款</b><small>按订单提示完成付款。</small></div></li>'
-        .'<li><span>'.user_nav_icon('tickets').'</span><div><b><i>03</i> 等待人工交付</b><small>在订单详情查看交付内容与有效期。</small></div></li>'
-        .'</ol></section>';
-
-    $body = '<div class="purchase-wrap">'
-        .'<div class="purchase-crumb"><a href="/">首页</a><span>/</span><strong>VPN订阅</strong></div>'
-        .'<section class="purchase-intro"><div class="purchase-intro-copy"><span class="purchase-kicker">'.user_nav_icon('help').' 灵活选择 · 清晰交付</span><h1>选择适合你的订阅</h1><p>从日常浏览到高频使用，找到适合你的流量与设备方案。</p><div class="purchase-trust"><span>价格清晰</span><span>交付可查</span><span>工单支持</span></div></div><div class="purchase-hero-art" aria-hidden="true"><span class="purchase-cloud purchase-cloud-one"></span><span class="purchase-cloud purchase-cloud-two"></span><span class="purchase-globe">◎</span></div></section>'
-        .'<div class="purchase-bill"><span aria-hidden="true">i</span><div><b>购买与交付说明</b><small>付款确认后由管理员人工交付，订阅有效期以正式交付信息为准。</small></div><a href="/articles">了解购买流程　→</a></div>'
-        .'<section class="purchase-filter-panel" aria-label="套餐筛选"><div class="purchase-category-row"><b>分类：</b>'.$categoryNav.'</div>'
-        .'<div class="purchase-toolbar"><div class="purchase-period-group"><b>订阅周期：</b><div class="purchase-periods" role="group" aria-label="按购买周期筛选">'.$periodPills.'</div></div>'.$bestTag
-        .'<div class="purchase-filters"><select class="purchase-select" data-filter-gb aria-label="按流量筛选"><option value="">流量：全部</option><option value="0-100">100GB 及以下</option><option value="101-300">100GB–300GB</option><option value="301-">300GB 以上</option></select>'
-        .'<select class="purchase-select" data-filter-price aria-label="按价格筛选"><option value="">价格：全部</option><option value="0-10000">¥100 以下</option><option value="10001-30000">¥100–300</option><option value="30001-">¥300 以上</option></select>'
-        .'<button type="button" class="purchase-reset" data-filter-reset>重置</button></div></div></section>'
-        .$categoryIntro
-        .'<div class="purchase-results-heading"><h2>共有 '.(int)$total.' 款套餐</h2><span>精选排序　⌄</span></div>'
-        .'<div class="purchase-grid" id="plans">'.($cards ?: '<div class="purchase-empty"><b>'.e($categoryName).'：暂无可购买的套餐或时长方案</b><span>请切换分类或稍后再来查看最新方案。</span></div>').'</div>'
-        .'<div class="purchase-no-match" role="status" hidden>没有找到匹配的套餐，请调整筛选条件。</div>'
-        .'<p class="purchase-private-note">'.user_nav_icon('account').' 交付内容仅本人登录后可见，可在订单详情中查看。</p>'
-        .$purchaseFlow.$help.$faq
-        .'</div>'
-        .'<script>(function(){'
-        .'var cards=[].slice.call(document.querySelectorAll(".purchase-card"));'
-        .'var pills=[].slice.call(document.querySelectorAll(".purchase-period"));'
-        .'var gbSelect=document.querySelector("[data-filter-gb]");'
-        .'var priceSelect=document.querySelector("[data-filter-price]");'
-        .'var empty=document.querySelector(".purchase-no-match");'
-        .'var query=(new URLSearchParams(location.search).get("q")||"").toLowerCase().trim();'
-        .'var activePill=document.querySelector(".purchase-period.is-active");'
-        .'var period=activePill?activePill.getAttribute("data-period"):"all";'
-        .'function inRange(value,rule){if(!rule)return true;var bounds=rule.split("-");var min=parseInt(bounds[0],10);var max=bounds[1]===""?Infinity:parseInt(bounds[1],10);return value>=min&&value<=max;}'
-        .'function setPrice(card,input){if(!input)return;var price=card.querySelector(".purchase-price"),duration=card.querySelector(".purchase-duration");var cents=parseInt(input.getAttribute("data-price"),10)||0,days=parseInt(input.getAttribute("data-days"),10)||0;if(price)price.textContent="¥"+(cents/100).toFixed(2);if(duration)duration.textContent=days>0?"/ "+days+" 天":"";}'
-        .'function apply(){var gbRule=gbSelect?gbSelect.value:"",priceRule=priceSelect?priceSelect.value:"",shown=0;'
-        .'cards.forEach(function(card){var labels=[].slice.call(card.querySelectorAll(".purchase-plan")),firstVisible=null,anyPlan=false;'
-        .'if(labels.length){labels.forEach(function(label){var match=period==="all"||label.getAttribute("data-period")===period;label.hidden=!match;if(match){anyPlan=true;if(!firstVisible)firstVisible=label;}});}'
-        .'else{var single=card.querySelector("input[name=plan_id]");anyPlan=!single||period==="all"||single.getAttribute("data-period")===period;}'
-        .'var ok=anyPlan&&(!query||(card.getAttribute("data-search")||"").toLowerCase().indexOf(query)!==-1)&&inRange(parseInt(card.getAttribute("data-gb"),10)||0,gbRule)&&inRange(parseInt(card.getAttribute("data-price"),10)||0,priceRule);'
-        .'card.hidden=!ok;if(!ok)return;shown++;'
-        .'if(firstVisible){var radio=firstVisible.querySelector("input");if(radio&&!radio.checked)radio.checked=true;setPrice(card,radio);}else{setPrice(card,card.querySelector("input[name=plan_id]"));}'
-        .'});if(empty)empty.hidden=shown!==0;}'
-        .'pills.forEach(function(pill){pill.addEventListener("click",function(){if(pill.disabled)return;period=pill.getAttribute("data-period");pills.forEach(function(item){var on=item===pill;item.classList.toggle("is-active",on);item.setAttribute("aria-pressed",on?"true":"false");});apply();});});'
-        .'[gbSelect,priceSelect].forEach(function(select){if(select)select.addEventListener("change",apply);});'
-        .'var reset=document.querySelector("[data-filter-reset]");if(reset)reset.addEventListener("click",function(){if(gbSelect)gbSelect.value="";if(priceSelect)priceSelect.value="";apply();});'
-        .'apply();})();</script>';
+    $help = '<section class="ep-help"><div><h2>还需要一点帮助？</h2><p>查看购买与使用说明，或通过工单咨询。</p></div><a href="/articles">帮助中心 ↗</a><a href="/tickets">提交工单 ↗</a></section>';
+    $appName = e($config['app']['name']);
+    $footer = '<footer class="ep-footer"><div><a href="/">'.home_outline_icon('cloud').'<span>'.$appName.'</span></a><p>数字服务，简单一点。</p></div><nav aria-label="页脚导航"><a href="/articles">帮助中心</a><a href="/announcements">系统公告</a></nav><p>© '.e(date('Y')).' '.$appName.' 版权所有</p></footer>';
+    $body = '<div class="ep-page"><div class="ep-crumb"><a href="/">首页</a><span>/</span><span>VPN订阅</span></div>'
+        .'<header class="ep-intro"><div><span class="ep-kicker">SUBSCRIPTION PLANS</span><h1>好的连接，恰到好处。</h1><p>按照流量、设备数量与使用场景，选择适合你的订阅。</p></div><a href="#purchase-guide">购买与交付说明 ↗</a></header>'
+        .'<div class="ep-toolbar">'.$categoryNav.'<div class="ep-tools">'.$periodNav.$sortForm.'</div></div>'
+        .$results.$categoryIntro.'<div class="ep-grid" data-remainder="'.($total % 3).'">'.($cards !== '' ? $cards : $empty).$purchaseFlow.'</div>'
+        .$faq.$help.$footer.'</div>';
     page('套餐商店',$body,$config);
 });
 $router->get('/products/{id}', function($id) use($config,$pdo){
@@ -779,57 +730,60 @@ $router->get('/products/{id}', function($id) use($config,$pdo){
     $choices = '';
     foreach ($plans as $i => $plan) {
         $planDays = (int)$plan['duration_days'];
-        $choices .= '<label class="plan-choice"><input type="radio" name="plan_id" value="'.(int)$plan['id'].'" data-days="'.$planDays.'" data-price="'.(int)$plan['price_cents'].'"'.($i === 0 ? ' checked' : '').' required>'
-            .'<span class="plan-choice-body"><b>'.e($plan['name']).'</b><small>'.($planDays > 0 ? $planDays.' 天有效期' : '长期有效').'</small></span>'
-            .'<strong class="plan-choice-price">'.money($plan['price_cents']).'</strong></label>';
+        $choices .= '<label class="ed-choice"><input type="radio" name="plan_id" value="'.(int)$plan['id'].'" data-days="'.$planDays.'" data-price="'.(int)$plan['price_cents'].'" data-name="'.e($plan['name']).'"'.($i === 0 ? ' checked' : '').' required>'
+            .'<span class="ed-choice-copy"><b>'.e($plan['name']).'</b><small>/ '.($planDays > 0 ? $planDays.'天' : '按交付说明').'</small></span>'
+            .'<strong class="ed-choice-price">'.money($plan['price_cents']).'</strong></label>';
     }
+    $description = trim((string)$p['description']) !== ''
+        ? '<section class="ed-description"><details><summary>商品说明</summary>'.plan_description_html($p['description'], 'ed-description-content').'</details></section>' : '';
+    $firstCents = (int)$first['price_cents'];
+    $priceInteger = intdiv($firstCents, 100);
+    $priceFraction = '.'.str_pad((string)abs($firstCents % 100), 2, '0', STR_PAD_LEFT);
+    $loggedIn = !empty($_SESSION['user_id']);
+    $appName = e($config['app']['name']);
+    $footer = '<footer class="ed-footer"><div><a href="/">'.home_outline_icon('cloud').'<span>'.$appName.'</span></a><p>数字服务，简单一点。</p></div><nav aria-label="页脚导航"><a href="/articles">帮助中心</a><a href="/announcements">系统公告</a></nav><p>© '.e(date('Y')).' '.$appName.' 版权所有</p></footer>';
 
-    $iconChat = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12Z"/></svg>';
-    $iconTicket = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2 2 2 0 0 0 0 6 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2 2 2 0 0 0 0-6Z"/><path d="M12 7v10"/></svg>';
-    $iconShield = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v6c0 4.4 3 7.6 7 9 4-1.4 7-4.6 7-9V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg>';
-    $iconDoc = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5"/></svg>';
-
-    $support = '<section class="plan-support"><h2>还有疑问？随时联系我们</h2><div class="plan-support-grid">'
-        .'<a href="/articles"><span>'.$iconDoc.'</span><b>使用教程</b><small>查看安装与配置说明</small></a>'
-        .'<a href="/tickets"><span>'.$iconTicket.'</span><b>售后工单</b><small>提交问题，人工跟进处理</small></a>'
-        .'<a href="/downloads"><span>'.$iconChat.'</span><b>客户端下载</b><small>获取各平台客户端</small></a>'
-        .'<a href="/feedback"><span>'.$iconShield.'</span><b>反馈建议</b><small>告诉我们你的使用体验</small></a>'
-        .'</div></section>';
-
-    $body = '<div class="plan-detail">'
-        .'<nav class="plan-crumb"><a href="/">首页</a><span>/</span><a href="/products">VPN 订阅</a><span>/</span><strong>'.e($p['name']).'</strong></nav>'
-        .'<header class="plan-detail-head"><h1>'.e($p['name']).'</h1><p>'.e($trafficLabel).' 流量 · '.e($deviceLabel).'设备 · '.e($daysLabel).'有效期，人工确认付款后开始交付。</p></header>'
-        .'<div class="plan-layout"><div class="plan-main">'
-        .'<section class="plan-hero"><span class="plan-hero-kicker">VPN 订阅 · '.e($categoryName).'</span><h2>'.e($tagline).'</h2><p>'.e($region).'线路，人工确认付款后开始交付。</p>'
-        .'<div class="plan-hero-stats"><div><b>'.e($trafficLabel).'</b><span>流量额度</span></div><div><b>'.e($deviceLabel).'</b><span>同时在线设备</span></div><div><b data-plan-days="1">'.e($daysLabel).'</b><span>套餐有效期</span></div></div></section>'
-        .'<section class="plan-panel plan-benefits"><h2>完整权益</h2><div class="plan-benefit-grid">'
-        .'<div><img src="/assets/plan-radio.svg" alt=""><div><b>地区线路</b><p>'.e($region).'</p></div></div>'
-        .'<div><img src="/assets/plan-key.svg" alt=""><div><b>私密交付</b><p>付款确认后，在本人订单中查看交付内容</p></div></div>'
-        .'<div><img src="/assets/plan-devices.svg" alt=""><div><b>多设备使用</b><p>最多 '.e($deviceLabel).'设备同时在线</p></div></div>'
-        .'<div><img src="/assets/plan-refresh.svg" alt=""><div><b>订阅管理</b><p>查看交付、复制地址、下载客户端</p></div></div>'
-        .'</div></section>'
-        .'<section class="plan-panel plan-rules"><h2>周期与使用规则</h2><table><thead><tr><th scope="col">说明项</th><th scope="col">套餐规则</th></tr></thead><tbody><tr><th scope="row">流量额度</th><td>'.e($trafficLabel).'，具体使用规则以商品说明和交付内容为准</td></tr><tr><th scope="row">有效期</th><td data-plan-days="1">'.e($daysLabel).'</td></tr><tr><th scope="row">周期起算</th><td>以实际交付记录中的开通及到期时间为准</td></tr><tr><th scope="row">续费方式</th><td>到期不会自动扣款，需要继续使用时请重新选购</td></tr></tbody></table><h3>商品说明</h3>'.plan_description_html($p['description'], 'plan-desc').'</section>'
-        .'<section class="plan-panel plan-purchase-notes"><h2>购买与使用须知</h2><ul class="plan-notes">'
+    $body = '<div class="ed-page">'
+        .'<nav class="ed-crumb" aria-label="面包屑"><a href="/">首页</a><span>/</span><a href="/products">VPN订阅</a><span>/</span><span>'.e($p['name']).'</span></nav>'
+        .'<div class="ed-layout"><div class="ed-main">'
+        .'<header class="ed-hero"><span class="ed-kicker">VPN SUBSCRIPTION · '.e($categoryName).'</span>'
+        .'<div class="ed-title"><h1>'.e($p['name']).'</h1><span data-ed-plan-name>'.e($first['name']).'</span></div>'
+        .'<p class="ed-tagline">'.e($tagline).'</p><p class="ed-intro">按流量与设备需求选购，购买前请确认套餐规格与使用说明。</p>'
+        .'<div class="ed-stats"><div><strong>'.e($trafficLabel).'</strong><span>每30天流量</span></div><div><strong>'.e($deviceLabel).'</strong><span>同时使用设备</span></div><div><strong data-ed-days>'.e($daysLabel).'</strong><span>订阅时长</span></div></div>'
+        .'<p class="ed-stat-note">以上为套餐额度与设备限制。</p></header>'
+        .'<nav class="ed-tabs" aria-label="套餐内容"><a href="#ed-specs" aria-current="location">套餐详情</a><a href="#ed-notes">购买须知</a><a href="#ed-faq">常见问题</a></nav>'
+        .'<section class="ed-specs" id="ed-specs"><h2>套餐规格</h2><div class="ed-table-wrap"><table><tbody>'
+        .'<tr><th scope="row">套餐类型</th><td>VPN订阅</td></tr><tr><th scope="row">线路范围</th><td>'.e($region).'</td></tr>'
+        .'<tr><th scope="row">流量额度</th><td>每30天 '.e($trafficLabel).'</td></tr><tr><th scope="row">设备限制</th><td>'.($devices > 0 ? e($deviceLabel).'设备同时使用' : '按方案说明').'</td></tr>'
+        .'<tr><th scope="row">交付方式</th><td>管理员人工交付</td></tr><tr><th scope="row">有效期</th><td>以正式交付的开通与到期时间为准。</td></tr>'
+        .'</tbody></table></div></section>'.$description
+        .'<section class="ed-delivery" id="ed-notes"><h2>使用与交付说明</h2><ol>'
+        .'<li><span>01</span><h3>下单并付款</h3><p>付款确认后，订单进入待发货状态。</p></li>'
+        .'<li><span>02</span><h3>等待人工交付</h3><p>交付后，可在本人订单中查看订阅链接与交付信息。</p></li>'
+        .'<li><span>03</span><h3>按教程配置</h3><p>在客户端中按使用指南完成配置。</p></li></ol>'
+        .'<p class="ed-delivery-note">仅订单支持临时订阅时才可获取临时订阅；正式交付后，请使用正式交付信息。</p>'
+        .'<details class="ed-purchase-notes"><summary>购买与使用须知</summary><ul>'
         .'<li>付款由人工确认，确认成功后按订单顺序交付。</li>'
         .'<li>VPN 正式订阅地址、使用说明、开通及到期时间可能发送至您的登录邮箱，也可登录本人订单查看；请妥善保管，勿转发。</li>'
-        .'<li>账号商品的账号密码仍须登录订单查看，不通过邮件直发。已发送或在途邮件无法撤回，交付更新以订单详情为准。</li>'
+        .'<li>已发送或在途邮件无法撤回，交付更新以订单详情为准。</li>'
         .'<li>到期后不会自动续费，需要继续使用时请重新下单。</li>'
         .'<li>如需更换设备、线路或处理使用问题，请提交售后工单。</li>'
-        .'</ul></section>'
-        .$support
-        .'</div><aside class="plan-aside">'
-        .'<form class="plan-buy" id="plan-purchase-form" method="get" action="/order-confirm">'
-        .'<input type="hidden" name="product_id" value="'.(int)$p['id'].'">'
-        .'<h2>配置你的套餐</h2><span class="plan-buy-label">套餐时长</span>'
-        .'<div class="plan-choices">'.$choices.'</div>'
-        .'<div class="plan-buy-rows"><div><span>有效期</span><b data-plan-days="1">'.e($daysLabel).'</b></div><div><span>流量额度</span><b>'.e($trafficLabel).'</b></div><div><span>设备数量</span><b>'.e($deviceLabel).'</b></div></div>'
-        .'<div class="plan-buy-total"><span>应付金额</span><strong data-plan-price="1">'.money($first['price_cents']).'</strong></div>'
-        .'<button class="plan-buy-button" type="submit">确认所选方案<span aria-hidden="true">→</span></button>'
-        .'<small class="plan-buy-note">提交后进入确认订单页，可选择余额或在线支付。</small>'
-        .'</form>'
-        .'<section class="plan-aside-help"><span class="plan-aside-help-icon">'.$iconChat.'</span><div><b>需要帮助？</b><small>查看使用教程，或提交售后工单由人工处理。</small><a href="/tickets">联系支持 →</a></div></section>'
-        .'</aside></div><div class="purchase-mobile-action"><div><strong data-plan-price="1">'.money($first['price_cents']).'</strong><small>所选方案 · 每单一份</small></div><button type="submit" form="plan-purchase-form"><img src="/assets/purchase-arrow.svg" alt="">确认方案</button></div></div>'
-        .'<script>(function(){var form=document.querySelector(".plan-buy");if(!form)return;var radios=form.querySelectorAll("input[name=plan_id]"),daysEl=document.querySelectorAll(".plan-detail [data-plan-days]"),priceEl=document.querySelectorAll(".plan-detail [data-plan-price]");function fmt(c){return "¥"+(c/100).toFixed(2);}radios.forEach(function(radio){radio.addEventListener("change",function(){if(!radio.checked)return;var d=parseInt(radio.dataset.days,10)||0;daysEl.forEach(function(el){el.textContent=d>0?d+" 天":"长期有效"});priceEl.forEach(function(el){el.textContent=fmt(parseInt(radio.dataset.price,10)||0)});});});})();</script>';
+        .'</ul></details></section></div><aside class="ed-aside">'
+        .'<form class="ed-buy" id="ed-purchase-form" method="get" action="/order-confirm"><input type="hidden" name="product_id" value="'.(int)$p['id'].'">'
+        .'<h2>选择购买方案</h2><div class="ed-choices">'.$choices.'</div>'
+        .'<div class="ed-total"><span>金额</span><div class="ed-money"><span>¥</span><strong data-ed-price-integer>'.$priceInteger.'</strong><b data-ed-price-fraction>'.$priceFraction.'</b></div></div>'
+        .'<p class="ed-selected">方案 <span data-ed-selected-name>'.e($first['name']).'</span> · 数量1件</p>'
+        .'<p class="ed-quantity-note">每笔订单购买1件，可分开下单购买多个订阅。</p>'
+        .'<button class="ed-buy-button" type="submit">'.($loggedIn ? '确认方案，继续下单 ↗' : '登录后购买 ↗').'</button>'
+        .'<p class="ed-login-note">'.($loggedIn ? '已登录，核对方案后进入确认订单页。' : '已有账号？请先登录后下单。').'</p>'
+        .'<div class="ed-pay-notes"><ul><li>支持渠道以订单实际可用为准。</li><li>付款确认后人工交付。</li></ul><p>余额不足请选择可用在线渠道。</p><a href="/tickets">购买前咨询 ↗</a></div></form>'
+        .'<section class="ed-aside-help"><h2>需要帮助选择？</h2><a href="/articles">查看使用教程 ↗</a><a href="/tickets">提交咨询工单 ↗</a></section></aside></div>'
+        .'<section class="ed-faq" id="ed-faq"><h2>购买前，<br>你可能想了解</h2><div>'
+        .'<details open><summary>订阅时长从什么时候起算？</summary><p>以正式交付记录中的开通与到期时间为准，请在交付后核对本人订单。</p></details>'
+        .'<details><summary>在哪里查看订阅链接？</summary><p>正式交付后，请登录本人订单查看订阅链接与使用说明；相关信息也可能发送至您的登录邮箱。</p></details>'
+        .'<details><summary>如何申请售后或退款？</summary><p>请通过本人订单中的可用入口或提交工单申请，具体处理以订单情况与售后规则为准，不承诺无条件退款。</p></details>'
+        .'</div></section><a class="ed-back" href="/products">返回全部套餐</a>'.$footer.'</div>'
+        .'<script>(function(){var root=document.querySelector(".ed-page");if(!root)return;var form=root.querySelector("#ed-purchase-form");if(!form)return;function setText(selector,value){root.querySelectorAll(selector).forEach(function(el){el.textContent=value;});}function sync(){var radio=form.querySelector("input[name=plan_id]:checked");if(!radio)return;var days=Number(radio.dataset.days),cents=Number(radio.dataset.price);if(!Number.isSafeInteger(cents))return;setText("[data-ed-days]",days>0?days+" 天":"长期有效");setText("[data-ed-plan-name]",radio.dataset.name);setText("[data-ed-selected-name]",radio.dataset.name);setText("[data-ed-price-integer]",(cents<0?"-":"")+Math.floor(Math.abs(cents)/100));setText("[data-ed-price-fraction]","."+String(Math.abs(cents)%100).padStart(2,"0"));}form.addEventListener("change",function(event){if(event.target.matches("input[type=radio][name=plan_id]"))sync();});sync();var tabs=root.querySelectorAll(".ed-tabs a");tabs.forEach(function(tab){tab.addEventListener("click",function(){tabs.forEach(function(link){link.removeAttribute("aria-current");});tab.setAttribute("aria-current","location");});});})();</script>';
 
     page($p['name'], $body, $config);
 });
@@ -857,14 +811,79 @@ $router->get('/orders/{no}/payment-result', function($no) use($config,$pdo){
     if(!$o){http_response_code(404);return page('订单不存在','<div class="empty">订单不存在或无权查看。</div>',$config);}
     return redirect('/orders/'.rawurlencode($no));
 });
-$router->get('/orders', function() use($config,$pdo){$uid=Security::requireUser();$type=isset($_GET['product_type'])?$_GET['product_type']:'';$typeWhere='';$args=array($uid);if(in_array($type,array('vpn','account'),true)&&account_catalog_ready($pdo)){$typeWhere=' AND o.product_type_snapshot=?';$args[]=$type;}$s=$pdo->prepare('SELECT o.*,d.expires_at AS delivery_expires_at FROM orders o LEFT JOIN delivery_records d ON d.order_id=o.id AND d.is_current=1 WHERE o.user_id=?'.$typeWhere.' ORDER BY o.id DESC');$s->execute($args);$orders=$s->fetchAll();$total=count($orders);$pendingPayment=0;$pendingDelivery=0;$rows='';foreach($orders as $o){if($o['status']==='pending_payment')$pendingPayment++;if($o['status']==='pending_delivery')$pendingDelivery++;$expires=!empty($o['delivery_expires_at'])?strtotime($o['delivery_expires_at']):false;$countdown='待发货';$countdownClass='order-countdown-pending';$expiryDate='交付后显示';if($expires!==false){$seconds=$expires-time();if($seconds<=0){$countdown='已到期';$countdownClass='order-countdown-expired';}else{$days=(int)ceil($seconds/86400);$countdown='剩余 '.$days.' 天';$countdownClass=$days<=7?'order-countdown-warning':'order-countdown-active';}$expiryDate=date('Y-m-d H:i',$expires);}if(catalog_type($o,true)==='account'&&$expires===false){$countdown=$o['status']==='delivered'?'账号已交付':'未交付';$expiryDate='未设置到期日期';}$rows.='<tr class="order-row" data-order-status="'.e($o['status']).'" data-order-no="'.e(strtolower($o['order_no'])).'"><td data-label="订单号"><a class="orders-number" href="/orders/'.e($o['order_no']).'">'.e($o['order_no']).'</a></td><td data-label="套餐商品"><b class="orders-product">'.e($o['product_name_snapshot']).'</b><small class="table-sub">'.e(order_plan_summary($o)).'</small></td><td class="orders-amount" data-label="订单金额">'.money($o['total_amount_cents']).'</td><td data-label="订单状态"><span class="orders-status orders-status-'.e($o['status']).'">'.e(status_text($o['status'])).'</span></td><td data-label="到期时间"><span class="order-countdown '.$countdownClass.'"><b>'.e($countdown).'</b><small>'.e($expiryDate).'</small></span></td><td class="orders-created" data-label="下单时间">'.e($o['created_at']).'</td><td data-label="操作"><a class="orders-detail-link" href="/orders/'.e($o['order_no']).'">查看详情</a></td></tr>';}$body='<div class="orders-wrap"><header class="orders-hero ux-page-head"><div><h1>我的订单</h1><p>查看订阅与账号商品的购买记录，跟进付款和交付进度。</p></div><a class="ux-outline-button" href="/products">继续选购　↗</a></header><section class="orders-panel"><header class="orders-record-heading"><h2>订单记录</h2><p>'.$total.'<small> 笔订单</small> · 所有付款与交付记录均以实际订单为准</p></header><form class="account-order-type-filter" method="get">'.catalog_type_select($type).'<button class="secondary-button">筛选类型</button></form><div class="orders-toolbar"><div class="orders-filters"><button type="button" class="orders-filter is-active" data-filter="all">全部</button><button type="button" class="orders-filter" data-filter="pending_payment">待付款确认</button><button type="button" class="orders-filter" data-filter="pending_delivery">待发货</button><button type="button" class="orders-filter" data-filter="delivered">已发货</button></div><label class="orders-search"><span>⌕</span><input type="search" id="order-search" aria-label="搜索订单号" placeholder="搜索订单号" autocomplete="off"></label></div><div class="orders-table-wrap"><table class="orders-table"><thead><tr><th>订单号</th><th>套餐</th><th>订单金额</th><th>状态</th><th>到期时间</th><th>创建时间</th><th>操作</th></tr></thead><tbody>'.($rows?:'<tr class="orders-empty-row"><td colspan="7"><div class="orders-empty"><span>▤</span><b>暂无订单</b><small>下单后，订单进度会在这里显示。</small><a href="/products">浏览套餐　→</a></div></td></tr>').'</tbody></table><div class="orders-no-match" role="status" hidden>没有符合条件的订单，请尝试其他状态或清空订单号搜索。</div></div></section></div><script>(function(){var filters=document.querySelectorAll(".orders-filter"),rows=document.querySelectorAll(".order-row"),search=document.getElementById("order-search"),empty=document.querySelector(".orders-no-match"),active="all";function apply(){var query=(search.value||"").toLowerCase().trim(),visible=0;rows.forEach(function(row){var show=(active==="all"||row.dataset.orderStatus===active)&&(!query||row.dataset.orderNo.indexOf(query)!==-1);row.hidden=!show;if(show)visible++});empty.hidden=visible!==0||rows.length===0;var counts={all:0,pending_payment:0,pending_delivery:0};rows.forEach(function(row){if(query&&row.dataset.orderNo.indexOf(query)===-1)return;counts.all++;if(Object.prototype.hasOwnProperty.call(counts,row.dataset.orderStatus))counts[row.dataset.orderStatus]++;});document.querySelectorAll(".orders-stat-card").forEach(function(card){card.querySelector("b").textContent=counts[card.dataset.statFilter]||0;});}function setFilter(value){active=value;filters.forEach(function(button){button.classList.toggle("is-active",button.dataset.filter===value)});apply()}filters.forEach(function(button){button.addEventListener("click",function(){setFilter(button.dataset.filter)})});document.querySelectorAll(".orders-stat-card").forEach(function(card){card.addEventListener("click",function(){setFilter(card.dataset.statFilter)});});search.addEventListener("input",apply);})();</script>';page('我的订单',$body,$config);});
+function account_orders_page($pdo,$uid) {
+    $filters=array('product_type'=>'','status'=>'','q'=>'','sort'=>'newest');
+    $statuses=array('pending_payment'=>'待付款','paid_waiting_group'=>'待成团','pending_delivery'=>'待发货','delivered'=>'已发货','refunding'=>'退款中','cancelled'=>'已取消','refunded'=>'已退款');
+    try {
+        foreach ($filters as $key=>$default) {
+            if (!isset($_GET[$key])) continue;
+            $value=$_GET[$key];
+            if (!is_string($value)||!mb_check_encoding($value,'UTF-8')||mb_strlen($value,'UTF-8')>80) throw new InvalidArgumentException('筛选参数无效。');
+            $filters[$key]=trim($value);
+        }
+        if (!in_array($filters['product_type'],array('','vpn','account'),true)||($filters['status']!==''&&!isset($statuses[$filters['status']]))||!in_array($filters['sort'],array('newest','oldest'),true)) throw new InvalidArgumentException('筛选选项无效。');
+        $requested=isset($_GET['page'])?$_GET['page']:'1';
+        if (!is_string($requested)||!preg_match('/\A[1-9][0-9]{0,8}\z/D',$requested)) throw new InvalidArgumentException('页码无效。');
+    } catch (InvalidArgumentException $ex) {
+        http_response_code(400);
+        return '<div class="mo-page"><section class="mo-empty"><h1>查询参数无效</h1><p>'.e($ex->getMessage()).'</p><a href="/orders">返回我的订单 →</a></section></div>';
+    }
+    $where='o.user_id=?'; $args=array($uid);
+    if ($filters['product_type']!=='') {$where.=' AND o.product_type_snapshot=?';$args[]=$filters['product_type'];}
+    if ($filters['status']!=='') {$where.=' AND o.status=?';$args[]=$filters['status'];}
+    if ($filters['q']!=='') {$where.=" AND o.order_no LIKE ? ESCAPE '!'";$args[]='%'.str_replace(array('!','%','_'),array('!!','!%','!_'),$filters['q']).'%';}
+    $s=$pdo->prepare('SELECT COUNT(*) FROM orders o WHERE '.$where);$s->execute($args);$total=(int)$s->fetchColumn();
+    $perPage=10;$pages=max(1,(int)ceil($total/$perPage));$page=min((int)$requested,$pages);$direction=$filters['sort']==='oldest'?'ASC':'DESC';
+    $s=$pdo->prepare('SELECT o.id,o.order_no,o.product_name_snapshot,o.plan_name_snapshot,o.product_type_snapshot,o.duration_days_snapshot,o.total_amount_cents,o.status,o.created_at,d.opened_at,d.expires_at FROM orders o LEFT JOIN delivery_records d ON d.id=(SELECT latest.id FROM delivery_records latest WHERE latest.order_id=o.id AND latest.is_current=1 ORDER BY latest.id DESC LIMIT 1) WHERE '.$where.' ORDER BY o.created_at '.$direction.',o.id '.$direction.' LIMIT '.$perPage.' OFFSET '.(($page-1)*$perPage));$s->execute($args);$orders=$s->fetchAll();
+    $url=function($changes=array())use($filters){return '/orders?'.http_build_query(array_merge($filters,$changes),'','&',PHP_QUERY_RFC3986);};
+    $hidden=function($exclude)use($filters){$html='';foreach($filters as $key=>$value)if($key!==$exclude&&$value!=='')$html.='<input type="hidden" name="'.$key.'" value="'.e($value).'">';return $html;};
+    $html='<div class="mo-page"><header class="ao-welcome mo-welcome"><div><span class="ao-kicker">MY ORDERS</span><h1>我的订单</h1><p>追踪购买进度，查看交付内容与售后记录。</p></div><a class="ao-button ao-primary" href="/products">继续选购 ↗</a></header><div class="mo-toolbar"><nav class="mo-type-tabs" aria-label="订单商品分类">';
+    foreach(array(''=>'全部商品','vpn'=>'VPN订阅','account'=>'海外账号') as $key=>$label)$html.='<a href="'.e($url(array('product_type'=>$key))).'"'.($filters['product_type']===$key?' aria-current="page"':'').'>'.$label.'</a>';
+    $html.='</nav><form class="mo-search" action="/orders" method="get" role="search">'.$hidden('q').'<label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg><input type="search" name="q" maxlength="80" value="'.e($filters['q']).'" placeholder="搜索订单号…" aria-label="搜索订单号"></label><button type="submit">搜索</button></form></div><nav class="mo-status-tabs" aria-label="订单状态"><a href="'.e($url(array('status'=>''))).'"'.($filters['status']===''?' aria-current="page"':'').'>全部</a>';
+    foreach(array_slice($statuses,0,5,true) as $key=>$label)$html.='<a href="'.e($url(array('status'=>$key))).'"'.($filters['status']===$key?' aria-current="page"':'').'>'.$label.'</a>';
+    $html.='<details class="mo-more"'.(in_array($filters['status'],array('cancelled','refunded'),true)?' open':'').'><summary>更多 <span aria-hidden="true">⌄</span></summary><div>';
+    foreach(array_slice($statuses,5,null,true) as $key=>$label)$html.='<a href="'.e($url(array('status'=>$key))).'"'.($filters['status']===$key?' aria-current="page"':'').'>'.$label.'</a>';
+    $html.='</div></details></nav><div class="mo-results-bar"><p>共 <strong>'.$total.'</strong> 笔订单'.($filters['q']!==''?' · 订单号包含「'.e($filters['q']).'」':'').'</p><form class="mo-sort" action="/orders" method="get">'.$hidden('sort').'<select name="sort" aria-label="订单创建时间排序"><option value="newest"'.($filters['sort']==='newest'?' selected':'').'>创建时间：最新</option><option value="oldest"'.($filters['sort']==='oldest'?' selected':'').'>创建时间：最早</option></select><button type="submit">应用</button></form></div><section class="mo-list" aria-label="订单列表">';
+    foreach($orders as $o) {
+        $isAccount=$o['product_type_snapshot']==='account';$path='/orders/'.rawurlencode($o['order_no']);
+        $info='';$action='查看进度';$actionPath=$path;
+        switch($o['status']) {
+            case 'pending_payment':$action='去付款';$info='付款确认后进入后续流程。';break;
+            case 'paid_waiting_group':$action='查看成团进度';$info='正在等待成团，成团后进入人工交付流程。';break;
+            case 'pending_delivery':$info='管理员人工交付中，请进入详情查看进度。';break;
+            case 'delivered':
+                $action='查看交付';$actionPath.='#order-delivery';
+                $info=$isAccount?'账号交付内容仅本人可见。':'开通 '.($o['opened_at']?substr($o['opened_at'],0,10):'未设置').' · 到期 '.($o['expires_at']?substr($o['expires_at'],0,10):'未设置');
+                if(!$isAccount&&!empty($o['expires_at'])&&strtotime($o['expires_at'])!==false)$info.=(strtotime($o['expires_at'])<=time()?' · 已到期':' · 有效期内');
+                break;
+            case 'refunding':$info='退款申请已提交，等待管理员审核处理。';break;
+            case 'cancelled':$info='订单已取消。';break;
+            case 'refunded':$info='订单已退款，明细以实际处理记录为准。';break;
+        }
+        $html.='<article class="mo-order"><div class="mo-order-content"><header class="mo-order-meta"><p>订单号 <a href="'.e($path).'">'.e($o['order_no']).'</a><span> · 创建于 '.e(substr($o['created_at'],0,16)).'</span></p><span class="mo-order-state'.($o['status']==='pending_payment'?' mo-unpaid':'').'">'.e(status_text($o['status'])).'</span></header><div class="mo-order-summary"><div class="mo-product"><h2><a href="'.e($path).'">'.e($o['product_name_snapshot']).'</a>'.(!$isAccount?'<small>'.e($o['plan_name_snapshot']).'</small>':'').'</h2><p>'.($isAccount?'海外账号':'VPN订阅').' · '.e($o['plan_name_snapshot']).' · 数量 1 件</p></div><p class="mo-order-amount">'.e(money($o['total_amount_cents'])).'</p><p class="mo-order-info">'.e($info).'</p></div></div><nav class="mo-order-actions" aria-label="订单 '.e($o['order_no']).' 的操作"><a class="ao-button ao-primary" href="'.e($actionPath).'">'.$action.' ↗</a><a class="ao-button" href="'.e($path).'">查看详情</a></nav></article>';
+    }
+    if(!$orders)$html.='<div class="mo-empty"><h2>'.($filters['q']!==''||$filters['status']!==''||$filters['product_type']!==''?'暂无匹配订单':'暂无订单').'</h2><p>请尝试其他筛选条件，或选购商品后在这里跟进订单。</p><a href="/orders">清除筛选 →</a><a href="/products">浏览订阅 ↗</a><a href="/accounts">选购海外账号 ↗</a></div>';
+    $html.='</section><footer class="mo-list-footer"><p>需要订单帮助？ <a href="/tickets#new-ticket">提交关联订单工单 ↗</a><a href="/articles">查看购买与交付说明 ↗</a></p><nav class="mo-pagination" aria-label="订单分页"><span>共 '.$total.' 笔</span>';
+    $html.=($page>1?'<a href="'.e($url(array('page'=>$page-1))).'">‹ 上一页</a>':'<span aria-disabled="true">‹ 上一页</span>').'<b aria-current="page">'.$page.' / '.$pages.'</b>'.($page<$pages?'<a href="'.e($url(array('page'=>$page+1))).'">下一页 ›</a>':'<span aria-disabled="true">下一页 ›</span>');
+    return $html.'</nav></footer></div>';
+}
+$router->get('/orders', function() use($config,$pdo){$uid=Security::requireUser();page('我的订单',account_orders_page($pdo,$uid),$config);});
 function order_detail_secret($id,$label,$value,$multiline=false) {
     $tag=$multiline?'div':'code';
-    return '<div class="order-secret-row"><span class="order-secret-label" id="'.e($id).'-label">'.e($label).'</span><span class="order-secret-mask" aria-hidden="true">•••• •••• ••••</span><'.$tag.' class="order-secret-value" id="'.e($id).'" aria-labelledby="'.e($id).'-label">'.e($value).'</'.$tag.'><div class="order-secret-controls"><button type="button" data-detail-reveal="'.e($id).'" aria-controls="'.e($id).'" aria-pressed="true">隐藏</button><button type="button" data-detail-copy="'.e($id).'" aria-controls="'.e($id).'">复制</button><span class="order-secret-feedback" role="status" aria-live="polite"></span></div></div>';
+    return '<div class="order-secret-row'.($id==='subscription-link'?' order-secret-subscription':'').'"><span class="order-secret-label" id="'.e($id).'-label">'.e($label).'</span><span class="order-secret-mask" aria-hidden="true">•••• •••• •••• •••• ••••</span><'.$tag.' class="order-secret-value" id="'.e($id).'" aria-labelledby="'.e($id).'-label" hidden>'.e($value).'</'.$tag.'><div class="order-secret-controls"><button type="button" data-detail-reveal="'.e($id).'" aria-controls="'.e($id).'" aria-pressed="false">显示</button><button type="button" data-detail-copy="'.e($id).'" aria-controls="'.e($id).'">'.($id==='subscription-link'?'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 5V3H3v13h2"/></svg>复制订阅链接':'复制').'</button><span class="order-secret-feedback" role="status" aria-live="polite"></span></div></div>';
+}
+function order_detail_subscription($url,$config) {
+    $urls=SubBoostClient::clientUrls($url,$config);
+    if(!isset($urls['auto']))return order_detail_secret('subscription-link','正式订阅链接',$url).'<p>本链接不支持多客户端切换，已保留原交付链接。</p>';
+    $labels=array('auto'=>'自动适配客户端','mihomo'=>'Mihomo','clash'=>'Clash（经典版）','sing-box'=>'sing-box（1.13+，含 ECH）','v2ray'=>'V2Ray（节点订阅）','surge'=>'Surge','surfboard'=>'Surfboard','quantumult-x'=>'Quantumult X（节点订阅）','uri'=>'URI（明文节点）','base64'=>'Base64（节点订阅）','legacy'=>'旧链接（保持原配置）');
+    // 链接只写入转义后的选项属性，浏览器切换不请求外部服务。
+    $html='<div class="order-client-choice"><label for="subscription-client">订阅客户端</label><select id="subscription-client" data-detail-client="subscription-link" aria-controls="subscription-link" aria-describedby="subscription-client-help">';
+    foreach($urls as $format=>$link)$html.='<option value="'.e($format).'" data-url="'.e($link).'"'.($format==='auto'?' selected':'').'>'.e($labels[$format]).'</option>';
+    return order_detail_secret('subscription-link','正式订阅链接',$urls['auto']).'<details class="order-client-settings"><summary>切换客户端格式（高级）</summary>'.$html.'</select></div><p id="subscription-client-help">默认自动适配由订阅服务端按客户端 User-Agent 识别，无法识别时返回 Mihomo；商城不会按浏览器猜测。Mihomo 和旧链接保留原配置，其他格式仅兼容节点与基础配置，不完整迁移分流规则或 DNS；节点订阅格式仅含节点。</p></details>';
 }
 function order_detail_script() {
     return <<<'HTML'
-<script>(function(){var root=document.querySelector('.order-reference-page');if(!root)return;function reveal(id,show){var value=document.getElementById(id),button=root.querySelector('[data-detail-reveal="'+id+'"]');if(!value||!root.contains(value)||!button)return;value.hidden=!show;button.setAttribute('aria-pressed',show?'true':'false');button.textContent=show?'隐藏':'显示';value.closest('.order-secret-row').classList.toggle('is-revealed',show);}root.querySelectorAll('[data-detail-reveal]').forEach(function(button){button.addEventListener('click',function(){reveal(button.dataset.detailReveal,button.getAttribute('aria-pressed')!=='true');});reveal(button.dataset.detailReveal,false);});root.querySelectorAll('[data-detail-copy]').forEach(function(button){button.addEventListener('click',function(){var id=button.dataset.detailCopy,value=document.getElementById(id),feedback=button.closest('.order-secret-row').querySelector('.order-secret-feedback');if(!value||!root.contains(value))return;function manual(){reveal(id,true);feedback.textContent='复制未完成，请选中原文手动复制。';}if(!navigator.clipboard||!navigator.clipboard.writeText){manual();return;}try{navigator.clipboard.writeText(value.textContent).then(function(){feedback.textContent='已复制，请妥善保管。';}).catch(manual);}catch(error){manual();}});});root.classList.add('order-secrets-ready');})();</script>
+<script>(function(){var root=document.querySelector('.order-reference-page');if(!root)return;function reveal(id,show){var value=document.getElementById(id),button=root.querySelector('[data-detail-reveal="'+id+'"]');if(!value||!root.contains(value)||!button)return;value.hidden=!show;button.setAttribute('aria-pressed',show?'true':'false');button.textContent=show?'隐藏':'显示';value.closest('.order-secret-row').classList.toggle('is-revealed',show);}root.querySelectorAll('[data-detail-reveal]').forEach(function(button){button.addEventListener('click',function(){reveal(button.dataset.detailReveal,button.getAttribute('aria-pressed')!=='true');});reveal(button.dataset.detailReveal,false);});root.querySelectorAll('[data-detail-copy]').forEach(function(button){button.addEventListener('click',function(){var id=button.dataset.detailCopy,value=document.getElementById(id),feedback=button.closest('.order-secret-row').querySelector('.order-secret-feedback');if(!value||!root.contains(value))return;function manual(){reveal(id,true);feedback.textContent='复制未完成，请选中原文手动复制。';}if(!navigator.clipboard||!navigator.clipboard.writeText){manual();return;}try{navigator.clipboard.writeText(value.textContent).then(function(){feedback.textContent='已复制，请妥善保管。';}).catch(manual);}catch(error){manual();}});});root.querySelectorAll('[data-detail-client]').forEach(function(select){select.addEventListener('change',function(){var value=document.getElementById(select.dataset.detailClient),option=select.options[select.selectedIndex];if(!value||!root.contains(value)||!option||!option.hasAttribute('data-url'))return;value.textContent=option.dataset.url;value.closest('.order-secret-row').querySelector('.order-secret-feedback').textContent='当前选择：'+option.textContent+'。链接已更新，请复制当前链接。';});});root.classList.add('order-secrets-ready');})();</script>
 HTML;
 }
 $router->get('/orders/{no}', function($no) use($config,$pdo){$uid=Security::requireUser();$service=new OrderService($pdo);$o=$service->getForUser($no,$uid);if(!$o)return page('订单不存在','<div class="empty">订单不存在或无权查看。</div>',$config);$isAccount=catalog_type($o,true)==='account';
@@ -885,10 +904,10 @@ $router->get('/orders/{no}', function($no) use($config,$pdo){$uid=Security::requ
         if($d){
             $c=new CryptoService($config);$x=json_decode($c->decrypt($d['content_ciphertext'],$d['content_nonce'],$d['content_tag']),true);
             if($isAccount){$delivery=order_detail_secret('order-account-content','完整账号交付内容',isset($x['account'])?$x['account']:'',true);}
-            else{$delivery=order_detail_secret('subscription-link','正式订阅链接',isset($x['subscription'])?$x['subscription']:'');if(!empty($x['account']))$delivery.=order_detail_secret('order-vpn-account','账号信息',$x['account'],true);}
+            else{$delivery=order_detail_subscription(isset($x['subscription'])?$x['subscription']:'',$config);if(!empty($x['account']))$delivery.='<details class="od-extra-account"><summary>查看附加账号信息</summary>'.order_detail_secret('order-vpn-account','账号信息',$x['account'],true).'</details>';}
             foreach(array('opened_at'=>'开通时间','expires_at'=>'到期时间') as $key=>$label)if(!empty($x[$key]))$deliveryDates.='<div><dt>'.$label.'</dt><dd>'.e($x[$key]).'</dd></div>';
             if(!empty($x['instructions']))$instructions='<div class="order-reference-note"><h3>使用说明</h3><p>'.nl2br(e($x['instructions'])).'</p></div>';
-            $delivery='<section class="order-reference-card order-reference-delivery" id="order-delivery"><header class="order-reference-card-heading"><h2>'.($isAccount?'账号信息':'正式订阅信息').'</h2><span class="delivery-safe">仅本人可见</span></header>'.$delivery.(!$isAccount&&$deliveryDates?'<dl class="order-reference-facts">'.$deliveryDates.'</dl>':'').$instructions.'</section>';
+            $delivery='<section class="order-reference-card order-reference-delivery" id="order-delivery"><header class="order-reference-card-heading"><h2>'.($isAccount?'账号信息':'正式订阅链接').'</h2><span class="delivery-safe">仅本人可见</span></header>'.$delivery.(!$isAccount?'<p class="od-secret-note">ⓘ 订阅链接仅本人可见，请勿分享给他人。</p>':'').$instructions.(!$isAccount?'<div class="order-reference-usage">'.($instructions===''?'<h3>使用说明</h3><p>下载对应客户端后，粘贴订阅链接并按教程完成导入。</p>':'').'<nav aria-label="订阅使用帮助"><a href="/downloads">下载客户端 ↗</a><a href="/articles?q='.rawurlencode('订阅导入').'">查看导入教程 ↗</a></nav></div>':'').'</section>';
         }
     }
     $paymentBox='';if($o['status']==='pending_payment'){$ps=(new PaymentService($pdo,$config))->settings();$paymentBox='<section class="order-payment-panel"><div class="order-payment-heading"><div><span class="order-section-label">SECURE CHECKOUT</span><h2>选择支付方式</h2><p>应付金额将以订单实际支付记录为准。</p></div><strong>'.e(money($o['total_amount_cents'])).'</strong></div>';if(!empty($ps['enabled'])){$paymentBox.='<div class="payment-methods">'.(!empty($ps['alipay_enabled'])?'<article class="payment-method-card payment-method-alipay"><span class="payment-method-icon">支</span><div class="payment-method-copy"><b>支付宝支付</b><small>安全快捷，支付成功后自动确认</small></div><form method="post" action="/payment/start/'.e($no).'/alipay">'.csrf_field().'<button class="button" type="submit">立即支付</button></form></article>' : '').(!empty($ps['wechat_enabled'])?'<article class="payment-method-card payment-method-wechat"><span class="payment-method-icon">微</span><div class="payment-method-copy"><b>微信支付</b><small>使用微信完成订单付款</small></div><form method="post" action="/payment/start/'.e($no).'/wxpay">'.csrf_field().'<button class="secondary-button" type="submit">立即支付</button></form></article>':'').'</div>'; } $balance=(new WalletService($pdo))->balance($uid);$canPay=empty($o['payment_started_at'])&&$balance>=(int)$o['total_amount_cents'];$paymentBox.='<div class="payment-method-divider"><span>或使用消费余额</span></div><article class="payment-method-card payment-method-balance"><span class="payment-method-icon">¥</span><div class="payment-method-copy"><b>消费余额</b><small>当前可用 ¥'.e(WalletService::formatAmount($balance)).' · '.(!empty($o['payment_started_at'])?'已发起在线支付，请继续原渠道付款。':($canPay?'余额足够，可全额支付。':'余额不足，请选择其他支付方式。')).'</small></div><form method="post" action="/orders/'.e($no).'/balance-pay">'.csrf_field().'<button class="button" type="submit"'.($canPay?'':' disabled').'>余额支付 '.e(money($o['total_amount_cents'])).'</button></form></article><a class="payment-balance-link" href="/wallet">查看余额明细与流水 →</a><p class="payment-security-note">支付完成后，系统会自动更新订单状态；请勿重复提交不同支付方式。</p></section>';}
@@ -926,46 +945,154 @@ $router->get('/orders/{no}', function($no) use($config,$pdo){$uid=Security::requ
     if(!$isAccount)$facts.='<div><dt>订阅周期</dt><dd>'.(int)$o['duration_days_snapshot'].' 天</dd></div>';
     if(!empty($o['paid_at']))$facts.='<div><dt>付款确认时间</dt><dd>'.e($o['paid_at']).'</dd></div>';
     $support='<footer class="order-reference-support"><p>交付信息仅本人可见，请勿公开分享账号或订阅地址。 <a href="/tickets?order_id='.(int)$o['id'].'#new-ticket">提交售后工单</a></p></footer>';
-    page('订单详情','<div class="order-detail-page order-reference-page order-reference-'.e($o['status']).($isAccount?' order-reference-account':'').'"><header class="order-reference-heading"><nav aria-label="面包屑"><a href="/orders">我的订单</a><span aria-hidden="true"> / </span><span>订单详情</span></nav><h1>订单详情</h1></header><section class="order-reference-summary"><div class="order-reference-summary-top"><div class="order-reference-product"><span class="order-reference-icon" aria-hidden="true">'.($isAccount?user_nav_icon('account'):'VPN').'</span><div><h2>'.e($o['product_name_snapshot']).'<small>'.e($o['plan_name_snapshot']).'</small></h2><dl class="order-reference-facts">'.$facts.'</dl></div></div><div class="order-reference-status"><span class="order-status-badge order-status-'.e($o['status']).'"><i></i>'.e($statusLabel).'</span>'.($deliveryLabel!==''?'<span class="order-reference-delivery-label">'.e($deliveryLabel).'</span>':'').'<p>'.e($description).'</p></div></div><div class="order-reference-timeline">'.$events.'</div></section><div class="order-reference-content'.($wide?' order-reference-wide':'').'"><div class="order-reference-primary">'.$primary.'</div>'.($wide?'':'<aside class="order-reference-aside">'.$aside.'</aside>').'</div>'.$support.order_detail_script().'</div>',$config);
+    if(!$isAccount&&$o['status']==='delivered'){
+        $moreFacts='<dl class="order-reference-facts">'.$facts.'</dl>';
+        $body='<div class="order-detail-page order-reference-page od-delivered"><header class="order-reference-heading"><nav aria-label="面包屑"><a href="/orders">我的订单</a><span aria-hidden="true"> / </span><span>订阅交付</span></nav><div><h1>订阅交付</h1><a class="ao-button" href="/orders">← 返回我的订单 ↗</a></div></header><section class="od-delivery-card"><header class="od-product"><div><h2>'.e($o['product_name_snapshot']).'</h2><span class="od-plan">'.e($o['plan_name_snapshot']).'</span><span class="od-status">已交付</span></div><p>订单编号 <span>'.e($o['order_no']).'</span></p>'.($deliveryDates?'<dl class="od-dates">'.$deliveryDates.'</dl>':'').'</header>'.($delivery?:'<section class="order-reference-card" id="order-delivery"><h2>交付记录待核对</h2><p>未找到当前交付内容，请联系支持核对。</p></section>').'</section>'.($delivery&&($o['temporary_subscription_status']??'')==='revoked'?'<p class="od-revoked">正式订阅已交付，临时订阅已撤销。</p>':'').'<details class="od-order-records"><summary>订单信息与交付记录</summary>'.$moreFacts.'<div class="order-reference-timeline">'.$events.'</div>'.$history.'</details>'.$support.order_detail_script().'</div>';
+        return page('订阅交付',$body,$config);
+    }
+    page('订单详情','<div class="order-detail-page order-reference-page order-reference-'.e($o['status']).($isAccount?' order-reference-account':'').'"><header class="order-reference-heading"><nav aria-label="面包屑"><a href="/orders">我的订单</a><span aria-hidden="true"> / </span><span>订单详情</span></nav><div><h1>订单详情</h1><a class="ao-button" href="/orders">← 返回我的订单 ↗</a></div></header><section class="order-reference-summary"><div class="order-reference-summary-top"><div class="order-reference-product"><span class="order-reference-icon" aria-hidden="true">'.($isAccount?user_nav_icon('account'):'VPN').'</span><div><h2>'.e($o['product_name_snapshot']).'<small>'.e($o['plan_name_snapshot']).'</small></h2><dl class="order-reference-facts">'.$facts.'</dl></div></div><div class="order-reference-status"><span class="order-status-badge order-status-'.e($o['status']).'"><i></i>'.e($statusLabel).'</span>'.($deliveryLabel!==''?'<span class="order-reference-delivery-label">'.e($deliveryLabel).'</span>':'').'<p>'.e($description).'</p></div></div><div class="order-reference-timeline">'.$events.'</div></section><div class="order-reference-content'.($wide?' order-reference-wide':'').'"><div class="order-reference-primary">'.$primary.'</div>'.($wide?'':'<aside class="order-reference-aside">'.$aside.'</aside>').'</div>'.$support.order_detail_script().'</div>',$config);
 });
+function account_subscriptions_page($items,$now) {
+    $filters=array('status'=>'','q'=>'','sort'=>'expiry_desc');
+    try {
+        foreach($filters as $key=>$default) {
+            if(!isset($_GET[$key]))continue;
+            $value=$_GET[$key];
+            if(!is_string($value)||!mb_check_encoding($value,'UTF-8')||mb_strlen($value,'UTF-8')>100)throw new InvalidArgumentException('筛选参数无效。');
+            $filters[$key]=trim($value);
+        }
+        if(!in_array($filters['status'],array('','active','soon','expired','unknown'),true)||!in_array($filters['sort'],array('expiry_desc','expiry_asc'),true))throw new InvalidArgumentException('筛选选项无效。');
+        $requested=isset($_GET['page'])?$_GET['page']:'1';
+        if(!is_string($requested)||!preg_match('/\A[1-9][0-9]{0,8}\z/D',$requested))throw new InvalidArgumentException('页码无效。');
+    } catch(InvalidArgumentException $ex) {
+        http_response_code(400);
+        return '<div class="ms-page"><section class="ms-empty"><h1>查询参数无效</h1><p>'.e($ex->getMessage()).'</p><a href="/account/subscriptions">返回我的订阅 →</a></section></div>';
+    }
+    $counts=array(''=>0,'active'=>0,'soon'=>0,'expired'=>0,'unknown'=>0);$matched=array();$totalActive=0;$totalExpired=0;$totalUnknown=0;
+    foreach($items as $item) {
+        $expiry=!empty($item['expires_at'])?strtotime($item['expires_at']):false;
+        $state=$expiry===false?'unknown':($expiry<=$now?'expired':'active');
+        $soon=$state==='active'&&$expiry-$now<=7*86400;
+        if($state==='active')$totalActive++;elseif($state==='expired')$totalExpired++;else $totalUnknown++;
+        if($filters['q']!==''&&mb_stripos($item['product_name_snapshot'].' '.$item['plan_name_snapshot'].' '.$item['order_no'],$filters['q'],0,'UTF-8')===false)continue;
+        $counts['']++;$counts[$state]++;if($soon)$counts['soon']++;
+        if($filters['status']!==''&&($filters['status']==='soon'?!$soon:$filters['status']!==$state))continue;
+        $item['_expiry']=$expiry;$item['_state']=$state;$item['_soon']=$soon;$matched[]=$item;
+    }
+    usort($matched,function($a,$b)use($filters){if($a['_expiry']===false&&$b['_expiry']!==false)return 1;if($b['_expiry']===false&&$a['_expiry']!==false)return -1;$compare=$a['_expiry']<=>$b['_expiry'];if($compare!==0)return $filters['sort']==='expiry_asc'?$compare:-$compare;return (int)$b['id']<=>(int)$a['id'];});
+    $total=count($matched);$perPage=10;$pages=max(1,(int)ceil($total/$perPage));$page=min((int)$requested,$pages);
+    $url=function($changes=array())use($filters){return '/account/subscriptions?'.http_build_query(array_merge($filters,$changes),'','&',PHP_QUERY_RFC3986);};
+    $html='<div class="ms-page"><header class="ao-welcome ms-welcome"><div><span class="ao-kicker">MY SUBSCRIPTIONS</span><h1>我的订阅</h1><p>集中查看已交付订阅的有效期与交付内容。</p></div><a class="ao-button ao-primary" href="/products">选购新订阅 ↗</a></header><section class="ao-stats ms-stats" aria-label="全部已交付订阅统计">';
+    foreach(array(array('','全部订阅',count($items)),array('active','有效订阅',$totalActive),array('expired','已到期',$totalExpired)) as $stat)$html.='<a href="'.e($url(array('status'=>$stat[0],'q'=>''))).'"><span>'.$stat[1].'</span><strong>'.$stat[2].'</strong></a>';
+    $html.='</section><div class="ms-toolbar"><nav class="ms-tabs" aria-label="订阅状态">';
+    $tabs=array(''=>'全部','active'=>'有效','soon'=>'即将到期','expired'=>'已到期');if($totalUnknown>0||$filters['status']==='unknown')$tabs['unknown']='期限未设置';
+    foreach($tabs as $key=>$label)$html.='<a href="'.e($url(array('status'=>$key))).'"'.($filters['status']===$key?' aria-current="page"':'').'>'.$label.'<span>('.$counts[$key].')</span></a>';
+    $html.='</nav><form class="ms-search" method="get" action="/account/subscriptions" role="search"><input type="hidden" name="status" value="'.e($filters['status']).'"><label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg><input type="search" name="q" value="'.e($filters['q']).'" maxlength="100" aria-label="搜索套餐或订单号" placeholder="搜索套餐或订单号…"></label><select name="sort" aria-label="到期时间排序"><option value="expiry_desc"'.($filters['sort']==='expiry_desc'?' selected':'').'>到期：从晚到早</option><option value="expiry_asc"'.($filters['sort']==='expiry_asc'?' selected':'').'>到期：从早到晚</option></select><button type="submit">搜索</button></form></div>';
+    if($filters['q']!==''||$filters['status']!=='')$html.='<p class="ms-results-note">筛选匹配 '.$total.' 项'.($filters['q']!==''?' · 关键词「'.e($filters['q']).'」':'').' · <a href="/account/subscriptions">清除筛选</a></p>';
+    $html.='<section class="ms-list" aria-label="已交付VPN订阅列表">';
+    foreach(array_slice($matched,($page-1)*$perPage,$perPage) as $item) {
+        $state=$item['_state'];$expired=$state==='expired';$soon=$item['_soon'];$path='/orders/'.rawurlencode($item['order_no']);
+        if($state==='unknown')$stateText='期限未设置';elseif($expired){$elapsed=$now-$item['_expiry'];$stateText='已到期 · '.($elapsed<86400?'到期不足 1 天':'已过期 '.(int)floor($elapsed/86400).' 天');}else $stateText=($soon?'即将到期':'有效').' · 剩余 '.(int)ceil(($item['_expiry']-$now)/86400).' 天';
+        $html.='<article class="ms-subscription'.($expired?' is-expired':($soon?' is-soon':($state==='unknown'?' is-unknown':''))).'"><div class="ms-product"><h2><a href="'.e($path).'">'.e($item['product_name_snapshot']).'</a><small>'.e($item['plan_name_snapshot']).'</small></h2><p>订单号 <a href="'.e($path).'">'.e($item['order_no']).'</a></p><p class="ms-dates"><span>开通时间 '.e($item['opened_at']?str_replace('-','.',substr($item['opened_at'],0,10)):'未设置').'</span><i aria-hidden="true">/</i><span>到期时间 '.e($item['expires_at']?str_replace('-','.',substr($item['expires_at'],0,10)):'未设置').'</span></p></div><div class="ms-state"><strong>'.e($stateText).'</strong>'.($soon?'<p>到期后请按需重新选购。</p>':($state==='unknown'?'<p>请以订单交付说明为准。</p>':'')).'</div><nav class="ms-actions" aria-label="订阅 '.e($item['order_no']).' 的操作"><div><a class="ao-button'.(!$expired?' ao-primary':'').'" href="'.e($path.'#order-delivery').'">查看交付 ↗</a><a class="ao-button" href="'.e($path).'">查看订单</a></div>'.($expired?'<a class="ms-repurchase" href="/products">重新选购 ↗</a>':'').'</nav></article>';
+    }
+    if(!$matched)$html.='<div class="ms-empty"><h2>'.(count($items)?'暂无匹配订阅':'还没有已交付订阅').'</h2><p>'.(count($items)?'请尝试其他状态或关键词。':'购买并完成正式交付后，可在这里查看 VPN 订阅。').'</p><a href="/account/subscriptions">查看全部订阅 →</a><a href="/orders">查看我的订单 ↗</a></div>';
+    $html.='</section><p class="ms-private-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="4" y="10" width="16" height="12" rx="2"/><path d="M7 10V7a5 5 0 0 1 10 0v3m-5 5v3"/></svg>订阅链接与使用说明，请进入交付内容查看或复制。</p><p class="ms-scope-note">即将到期指未来 7 天内到期，包含在有效订阅中。有效状态仅按登记的到期时间判断，不代表节点在线状态。'.($totalUnknown?'另有 '.$totalUnknown.' 项期限未设置，不计入有效或已到期统计。':'').'</p><section class="ms-help"><div><h2>拿到订阅后，如何开始使用？</h2><p>按对应平台教程导入正式订阅信息，开通与到期时间以交付信息为准。</p></div><nav aria-label="订阅使用指引"><a href="/downloads">下载适用客户端 ↗</a><a href="/articles?category='.rawurlencode('使用教程').'">查看导入教程 ↗</a></nav></section><footer class="ms-list-footer"><p>订阅有疑问？ <a href="/tickets#new-ticket">提交关联订单工单 ↗</a></p><nav class="ms-pagination" aria-label="订阅分页"><span>共 '.$total.' 项</span>';
+    $html.=($page>1?'<a href="'.e($url(array('page'=>$page-1))).'">‹ 上一页</a>':'<span aria-disabled="true">‹ 上一页</span>').'<b aria-current="page">'.$page.' / '.$pages.'</b>'.($page<$pages?'<a href="'.e($url(array('page'=>$page+1))).'">下一页 ›</a>':'<span aria-disabled="true">下一页 ›</span>');
+    return $html.'</nav></footer></div>';
+}
 $workspacePage = function($subscriptions = false) use($config,$pdo) {
     $uid=Security::requireUser();
+    if($subscriptions){
+        $query=$pdo->prepare('SELECT o.id,o.order_no,o.product_name_snapshot,o.plan_name_snapshot,d.opened_at,d.expires_at FROM orders o JOIN delivery_records d ON d.id=(SELECT latest.id FROM delivery_records latest WHERE latest.order_id=o.id AND latest.is_current=1 ORDER BY latest.id DESC LIMIT 1) WHERE o.user_id=? AND o.product_type_snapshot="vpn" AND o.status="delivered" ORDER BY o.id DESC');
+        $query->execute(array($uid));
+        return page('我的订阅',account_subscriptions_page($query->fetchAll(),time()),$config);
+    }
     $query=$pdo->prepare('SELECT o.id,o.order_no,o.product_name_snapshot,o.plan_name_snapshot,o.duration_days_snapshot,o.traffic_snapshot,d.opened_at,d.expires_at FROM orders o JOIN delivery_records d ON d.order_id=o.id AND d.is_current=1 WHERE o.user_id=? AND o.product_type_snapshot="vpn" AND o.status="delivered" ORDER BY o.id DESC');
-    $query->execute(array($uid));$items=$query->fetchAll();$active=0;$cards='';$now=time();
+    $query->execute(array($uid));$items=$query->fetchAll();$active=0;$now=time();
     foreach($items as $item){
         $expiresAt=!empty($item['expires_at'])?strtotime($item['expires_at']):false;
-        $hasExpiry=$expiresAt!==false;$expired=$hasExpiry&&$expiresAt<=$now;
-        if($hasExpiry&&!$expired)$active++;
-        $expiryLabel=$hasExpiry?($expired?'已到期':'有效期内'):'期限未设置';
-        $remaining=$hasExpiry?($expired?'已到期':(int)ceil(($expiresAt-$now)/86400).' 天'):'未设置';
-        $orderPath='/orders/'.rawurlencode($item['order_no']);
-        $cards.='<article class="workspace-subscription-card account-subscription-card"><div class="workspace-card-heading"><div class="account-subscription-heading"><span class="account-subscription-icon" aria-hidden="true">'.user_nav_icon('shop').'</span><div><h2>'.e($item['product_name_snapshot']).'</h2><p>'.e($item['plan_name_snapshot']).'</p></div><span class="workspace-state'.($expired?' is-expired':(!$hasExpiry?' is-unknown':'')).'">'.e($expiryLabel).'</span></div><div class="workspace-card-actions"><a class="button" href="'.e($orderPath.'#order-delivery').'">查看交付内容</a><a class="secondary-button" href="'.e($orderPath.'?view=detail').'">查看订单</a></div></div><dl class="workspace-facts"><div><dt>方案时长</dt><dd>'.(int)$item['duration_days_snapshot'].' 天</dd></div><div><dt>套餐流量（购买时）</dt><dd>'.e($item['traffic_snapshot']?:'未记录').'</dd></div><div><dt>开通时间</dt><dd>'.e($item['opened_at']?:'未设置').'</dd></div><div><dt>到期时间</dt><dd>'.e($item['expires_at']?:'未设置').'</dd></div><div><dt>剩余时间</dt><dd>'.e($remaining).'</dd></div></dl><footer class="account-subscription-footer"><span>订单编号：'.e($item['order_no']).'</span><a href="/tickets?order_id='.(int)$item['id'].'#new-ticket">售后工单</a></footer></article>';
+        if($expiresAt!==false&&$expiresAt>$now)$active++;
     }
-    if($subscriptions){
-        $body='<div class="workspace-content account-reference-subscriptions"><header class="ux-page-head"><div><h1>我的订阅</h1><p>查看已交付的 VPN 订阅与有效期，订阅内容以对应订单的实际交付记录为准。</p></div><a class="secondary-button" href="/products">购买新套餐</a></header><div class="workspace-info-strip">共 '.count($items).' 个已交付订阅，其中 '.$active.' 个未到期。未设置到期日期的记录请以交付说明为准。</div><div class="workspace-subscription-grid">'.($cards?:'<section class="service-ui-empty"><h2>还没有已交付订阅</h2><p>付款并完成交付后，你的 VPN 订阅会在这里显示。</p><a class="button" href="/orders">查看我的订单</a></section>').'</div><section class="workspace-help-card"><h2>开始使用你的订阅</h2><p>先安装适用的客户端，再按照交付说明导入订阅。订阅地址与使用说明仅在本人订单的交付页面展示，请妥善保管。有效期仅按到期时间判断，站点不提供节点在线状态或流量统计。</p><div class="workspace-card-actions"><a href="/downloads">下载客户端 →</a><a href="/articles">查看使用教程 →</a></div></section></div>';
-        return page('我的订阅',$body,$config);
-    }
-    $query=$pdo->prepare('SELECT COUNT(*) total,COALESCE(SUM(status="pending_payment"),0) pending,COALESCE(SUM(status IN ("pending_delivery","paid_waiting_group")),0) waiting,COALESCE(SUM(status="delivered"),0) delivered FROM orders WHERE user_id=?');$query->execute(array($uid));$stats=$query->fetch();
+    $query=$pdo->prepare('SELECT COUNT(*) total,COALESCE(SUM(status="pending_payment"),0) pending,COALESCE(SUM(status="pending_delivery"),0) waiting,COALESCE(SUM(status="paid_waiting_group"),0) grouping FROM orders WHERE user_id=?');
+    $query->execute(array($uid)); $stats=$query->fetch();
     $balance=(new WalletService($pdo))->balance($uid);
-    $query=$pdo->prepare('SELECT display_name,email FROM users WHERE id=?');$query->execute(array($uid));$profile=$query->fetch();$displayName=$profile['display_name']?:$profile['email'];
-    $query=$pdo->prepare('SELECT order_no,product_name_snapshot,total_amount_cents,status,created_at FROM orders WHERE user_id=? ORDER BY id DESC LIMIT 5');$query->execute(array($uid));$recent='';
-    foreach($query as $order)$recent.='<tr><td><a href="'.e('/orders/'.rawurlencode($order['order_no'])).'">'.e($order['order_no']).'</a></td><td>'.e($order['product_name_snapshot']).'</td><td>'.money($order['total_amount_cents']).'</td><td><span class="order-status-badge order-status-'.e($order['status']).'"><i></i>'.e(status_text($order['status'])).'</span></td><td>'.e($order['created_at']).'</td></tr>';
-    $notifications=new NotificationService($pdo);$notes='';
-    foreach($notifications->recent($uid,3) as $note)$notes.='<a class="account-recent-message" href="'.e($notifications->targetPath($note)?:'/notifications').'"><h3>'.e($note['title']).'</h3><p>'.e(mb_substr($note['content'],0,100,'UTF-8')).'</p><time>'.e($note['created_at']).'</time></a>';
-    $body='<div class="workspace-content account-reference-overview"><header class="ux-page-head account-welcome"><span class="account-welcome-avatar" aria-hidden="true">'.user_nav_icon('account').'</span><div class="account-welcome-copy"><h1>'.e($displayName).'</h1><p>UID：'.(int)$uid.' · 全部订单 '.(int)$stats['total'].' 笔 · 未到期订阅 '.$active.' 个</p></div><a class="button" href="/products">购买套餐</a></header><section class="workspace-stat-grid"><a href="/wallet"><span class="account-stat-icon" aria-hidden="true">'.user_nav_icon('account').'</span><div class="account-stat-copy"><span>账户余额</span><strong>¥'.e(WalletService::formatAmount($balance)).'</strong><small>查看余额流水</small></div></a><a href="/orders"><span class="account-stat-icon" aria-hidden="true">'.user_nav_icon('orders').'</span><div class="account-stat-copy"><span>待付款</span><strong>'.(int)$stats['pending'].'</strong><small>前往订单核对</small></div></a><a href="/orders"><span class="account-stat-icon" aria-hidden="true">'.user_nav_icon('tickets').'</span><div class="account-stat-copy"><span>待处理</span><strong>'.(int)$stats['waiting'].'</strong><small>等待交付或成团</small></div></a><a href="/orders"><span class="account-stat-icon" aria-hidden="true">'.user_nav_icon('shop').'</span><div class="account-stat-copy"><span>已交付</span><strong>'.(int)$stats['delivered'].'</strong><small>查看实际交付订单</small></div></a></section><div class="pc-recent-grid"><section class="workspace-overview-card"><div class="workspace-card-heading"><h2>最近订单</h2><a href="/orders">查看全部 →</a></div><div class="table-wrap"><table class="account-recent-table"><thead><tr><th>订单号</th><th>商品</th><th>金额</th><th>状态</th><th>时间</th></tr></thead><tbody>'.($recent?:'<tr><td colspan="5" class="empty">暂无订单，可先浏览在售套餐。</td></tr>').'</tbody></table></div></section><section class="workspace-overview-card"><div class="workspace-card-heading"><h2>最近消息</h2><a href="/notifications">消息中心 →</a></div><div class="workspace-news">'.($notes?:'<p>暂无新消息。</p>').'</div></section></div><div class="workspace-overview-grid account-overview-secondary"><section class="workspace-overview-card"><div class="workspace-card-heading"><h2>我的订阅</h2><a href="/account/subscriptions">查看全部 →</a></div>'.($items?'<h3>'.e($items[0]['product_name_snapshot']).'</h3><p>'.e($items[0]['plan_name_snapshot']).'</p><p class="workspace-subscription-note">到期时间：'.e($items[0]['expires_at']?:'未设置，请查看交付说明').'</p><a class="button" href="/orders/'.rawurlencode($items[0]['order_no']).'#order-delivery">查看交付内容</a>':'<div class="service-ui-empty"><h3>暂无已交付订阅</h3><p>购买并完成交付后可在此查看。</p><a href="/products">浏览套餐 →</a></div>').'</section><aside class="workspace-overview-card"><h2>需要帮助？</h2><p>查阅使用教程，或关联本人订单提交售后工单。</p><div class="workspace-quick-links"><a href="/downloads">下载客户端 →</a><a href="/articles">使用教程 →</a><a href="/tickets">帮助与工单 →</a><a href="/account">账户与安全设置 →</a></div></aside></div></div>';
-    page('用户控制台',$body,$config);
+    $query=$pdo->prepare('SELECT display_name,email FROM users WHERE id=?'); $query->execute(array($uid)); $profile=$query->fetch(); $displayName=$profile['display_name']?:$profile['email'];
+    $hour=(int)date('G'); $greeting=$hour<6?'夜深了':($hour<12?'上午好':($hour<18?'下午好':'晚上好'));
+    $subscriptionRows='';
+    foreach (array_slice($items,0,2) as $item) {
+        $expiry=!empty($item['expires_at'])?strtotime($item['expires_at']):false;
+        $label=$expiry===false?'期限未设置':($expiry<=time()?'已到期':'有效');
+        $subscriptionRows.='<article class="ao-subscription"><div><h3>'.e($item['product_name_snapshot']).'<small>'.e($item['plan_name_snapshot']).'</small></h3><p>开通 '.e($item['opened_at']?substr($item['opened_at'],0,10):'未设置').'　到期 '.e($item['expires_at']?substr($item['expires_at'],0,10):'未设置').'</p></div><span class="ao-state">'.$label.'</span><a class="ao-button" href="'.e('/orders/'.rawurlencode($item['order_no']).'#order-delivery').'">查看交付 ↗</a></article>';
+    }
+    $query=$pdo->prepare('SELECT order_no,product_name_snapshot,plan_name_snapshot,total_amount_cents,status FROM orders WHERE user_id=? ORDER BY id DESC LIMIT 5'); $query->execute(array($uid)); $recent='';
+    foreach ($query as $order) {
+        $path='/orders/'.rawurlencode($order['order_no']);
+        $action=$order['status']==='pending_payment'?'去付款':($order['status']==='delivered'?'查看交付':($order['status']==='paid_waiting_group'?'查看成团进度':'查看进度'));
+        $recent.='<tr><td><a class="ao-order-name" href="'.e($path).'">'.e($order['product_name_snapshot']).' · '.e($order['plan_name_snapshot']).'</a><small>'.e($order['order_no']).'</small></td><td>'.e(money($order['total_amount_cents'])).'</td><td>'.e(status_text($order['status'])).'</td><td><a href="'.e($path.($order['status']==='delivered'?'#order-delivery':'')).'">'.$action.'</a></td></tr>';
+    }
+    $notifications=new NotificationService($pdo); $notes='';
+    foreach ($notifications->recent($uid,3) as $note) $notes.='<a class="ao-message" href="'.e($notifications->targetPath($note)?:'/notifications').'"><h3>'.e($note['title']).'</h3><p>'.e(mb_substr($note['content'],0,60,'UTF-8')).' <span aria-hidden="true">›</span></p></a>';
+    $body='<div class="ao-overview"><header class="ao-welcome"><div><span class="ao-kicker">ACCOUNT OVERVIEW</span><h1>'.e($greeting).'，'.e($displayName).'。</h1><p>在这里管理订单、交付内容与账户信息。</p></div><a class="ao-button ao-primary" href="/products">浏览订阅 ↗</a></header><section class="ao-stats" aria-label="账户状态统计">';
+    foreach (array(array('/orders','待付款',(int)$stats['pending']),array('/orders','等待交付',(int)$stats['waiting']),array('/orders','等待成团',(int)$stats['grouping']),array('/account/subscriptions','有效订阅',$active)) as $stat) $body.='<a href="'.$stat[0].'"><span>'.$stat[1].'</span><strong>'.$stat[2].'</strong></a>';
+    $body.='</section><div class="ao-subscription-balance"><section><header class="ao-section-head"><h2>我的订阅</h2><a href="/account/subscriptions">查看全部 ↗</a></header><div class="ao-subscription-list">'.($subscriptionRows?:'<div class="ao-empty"><h3>暂无已交付订阅</h3><p>购买并完成交付后可在此查看。</p><a href="/products">浏览订阅 ↗</a></div>').'</div><p class="ao-subscription-note">'.(count($items)>2?'仅显示最近 2 项，共 '.count($items).' 项已交付 VPN 订阅。':'').'有效状态仅按登记的到期时间判断，不代表节点在线状态。</p></section><aside class="ao-balance"><h2>我的余额</h2><p class="ao-amount"><span>¥</span>'.e(WalletService::formatAmount($balance)).'</p><p>可用于订单全额支付</p><a href="/wallet">查看余额明细 ↗</a><small>余额不足时请选择订单提供的其他支付方式，不支持拆分付款。</small></aside></div><section class="ao-recent-orders"><header class="ao-section-head"><div><h2>最近订单</h2><p>共 '.(int)$stats['total'].' 笔订单 · 显示最近 5 笔</p></div><a href="/orders">查看全部 ↗</a></header><div class="ao-table-wrap"><table class="ao-orders-table"><thead><tr><th scope="col">订单商品</th><th scope="col">金额</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody>'.($recent?:'<tr><td colspan="4"><div class="ao-empty">暂无订单，可先<a href="/products">浏览订阅 ↗</a>或<a href="/accounts">选购海外账号 ↗</a>。</div></td></tr>').'</tbody></table></div></section><div class="ao-bottom-grid"><section><header class="ao-section-head"><h2>最近消息</h2><a href="/notifications">查看全部 ↗</a></header><div class="ao-messages">'.($notes?:'<div class="ao-empty">暂无新消息。</div>').'</div></section><section class="ao-help"><h2>服务与帮助</h2><nav aria-label="服务与帮助"><a href="/tickets">我的工单 ↗</a><a href="/articles">查看使用教程 ↗</a><a href="/feedback">提交反馈 ↗</a></nav></section></div><p class="ao-security-note">交付内容仅本人登录可见，查看或复制订阅链接时请妥善保管。</p></div>';
+    page('个人总览',$body,$config);
 };
 $router->get('/account/overview',function()use($workspacePage){return $workspacePage(false);});
 $router->get('/account/subscriptions',function()use($workspacePage){return $workspacePage(true);});
-$router->get('/wallet', function() use($config,$pdo){
-    $uid=Security::requireUser();$wallet=new WalletService($pdo);$balance=$wallet->balance($uid);$history=$wallet->transactions($uid,isset($_GET['page'])?(int)$_GET['page']:1);$rows='';$types=array('admin_adjust'=>'管理员调账','order_payment'=>'订单付款','order_refund'=>'订单退款','referral_credit'=>'邀请返佣','referral_reversal'=>'返佣撤回','feedback_reward'=>'反馈奖励');
-    foreach($history['items'] as $item){$amount=(int)$item['amount_cents'];$rows.='<tr><td>'.e($item['created_at']).'</td><td>'.e(isset($types[$item['type']])?$types[$item['type']]:$item['type']).'</td><td>'.e($item['type']==='admin_adjust'?'管理员调整账户余额':($item['type']==='order_payment'?'订单实付金额扣除':($item['type']==='order_refund'?'原余额支付金额退回':($item['type']==='referral_credit'?'好友有效付款返佣':($item['type']==='referral_reversal'?'好友订单退款，撤回返佣':'账户余额变动'))))).'</td><td class="'.($amount>0?'wallet-credit':'wallet-debit').'">'.($amount>0?'+':'').e(WalletService::formatAmount($amount)).'</td><td>¥'.e(WalletService::formatAmount($item['balance_after_cents'])).'</td></tr>';}
-    $pagination='<span>共 '.(int)$history['total'].' 条 · 第 '.(int)$history['page'].' / '.(int)$history['pages'].' 页</span>';if($history['page']>1)$pagination.='<a class="secondary-button" href="/wallet?page='.($history['page']-1).'">上一页</a>';if($history['page']<$history['pages'])$pagination.='<a class="secondary-button" href="/wallet?page='.($history['page']+1).'">下一页</a>';
-    page('我的余额','<div class="wallet-page account-reference-wallet"><header class="ux-page-head"><div><h1>我的余额</h1><p>查看可用余额与每一笔资金变动。</p></div><a class="secondary-button" href="/orders">查看订单</a></header><section class="wallet-balance-card"><div class="account-wallet-balance-inner"><span class="account-wallet-balance-icon" aria-hidden="true">'.user_nav_icon('account').'</span><div class="account-wallet-balance-copy"><span>可用余额（元）</span><strong>¥'.e(WalletService::formatAmount($balance)).'</strong></div></div></section><p class="account-wallet-balance-note">可用于全额支付订单；余额不足时请选择其他支付方式。不支持在线充值、提现或组合支付。</p><section class="wallet-history"><div class="account-wallet-history-heading"><h2>余额流水</h2><span>共 '.(int)$history['total'].' 条记录 · 每页 20 条</span></div><div class="table-wrap"><table><thead><tr><th>时间</th><th>类型</th><th>说明</th><th>金额（元）</th><th>变动后余额</th></tr></thead><tbody>'.($rows?:'<tr><td colspan="5" class="empty"><strong>暂无余额变动记录</strong><p>发生余额支付、退款或其他余额变动后，可在这里查看明细。</p></td></tr>').'</tbody></table></div><div class="wallet-pagination">'.$pagination.'</div></section></div>',$config);
-});
+function account_wallet_page($pdo,$uid) {
+    $types=array('admin_adjust'=>'管理员调账','order_payment'=>'订单余额支付','order_refund'=>'余额退款','referral_credit'=>'邀请返佣','referral_reversal'=>'返佣撤回','feedback_reward'=>'反馈奖励');
+    $filters=array('direction'=>'','type'=>'','q'=>'','range'=>'30');
+    try {
+        foreach($filters as $key=>$default){if(!isset($_GET[$key]))continue;$value=$_GET[$key];if(!is_string($value)||!mb_check_encoding($value,'UTF-8')||mb_strlen($value,'UTF-8')>80)throw new InvalidArgumentException('账本筛选参数无效。');$filters[$key]=trim($value);}
+        if(!in_array($filters['direction'],array('','income','expense'),true)||($filters['type']!==''&&!isset($types[$filters['type']]))||!in_array($filters['range'],array('30','90','all'),true))throw new InvalidArgumentException('账本筛选选项无效。');
+        $requested=isset($_GET['page'])?$_GET['page']:'1';if(!is_string($requested)||!preg_match('/\A[1-9][0-9]{0,8}\z/D',$requested))throw new InvalidArgumentException('页码无效。');
+    } catch(InvalidArgumentException $ex) {
+        http_response_code(400);return '<div class="mw-page"><section class="mw-empty"><h1>查询参数无效</h1><p>'.e($ex->getMessage()).'</p><a href="/wallet">返回我的余额 →</a></section></div>';
+    }
+    $now=time();$until=date('Y-m-d H:i:s',$now);$since=date('Y-m-d H:i:s',$now-30*86400);$balance=(new WalletService($pdo))->balance($uid);
+    $s=$pdo->prepare('SELECT COALESCE(SUM(CASE WHEN amount_cents>0 THEN amount_cents ELSE 0 END),0) income,COALESCE(SUM(CASE WHEN amount_cents<0 THEN -amount_cents ELSE 0 END),0) expense FROM wallet_transactions WHERE user_id=? AND created_at>=? AND created_at<=?');$s->execute(array($uid,$since,$until));$summary=$s->fetch();
+    // 返佣订单属于被邀请人，只关联本人付款/退款订单；反馈也必须属于本人。
+    $join=' FROM wallet_transactions w LEFT JOIN orders o ON o.id=w.order_id AND o.user_id=w.user_id AND w.type IN ("order_payment","order_refund") LEFT JOIN feedback_submissions f ON f.reward_transaction_id=w.id AND f.user_id=w.user_id AND w.type="feedback_reward"';
+    $where='w.user_id=?';$args=array($uid);
+    if($filters['range']!=='all'){$where.=' AND w.created_at>=? AND w.created_at<=?';$args[]=date('Y-m-d H:i:s',$now-(int)$filters['range']*86400);$args[]=$until;}
+    if($filters['direction']!=='')$where.=$filters['direction']==='income'?' AND w.amount_cents>0':' AND w.amount_cents<0';
+    if($filters['type']!==''){$where.=' AND w.type=?';$args[]=$filters['type'];}
+    if($filters['q']!==''){$where.=" AND o.order_no LIKE ? ESCAPE '!'";$args[]='%'.str_replace(array('!','%','_'),array('!!','!%','!_'),$filters['q']).'%';}
+    $s=$pdo->prepare('SELECT COUNT(*)'.$join.' WHERE '.$where);$s->execute($args);$total=(int)$s->fetchColumn();$perPage=20;$pages=max(1,(int)ceil($total/$perPage));$page=min((int)$requested,$pages);
+    $s=$pdo->prepare('SELECT w.id,w.amount_cents,w.balance_before_cents,w.balance_after_cents,w.type,w.created_at,o.order_no,f.id feedback_id,f.feedback_no'.$join.' WHERE '.$where.' ORDER BY w.created_at DESC,w.id DESC LIMIT '.$perPage.' OFFSET '.(($page-1)*$perPage));$s->execute($args);$rows='';
+    foreach($s as $item){
+        $amount=(int)$item['amount_cents'];$signed=($amount>0?'+¥':($amount<0?'-¥':'¥')).WalletService::formatAmount(abs($amount));$record='余额变动';$target='';
+        if(!empty($item['order_no'])){$record='订单 '.$item['order_no'];$target='/orders/'.rawurlencode($item['order_no']);}
+        elseif($item['type']==='feedback_reward'&&!empty($item['feedback_id'])){$record='反馈 '.$item['feedback_no'];$target='/feedback/'.(int)$item['feedback_id'];}
+        elseif($item['type']==='admin_adjust')$record='人工调整';
+        elseif($item['type']==='referral_credit')$record='返佣入账';
+        elseif($item['type']==='referral_reversal')$record='返佣撤回';
+        elseif($item['type']==='feedback_reward')$record='反馈奖励';
+        $action=$target!==''?'<a href="'.e($target).'" aria-label="查看'.e($record).'">查看</a>':'<details class="mw-record-details"><summary aria-label="查看余额流水 '.(int)$item['id'].'">查看</summary><div><b>余额流水 #'.(int)$item['id'].'</b><p>变动前余额 ¥'.e(WalletService::formatAmount($item['balance_before_cents'])).'</p><p>收支金额 '.e($signed).'</p><p>变动后余额 ¥'.e(WalletService::formatAmount($item['balance_after_cents'])).'</p></div></details>';
+        $rows.='<tr><td data-label="时间">'.e(str_replace('-','.',substr($item['created_at'],0,16))).'</td><td data-label="变动类型">'.e(isset($types[$item['type']])?$types[$item['type']]:'其他变动').'</td><td data-label="收支金额" class="'.($amount>0?'mw-credit':'mw-debit').'">'.e($signed).'</td><td data-label="变动后余额">¥'.e(WalletService::formatAmount($item['balance_after_cents'])).'</td><td data-label="关联记录" class="mw-record">'.e($record).'</td><td data-label="操作">'.$action.'</td></tr>';
+    }
+    $url=function($changes=array())use($filters){return '/wallet?'.http_build_query(array_merge($filters,$changes),'','&',PHP_QUERY_RFC3986);};
+    $hidden=function($exclude)use($filters){$html='';foreach($filters as $key=>$value)if(!in_array($key,$exclude,true)&&$value!=='')$html.='<input type="hidden" name="'.$key.'" value="'.e($value).'">';return $html;};
+    $html='<div class="mw-page"><header class="ao-welcome mw-welcome"><div><span class="ao-kicker">MY BALANCE</span><h1>我的余额</h1><p>查看可用余额与每一笔收支记录。</p></div><a class="mw-text-link" href="/articles?q='.rawurlencode('余额').'">查看支付说明 ↗</a></header><div class="mw-top-grid"><section class="mw-balance"><h2>当前可用余额</h2><div class="mw-balance-main"><div><p class="mw-amount"><span>¥</span>'.e(WalletService::formatAmount($balance)).'</p><p>可用于订单全额支付</p></div><a class="ao-button ao-primary" href="/products">浏览商品 ↗</a></div><dl class="mw-summary"><div><dt>近30天入账</dt><dd>¥'.e(WalletService::formatAmount($summary['income'])).'</dd></div><div><dt>近30天支出</dt><dd>¥'.e(WalletService::formatAmount($summary['expense'])).'</dd></div></dl></section><section class="mw-usage"><h2>余额使用说明</h2><ol><li><span>01</span>仅支持余额全额支付</li><li><span>02</span>余额不足时，选择订单提供的其他方式</li><li><span>03</span>不能与在线支付组合使用</li></ol></section></div><p class="mw-balance-note">余额变动可在下方账本中查询。近30天统计不受账本筛选影响。</p><p class="mw-source-strip">余额来源：管理员调账、订单退款、邀请返佣及反馈奖励。不支持在线充值或提现。</p><section class="mw-ledger" aria-label="余额账本"><header class="mw-ledger-head"><h2>余额账本</h2><form class="mw-range" method="get" action="/wallet">'.$hidden(array('range')).'<select name="range" aria-label="账本时间范围"><option value="30"'.($filters['range']==='30'?' selected':'').'>最近30天</option><option value="90"'.($filters['range']==='90'?' selected':'').'>最近90天</option><option value="all"'.($filters['range']==='all'?' selected':'').'>全部时间</option></select><button type="submit">应用</button></form></header><div class="mw-toolbar"><nav class="mw-tabs" aria-label="账本收支筛选">';
+    foreach(array(''=>'全部','income'=>'收入','expense'=>'支出') as $key=>$label)$html.='<a href="'.e($url(array('direction'=>$key))).'"'.($filters['direction']===$key?' aria-current="page"':'').'>'.$label.'</a>';
+    $html.='</nav><form class="mw-filter" method="get" action="/wallet">'.$hidden(array('type','q')).'<select name="type" aria-label="账本来源"><option value="">来源：全部</option>';
+    foreach($types as $key=>$label)$html.='<option value="'.$key.'"'.($filters['type']===$key?' selected':'').'>'.$label.'</option>';
+    $html.='</select><label><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg><input type="search" name="q" maxlength="80" value="'.e($filters['q']).'" placeholder="搜索关联订单号…" aria-label="搜索本人关联订单号"></label><button type="submit">筛选</button></form></div>';
+    if($filters['q']!==''||$filters['type']!==''||$filters['direction']!=='')$html.='<p class="mw-results-note">筛选匹配 '.$total.' 条'.($filters['q']!==''?' · 订单号包含「'.e($filters['q']).'」':'').' · <a href="/wallet">清除筛选</a></p>';
+    $html.='<div class="mw-table-wrap"><table class="mw-table"><thead><tr><th scope="col">时间</th><th scope="col">变动类型</th><th scope="col">收支金额</th><th scope="col">变动后余额</th><th scope="col">关联记录</th><th scope="col"><span class="mw-sr-only">操作</span></th></tr></thead><tbody>'.($rows?:'<tr><td colspan="6"><div class="mw-empty"><h3>暂无匹配的余额变动记录</h3><p>可尝试其他时间范围或筛选条件；发生余额支付、退款或奖励后，可在这里查询。</p><a href="/wallet?range=all">查看全部账本 →</a></div></td></tr>').'</tbody></table></div><footer class="mw-ledger-footer"><p>明细按发生时间排序，历史余额为该笔变动后的记录。关联记录仅展示本人订单或反馈。</p><nav class="mw-pagination" aria-label="账本分页"><span>共 '.$total.' 条</span>';
+    $html.=($page>1?'<a href="'.e($url(array('page'=>$page-1))).'">‹ 上一页</a>':'<span aria-disabled="true">‹ 上一页</span>').'<b aria-current="page">'.$page.' / '.$pages.'</b>'.($page<$pages?'<a href="'.e($url(array('page'=>$page+1))).'">下一页 ›</a>':'<span aria-disabled="true">下一页 ›</span>');
+    return $html.'</nav></footer></section><div class="mw-bottom-grid"><section class="mw-sources"><h2>余额从哪里来？</h2><p><span>管理员调账</span><span>订单退款</span><span>邀请返佣</span><span>反馈奖励</span></p></section><section class="mw-help"><div><h2>账目有疑问？</h2><p>可关联订单提交工单，补充变动时间与问题说明。</p></div><nav aria-label="账本帮助"><a class="ao-button" href="/tickets#new-ticket">提交工单 ↗</a><a class="ao-button" href="/articles">查看帮助 ↗</a></nav></section></div></div>';
+}
+$router->get('/wallet', function() use($config,$pdo){$uid=Security::requireUser();page('我的余额',account_wallet_page($pdo,$uid),$config);});
 $router->post('/orders/{no}/balance-pay',function($no) use($config,$pdo){$uid=Security::requireUser();post_csrf();try{(new OrderService($pdo))->payWithBalance($no,$uid);flash('success','余额支付已完成，请查看订单状态。');return redirect('/orders/'.rawurlencode($no).'/payment-result');}catch(Exception $e){flash('error',$e->getMessage());}redirect('/orders/'.rawurlencode($no));});
 $router->post('/orders/{no}/cancel', function($no) use($config,$pdo){$uid=Security::requireUser();post_csrf();try{(new OrderService($pdo))->cancel($no,'user',$uid,isset($_POST['reason'])?$_POST['reason']:'');flash('success','订单已取消。');}catch(Exception $e){flash('error',$e->getMessage());}redirect('/orders/'.$no);});
-$accountPage=function($section='profile') use($config,$pdo){$uid=Security::requireUser();$s=$pdo->prepare('SELECT * FROM users WHERE id=?');$s->execute(array($uid));$u=$s->fetch();$displayName=$u['display_name']?:$u['email'];$avatar=e(mb_substr($displayName,0,1,'UTF-8'));$content='';if($section==='profile')$content='<section class="form-card account-profile-card" id="profile"><div class="account-card-head"><div><span class="account-section-kicker">PROFILE</span><h2>基本信息</h2><p>可修改昵称；登录邮箱与注册时间仅供查看。</p></div><span class="account-avatar">'.$avatar.'</span></div><form method="post" action="/account/profile">'.csrf_field().'<label>昵称<input name="display_name" maxlength="100" value="'.e($u['display_name']).'" required></label><label>邮箱<input value="'.e($u['email']).'" disabled></label><label>注册时间<input value="'.e($u['created_at']).'" disabled></label><button class="button">保存更改</button></form></section>';if($section==='security')$content='<section class="form-card account-password-card" id="security"><div class="account-card-head"><div><span class="account-section-kicker">SECURITY</span><h2>账户安全</h2><p>定期更新密码，保护账户信息。</p></div></div><form method="post" action="/account/password">'.csrf_field().'<label>当前密码<input type="password" name="old_password" autocomplete="current-password" placeholder="请输入当前密码" required></label><label>新密码<input type="password" name="new_password" minlength="8" autocomplete="new-password" placeholder="至少 8 位字符" required></label><button class="button">更新密码</button></form><div class="account-security-note"><span>♢</span><p>请使用不易被猜到的密码，并避免与其他网站重复。</p></div></section>';if($section==='notifications'){$n=(new NotificationService($pdo))->recent($uid,5);$notes='';foreach($n as $item)$notes.='<div class="notification-item '.($item['read_at']?'':'unread').'">'.e($item['title']).'<small>'.e($item['created_at']).'</small><p>'.e($item['content']).'</p></div>';$content.='<section class="form-card account-notices-card" id="notifications"><div class="section-head"><div><span class="account-section-kicker">UPDATES</span><h2>最近通知</h2></div><a href="/notifications">查看全部　→</a></div>'.($notes?:'<div class="empty">暂无通知。</div>').'</section>';}$nav='';foreach(array('profile'=>array('/account','◎　基本信息'),'security'=>array('/account/security','♢　账户安全'),'notifications'=>array('/account/notifications','♧　消息通知')) as $key=>$item)$nav.='<a href="'.$item[0].'"'.($section===$key?' class="active" aria-current="page"':'').'>'.$item[1].'</a>';$body='<div class="account-page"><header class="account-page-heading"><div><span class="account-eyebrow">ACCOUNT CENTER</span><h1>账户设置</h1><p>管理你的个人资料与账户安全。</p></div></header><section class="account-identity-card"><span class="account-identity-avatar">'.$avatar.'</span><div class="account-identity-copy"><span>欢迎回来</span><h2>'.e($displayName).'</h2><p>'.e($u['email']).'</p></div><span class="account-member-badge">个人账户</span></section><nav class="account-settings-nav" aria-label="账户设置分类">'.$nav.'</nav><div class="account-settings-layout"><div class="account-settings-content">'.$content.'</div><aside class="pc-security-tips"><h2>安全提示</h2><ul><li>请定期更新密码，避免与其他网站重复使用。</li><li>登录邮箱仅供查看，如有问题请联系支持。</li><li>不要向他人透露密码或分享交付内容。</li><li>遇到订单问题，可关联本人订单提交工单。</li></ul><a href="/tickets">获取帮助 →</a></aside></div></div>';page('个人中心',$body,$config);};
+function account_settings_page($pdo,$uid,$section='profile'){
+    $q=$pdo->prepare('SELECT display_name,email,created_at FROM users WHERE id=?');$q->execute(array($uid));$u=$q->fetch();$name=$u['display_name']?:$u['email'];
+    $eye='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
+    $fields='';foreach(array('old_password'=>array('当前密码','请输入当前密码','current-password'),'new_password'=>array('新密码','至少8个字符','new-password'),'confirm_password'=>array('确认新密码','再次输入新密码','new-password')) as $field=>$info)$fields.='<div class="as-field"><label for="settings-'.$field.'">'.$info[0].'</label><div class="as-password-input"><input id="settings-'.$field.'" type="password" '.($field!=='confirm_password'?'name="'.$field.'" ':'').'autocomplete="'.$info[2].'" placeholder="'.$info[1].'"'.($field==='new_password'?' minlength="8"':'').' required><button type="button" class="as-reveal" data-password="settings-'.$field.'" aria-controls="settings-'.$field.'" aria-pressed="false" aria-label="显示'.$info[0].'">'.$eye.'</button></div></div>';
+    return '<div class="as-page"><header class="ao-welcome as-welcome"><div><p class="ao-kicker">PROFILE &amp; SETTINGS</p><h1>个人资料</h1><p>查看账户信息，管理昵称与登录密码。</p></div></header><nav class="as-tabs" aria-label="账户设置分类"><a href="/account#settings-profile"'.($section==='profile'?' aria-current="page"':'').'>个人资料</a><a href="/account/security#settings-password"'.($section==='security'?' aria-current="page"':'').'>密码设置</a></nav><div class="as-grid"><section class="as-profile as-card" id="settings-profile" aria-labelledby="settings-profile-title"><h2 id="settings-profile-title">基本资料</h2><p>公开昵称可修改，登录邮箱暂不支持自行更改。</p><div class="as-identity"><span aria-hidden="true">'.user_nav_icon('account').'</span><strong>'.e($name).'</strong></div><dl class="as-facts"><div><dt>登录邮箱</dt><dd>'.e($u['email']).' <span>不可修改</span></dd></div><div><dt>注册时间</dt><dd><time datetime="'.e(str_replace(' ','T',$u['created_at'])).'">'.e(str_replace('-','.',substr($u['created_at'],0,16))).'</time></dd></div></dl><form method="post" action="/account/profile" class="as-profile-form" data-settings-form>'.csrf_field().'<div class="as-field"><label for="settings-name">昵称</label><div><input id="settings-name" name="display_name" maxlength="100" value="'.e($u['display_name']).'" aria-describedby="settings-name-hint" required><p id="settings-name-hint" class="as-hint">用于站内显示，可随时修改；最多100字节。</p></div></div><div class="as-form-actions"><button class="ao-button ao-primary" type="submit">保存昵称</button><span class="as-submit-status" role="status"></span></div></form></section><aside class="as-account-info"><h2>账户信息说明</h2><ul><li>邮箱用于登录与接收交易通知。</li><li>昵称修改不会影响已有订单与交付记录。</li><li>如需帮助，请提交工单联系管理员。</li></ul><a class="ao-button" href="/tickets#new-ticket">提交账户问题工单 ↗</a><a class="as-notifications" href="/account/notifications">查看最近通知 ↗</a></aside><section class="as-password as-card" id="settings-password" aria-labelledby="settings-password-title"><h2 id="settings-password-title">修改登录密码</h2><p>请先验证当前密码，再设置新密码。</p><form method="post" action="/account/password" data-settings-form>'.csrf_field().$fields.'<div class="as-form-actions"><button class="ao-button ao-primary" type="submit">保存新密码</button><a href="/password/forgot">忘记当前密码？ ↗</a><span class="as-submit-status" role="status"></span><p class="as-hint">如忘记密码，可通过邮箱找回密码。</p></div></form><p class="as-security-note">ⓘ 修改密码后当前会话将更新，请妥善保管新密码。</p></section><aside class="as-password-tips"><h2>密码设置建议</h2><ol><li><span>01</span>使用至少8个字符的密码。</li><li><span>02</span>避免与其他网站重复使用。</li><li><span>03</span>请勿向他人透露登录密码。</li></ol><a href="/articles?q='.rawurlencode('账户安全').'">查看账户安全帮助 ↗</a></aside></div><p class="as-unsaved-note">ⓘ 保存前请确认填写内容；离开有未保存内容的页面时，浏览器将提示确认。</p><div class="as-help"><strong>需要帮助？</strong><a class="ao-button" href="/articles">前往帮助中心 ↗</a><a class="ao-button" href="/tickets">我的工单 ↗</a></div></div><script>(function(){var forms=Array.from(document.querySelectorAll("[data-settings-form]")),leaving=false;forms.forEach(function(form){var fields=Array.from(form.querySelectorAll("input:not([type=hidden])"));form.isDirty=function(){return fields.some(function(input){return input.value!==input.defaultValue})};form.addEventListener("submit",function(event){if(form.dataset.busy==="true"){event.preventDefault();return}if(forms.some(function(other){return other!==form&&other.isDirty()})&&!window.confirm("另一张表单有未保存内容，继续保存会离开页面，是否继续？")){event.preventDefault();return}form.dataset.busy="true";leaving=true;form.querySelector("button[type=submit]").disabled=true;form.querySelector(".as-submit-status").textContent="正在保存，请勿重复提交。"})});var name=document.getElementById("settings-name"),password=document.getElementById("settings-new_password"),confirm=document.getElementById("settings-confirm_password");function validateName(){name.setCustomValidity(new TextEncoder().encode(name.value.trim()).length>100?"昵称最多100字节，请缩短后重试。":"")}function validateConfirm(){confirm.setCustomValidity(confirm.value!==password.value?"两次输入的新密码不一致。":"")}name.addEventListener("input",validateName);password.addEventListener("input",validateConfirm);confirm.addEventListener("input",validateConfirm);document.querySelectorAll("[data-password]").forEach(function(button){var input=document.getElementById(button.dataset.password),label=button.getAttribute("aria-label").slice(2);button.addEventListener("click",function(){var show=input.type==="password";input.type=show?"text":"password";button.setAttribute("aria-pressed",String(show));button.setAttribute("aria-label",(show?"隐藏":"显示")+label)})});window.addEventListener("beforeunload",function(event){if(!leaving&&forms.some(function(form){return form.isDirty()})){event.preventDefault();event.returnValue=""}});window.addEventListener("pageshow",function(){leaving=false;forms.forEach(function(form){form.dataset.busy="false";form.querySelector("button[type=submit]").disabled=false;form.querySelector(".as-submit-status").textContent=""});document.querySelectorAll("[data-password]").forEach(function(button){document.getElementById(button.dataset.password).type="password";button.setAttribute("aria-pressed","false");button.setAttribute("aria-label","显示"+button.getAttribute("aria-label").slice(2))});validateName();validateConfirm()})})();</script>';
+}
+$accountPage=function($section='profile') use($config,$pdo){$uid=Security::requireUser();if($section!=='notifications')return page('账户与安全',account_settings_page($pdo,$uid,$section),$config);$s=$pdo->prepare('SELECT display_name,email FROM users WHERE id=?');$s->execute(array($uid));$u=$s->fetch();$displayName=$u['display_name']?:$u['email'];$avatar=e(mb_substr($displayName,0,1,'UTF-8'));$content='';if($section==='notifications'){$n=(new NotificationService($pdo))->recent($uid,5);$notes='';foreach($n as $item)$notes.='<div class="notification-item '.($item['read_at']?'':'unread').'">'.e($item['title']).'<small>'.e($item['created_at']).'</small><p>'.e($item['content']).'</p></div>';$content.='<section class="form-card account-notices-card" id="notifications"><div class="section-head"><div><span class="account-section-kicker">UPDATES</span><h2>最近通知</h2></div><a href="/notifications">查看全部　→</a></div>'.($notes?:'<div class="empty">暂无通知。</div>').'</section>';}$nav='';foreach(array('profile'=>array('/account','◎　基本信息'),'security'=>array('/account/security','♢　账户安全'),'notifications'=>array('/account/notifications','♧　消息通知')) as $key=>$item)$nav.='<a href="'.$item[0].'"'.($section===$key?' class="active" aria-current="page"':'').'>'.$item[1].'</a>';$body='<div class="account-page"><header class="account-page-heading"><div><span class="account-eyebrow">ACCOUNT CENTER</span><h1>账户设置</h1><p>管理你的个人资料与账户安全。</p></div></header><section class="account-identity-card"><span class="account-identity-avatar">'.$avatar.'</span><div class="account-identity-copy"><span>欢迎回来</span><h2>'.e($displayName).'</h2><p>'.e($u['email']).'</p></div><span class="account-member-badge">个人账户</span></section><nav class="account-settings-nav" aria-label="账户设置分类">'.$nav.'</nav><div class="account-settings-layout"><div class="account-settings-content">'.$content.'</div><aside class="pc-security-tips"><h2>安全提示</h2><ul><li>请定期更新密码，避免与其他网站重复使用。</li><li>登录邮箱仅供查看，如有问题请联系支持。</li><li>不要向他人透露密码或分享交付内容。</li><li>遇到订单问题，可关联本人订单提交工单。</li></ul><a href="/tickets">获取帮助 →</a></aside></div></div>';page('个人中心',$body,$config);};
 $router->get('/account',function() use($accountPage){$accountPage('profile');});
 $router->get('/account/security',function() use($accountPage){$accountPage('security');});
 $router->get('/account/notifications',function() use($accountPage){$accountPage('notifications');});
@@ -1088,8 +1215,33 @@ function article_input(){
     return array('title'=>$title,'category'=>$category,'summary'=>$summary,'content'=>$content,'cover_style'=>$cover,'status'=>$status);
 }
 function article_form($article,$action,$title){$a=$article?:array('title'=>'','category'=>'使用教程','summary'=>'','content'=>'','cover_style'=>'blue','status'=>'draft');return '<div class="product-form-card article-form-card"><div class="product-form-heading"><div><span class="admin-kicker">CONTENT / 文章管理</span><h1>'.e($title).'</h1><p>发布教程、公益节点和常见问题，首页会展示最新已发布文章。</p></div><a class="secondary-button" href="/admin/articles">返回列表</a></div><form method="post" action="'.e($action).'">'.csrf_field().'<div class="product-form-grid"><div class="product-form-section"><h2>文章内容</h2><label>文章标题 <em>*</em><input name="title" maxlength="200" value="'.e($a['title']).'" required></label><label>文章摘要<textarea name="summary" maxlength="500">'.e($a['summary']).'</textarea></label><label>正文内容 <em>*</em><textarea class="article-content-input" name="content" maxlength="60000" required>'.e($a['content']).'</textarea></label></div><div class="product-form-section"><h2>发布设置</h2><label>文章分类<select name="category"><option value="公益节点"'.($a['category']==='公益节点'?' selected':'').'>公益节点</option><option value="使用教程"'.($a['category']==='使用教程'?' selected':'').'>使用教程</option><option value="常见问题"'.($a['category']==='常见问题'?' selected':'').'>常见问题</option><option value="活动公告"'.($a['category']==='活动公告'?' selected':'').'>活动公告</option></select></label><label>封面风格<select name="cover_style"><option value="blue"'.($a['cover_style']==='blue'?' selected':'').'>天空蓝</option><option value="purple"'.($a['cover_style']==='purple'?' selected':'').'>梦幻紫</option><option value="orange"'.($a['cover_style']==='orange'?' selected':'').'>活力橙</option></select></label><label>发布状态<select name="status"><option value="draft"'.($a['status']==='draft'?' selected':'').'>草稿</option><option value="published"'.($a['status']==='published'?' selected':'').'>已发布</option><option value="offline"'.($a['status']==='offline'?' selected':'').'>已下架</option></select></label></div></div><div class="product-form-actions"><a class="secondary-button" href="/admin/articles">取消</a><button class="button" type="submit">保存文章</button></div></form></div>';}
-$router->get('/downloads', function() use($config,$pdo){$mirror='https://gh-proxy.com/';$software=array();$rows=$pdo->query('SELECT * FROM download_resources WHERE status="active" ORDER BY app_name,sort_order,id')->fetchAll();foreach($rows as $row){if(!isset($software[$row['app_name']]))$software[$row['app_name']]=array('name'=>$row['app_name'],'version'=>$row['version'],'description'=>$row['description'],'project'=>$row['project_url'],'platforms'=>array());$software[$row['app_name']]['platforms'][$row['platform']][]=array($row['filename'],$row['source_url']);}$software=array_values($software);/* legacy fallback data follows */if(!$software)$software=array(array('name'=>'FlClash','version'=>'v0.8.98','description'=>'跨平台的 Clash 代理客户端，界面简洁，适合日常使用。','project'=>'https://github.com/chen08209/FlClash','platforms'=>array('Windows'=>array(array('FlClash-0.8.98-windows-amd64-setup.exe','https://github.com/chen08209/FlClash/releases/download/v0.8.98/FlClash-0.8.98-windows-amd64-setup.exe')),'macOS'=>array(array('FlClash-0.8.98-macos-amd64.dmg','https://github.com/chen08209/FlClash/releases/download/v0.8.98/FlClash-0.8.98-macos-amd64.dmg')),'Linux'=>array(array('FlClash-0.8.98-linux-amd64.AppImage','https://github.com/chen08209/FlClash/releases/download/v0.8.98/FlClash-0.8.98-linux-amd64.AppImage')),'Android'=>array(array('FlClash-0.8.98-android-arm64-v8a.apk','https://github.com/chen08209/FlClash/releases/download/v0.8.98/FlClash-0.8.98-android-arm64-v8a.apk'),array('FlClash-0.8.98-android-armeabi-v7a.apk','https://github.com/chen08209/FlClash/releases/download/v0.8.98/FlClash-0.8.98-android-armeabi-v7a.apk'),array('FlClash-0.8.98-android-x86_64.apk','https://github.com/chen08209/FlClash/releases/download/v0.8.98/FlClash-0.8.98-android-x86_64.apk')))),array('name'=>'Clash Verge Rev','version'=>'请以项目页最新版本为准','description'=>'基于 Clash Meta 的桌面客户端，支持主流桌面系统。','project'=>'https://github.com/clash-verge-rev/clash-verge-rev','platforms'=>array('Windows'=>array(null),'macOS'=>array(null),'Linux'=>array(null),'Android'=>array(null))),array('name'=>'v2rayN','version'=>'请以项目页最新版本为准','description'=>'Windows 平台常用的代理客户端，支持多种协议配置。','project'=>'https://github.com/2dust/v2rayN','platforms'=>array('Windows'=>array(null),'macOS'=>array(null),'Linux'=>array(null),'Android'=>array(null))),array('name'=>'v2rayNG','version'=>'请以项目页最新版本为准','description'=>'Android 平台代理客户端，适合移动设备使用。','project'=>'https://github.com/2dust/v2rayNG','platforms'=>array('Windows'=>array(null),'macOS'=>array(null),'Linux'=>array(null),'Android'=>array(null))));$platforms=array('全部','Windows','macOS','Linux','Android');$filters='';foreach($platforms as $i=>$platform){$icon=$platform==='全部'?'▦':($platform==='Windows'?'⊞':($platform==='macOS'?'●':($platform==='Linux'?'♟':'▣')));$filters.='<button type="button" class="download-filter'.($i===0?' is-active':'').'" data-platform="'.e($platform).'" aria-pressed="'.($i===0?'true':'false').'"><span aria-hidden="true">'.$icon.'</span>'.e($platform).'</button>'; }$cards='';foreach($software as $app){$resources='';foreach($app['platforms'] as $platform=>$platformResources){foreach($platformResources as $resource){$url=is_array($resource)?$resource[1]:$resource;$filename=is_array($resource)?$resource[0]:'';$filterPlatform=(strpos($platform,'Android')===0?'Android':$platform);$resources.='<div class="download-resource" data-platform="'.e($filterPlatform).'"'.($url?'':' data-unavailable="1"').'><div><b>'.e($platform).'</b><small>'.($url?e($filename).' · 镜像下载':'资源暂未配置，请访问项目页').'</small></div>'.($url?'<a class="download-button" href="'.e($mirror.$url).'" target="_blank" rel="noopener noreferrer">镜像下载 ↗</a>':'<span class="download-disabled">暂未配置</span>').'</div>';}}$cards.='<article class="download-app-card"><div class="download-app-head"><div class="download-app-icon">'.e(mb_substr($app['name'],0,1,'UTF-8')).'</div><div><h2>'.e($app['name']).'</h2><span>'.e($app['version']).'</span></div><a class="download-project" href="'.e($app['project']).'" target="_blank" rel="noopener noreferrer">项目主页 ↗</a></div><p class="download-description">'.e($app['description']).'</p><div class="download-resources">'.$resources.'</div></article>';}$body='<div class="help-reference-layout">'.help_nav('downloads').'<section class="help-reference-panel help-reference-downloads"><header class="help-reference-heading"><h1>软件下载</h1><p>选择适合设备的客户端版本，下载前请核对安装文件与项目发布信息。</p></header><div class="downloads-platforms" role="group" aria-label="选择设备平台">'.$filters.'</div><div class="download-grid" id="downloads-list">'.$cards.'</div><div class="help-reference-empty download-no-match" hidden role="status">当前平台暂无可展示资源，请切换其他平台。</div><aside class="help-reference-tip">'.help_icon('question').'<div><b>使用说明</b><ul><li>请根据设备系统及架构选择安装包，并核对项目发布页信息。</li><li>镜像下载通过第三方代理获取；遇到问题时可前往软件项目主页。</li><li>安装后按照<a href="/articles">使用教程</a>导入订阅；请妥善保管订阅地址与账号凭据。</li></ul></div></aside></section></div><script>var downloadFilters=document.querySelectorAll(".download-filter");downloadFilters.forEach(function(filter){filter.addEventListener("click",function(){downloadFilters.forEach(function(item){item.classList.remove("is-active");item.setAttribute("aria-pressed","false")});filter.classList.add("is-active");filter.setAttribute("aria-pressed","true");var platform=filter.dataset.platform,visibleCards=0;document.querySelectorAll(".download-app-card").forEach(function(card){var rows=card.querySelectorAll(".download-resource"),visible=0;rows.forEach(function(row){var show=platform==="全部"||row.dataset.platform===platform;row.hidden=!show;if(show)visible++});card.hidden=visible===0;if(visible)visibleCards++;});document.querySelector(".download-no-match").hidden=visibleCards!==0;});});</script>';page('软件下载',$body,$config);});
-$router->get('/articles', function() use($config,$pdo){page('帮助中心',help_article_list($pdo),$config);});
+function downloads_editorial($software, $config, $mirror) {
+    $platforms = array('Windows'=>array('windows','DESKTOP','Windows 电脑'),'macOS'=>array('apple','DESKTOP','Mac 电脑'),'Android'=>array('android','MOBILE','Android 手机与平板'),'Linux'=>array('linux','DESKTOP','Linux 设备'));
+    $filters = '<button type="button" class="download-filter is-active" data-platform="全部" aria-pressed="true">全部平台</button>';
+    $cards = '';
+    foreach ($platforms as $platform=>$info) {
+        $filters .= '<button type="button" class="download-filter" data-platform="'.e($platform).'" aria-pressed="false">'.e($platform).'</button>';
+        $resources = ''; $options = ''; $count = 0;
+        foreach ($software as $app) {
+            if (empty($app['platforms'][$platform])) continue;
+            foreach ($app['platforms'][$platform] as $resource) {
+                $url = is_array($resource) ? $resource[1] : $resource;
+                $filename = is_array($resource) ? $resource[0] : '';
+                $version = isset($resource[2]) ? $resource[2] : $app['version'];
+                $description = isset($resource[3]) ? $resource[3] : $app['description'];
+                $project = isset($resource[4]) ? $resource[4] : $app['project'];
+                $id = 'dl-'.strtolower($platform).'-'.(++$count);
+                $options .= '<option value="'.$id.'">'.e($app['name'].' · '.$version.' · '.($filename ?: '资源暂未配置')).'</option>';
+                $resources .= '<div class="download-resource" id="'.$id.'" data-platform="'.e($platform).'" data-search="'.e($app['name'].' '.$version.' '.$filename.' '.$description).'"'.($url ? '' : ' data-unavailable="1"').'><h3>'.e($app['name']).' <small>'.e($version).'</small></h3><p>'.e($description).'</p><p class="dl-filename">'.($filename ? e($filename) : '资源暂未配置，请访问项目页').'</p><div class="dl-resource-links">'.($url ? '<a class="download-button" href="'.e($mirror.$url).'" target="_blank" rel="noopener noreferrer">镜像下载 ↗</a>' : '<span class="download-disabled">暂未配置</span>').'<a class="download-project" href="'.e($project).'" target="_blank" rel="noopener noreferrer">项目主页 ↗</a></div></div>';
+            }
+        }
+        $cards .= '<article class="dl-card" data-platform="'.e($platform).'"><header>'.home_outline_icon($info[0]).'<div><span class="ep-kicker">'.$info[1].'</span><h2>'.e($platform).'客户端</h2><p>适用于'.e($info[2]).'。</p></div></header><dl><div><dt>版本信息</dt><dd>以下载资源说明为准</dd></div><div><dt>系统架构</dt><dd>'.($count ? '查看可用版本与文件名' : '暂无可用资源').'</dd></div></dl>'.($count ? '<label class="dl-select-label" for="dl-select-'.strtolower($platform).'">选择安装版本 / 系统架构</label><select id="dl-select-'.strtolower($platform).'" class="dl-version"><option value="">选择安装版本 / 系统架构</option>'.$options.'</select>' : '<p class="dl-unavailable">当前平台资源暂未配置。</p>').'<div class="dl-card-actions"><a class="ep-button dl-view'.($platform==='Windows' ? ' dl-primary' : '').'" href="#dl-versions-'.strtolower($platform).'">查看下载版本 ↗</a><a href="/articles?q='.rawurlencode($platform).'">安装教程 →</a></div><details class="dl-versions" id="dl-versions-'.strtolower($platform).'"><summary>可用下载资源 <span>'.$count.' 项</span></summary><div>'.$resources.(!$count ? '<p>暂无下载资源，请稍后再来。</p>' : '').'</div></details></article>';
+    }
+    $body = '<div class="ep-page dl-page"><nav class="ep-crumb" aria-label="面包屑"><a href="/">首页</a><span>/</span><span>软件下载</span></nav><header class="ep-intro"><div><span class="ep-kicker">DOWNLOADS &amp; GUIDES</span><h1><span>在熟悉的设备上，</span><span>轻松开始。</span></h1><p>选择适合你设备的客户端，按教程完成安装与订阅配置。</p></div><a href="/articles">查看使用教程 ↗</a></header><div class="ep-toolbar dl-toolbar"><nav class="dl-filters" aria-label="选择设备平台">'.$filters.'</nav><form class="dl-search" role="search">'.home_outline_icon('search').'<input type="search" maxlength="100" aria-label="搜索客户端" placeholder="搜索客户端…"><button type="submit" aria-label="搜索">→</button></form></div><p class="dl-note" role="status">下载前请确认设备平台与系统架构。</p><div class="dl-grid">'.$cards.'</div><div class="download-no-match" hidden role="status">没有匹配的客户端资源，请更换关键词或平台。</div><section class="dl-steps"><h2><span>三步配置，</span><br><span>开始使用。</span></h2><div><ol><li><span>01</span><div><h3>下载并安装</h3><p>选择与你设备匹配的客户端版本。</p></div></li><li><span>02</span><div><h3>获取订阅信息</h3><p>登录后在订单详情查看已交付的订阅链接。</p></div></li><li><span>03</span><div><h3>按教程配置</h3><p>参考对应平台教程，完成订阅导入。</p></div></li></ol><p>软件安装不代表订阅已开通，订阅有效期以正式交付信息为准。</p></div></section><section class="dl-guides"><div><h2>下载与安装须知</h2><ul><li>请通过本页提供的资源入口下载。</li><li>安装前查看客户端说明与平台要求。</li><li>镜像下载使用第三方代理，失败时可查看项目主页或提交工单。</li></ul></div><div><h2>常用教程</h2><a href="/articles?q='.rawurlencode('订阅链接').'">如何查看正式交付的订阅链接 <span>↗</span></a><a href="/articles?q='.rawurlencode('订阅').'">如何导入订阅配置 <span>↗</span></a><a href="/articles?q='.rawurlencode('安装').'">客户端安装遇到问题怎么办 <span>↗</span></a></div></section><section class="ep-faq"><h2>你可能想了解</h2><div><details open><summary>下载完成后可以直接使用吗？</summary><p>下载并安装客户端后，还需按教程导入有效订阅信息。请妥善保管订阅地址与账号凭据。</p></details><details><summary>如何选择设备对应的系统架构？</summary><p>先确认设备操作系统，再在系统信息中查看处理器架构。请核对安装文件名中的 amd64 / x86_64、arm64 或 armeabi-v7a 等标记，兼容要求以项目发布说明为准；不确定时请先查看项目主页。</p></details><details><summary>下载链接失效了怎么办？</summary><p>可通过对应资源的项目主页查看发布说明。若仍无法获取，请前往帮助中心或提交工单，并说明设备平台、客户端名称与安装文件名。</p></details></div></section><section class="ep-help"><h2>需要帮助？</h2><a href="/articles">前往帮助中心 ↗</a><a href="/tickets">提交工单 ↗</a></section><footer class="ep-footer"><div><a href="/">'.home_outline_icon('cloud').'<b>'.e(isset($config['app']['name']) ? $config['app']['name'] : '小云店').'</b></a><p>数字服务，简单一点。</p></div><nav><a href="/announcements">系统公告</a><a href="/articles">帮助中心</a></nav><small>© '.date('Y').' '.e(isset($config['app']['name']) ? $config['app']['name'] : '小云店').'</small></footer></div>';
+    return $body.'<script>(function(){var root=document.querySelector(".dl-page"),platform="全部",input=root.querySelector(".dl-search input");root.classList.add("is-enhanced");function filter(){var q=input.value.trim().toLocaleLowerCase(),visible=0;root.querySelectorAll(".dl-card").forEach(function(card){var matched=0;card.querySelectorAll(".download-resource").forEach(function(row){var show=!q||row.dataset.search.toLocaleLowerCase().includes(q);row.hidden=!show;if(show)matched++});card.hidden=(platform!=="全部"&&card.dataset.platform!==platform)||(q!==""&&matched===0);if(!card.hidden)visible++;card.querySelector(".dl-versions").open=q!==""&&!card.hidden;card.querySelectorAll(".dl-version option[value]:not([value=\"\"])").forEach(function(option){var row=document.getElementById(option.value);option.hidden=row.hidden;option.disabled=row.hidden});var select=card.querySelector(".dl-version");if(select&&select.value&&document.getElementById(select.value).hidden)select.value=""});root.querySelector(".download-no-match").hidden=visible!==0}root.querySelectorAll(".download-filter").forEach(function(button){button.addEventListener("click",function(){platform=button.dataset.platform;root.querySelectorAll(".download-filter").forEach(function(item){var active=item===button;item.classList.toggle("is-active",active);item.setAttribute("aria-pressed",String(active))});filter()})});root.querySelector(".dl-search").addEventListener("submit",function(event){event.preventDefault();filter()});input.addEventListener("input",filter);root.querySelectorAll(".dl-view").forEach(function(link){link.addEventListener("click",function(){var card=link.closest(".dl-card"),select=card.querySelector(".dl-version"),details=card.querySelector(".dl-versions");details.open=true;link.href="#"+(select&&select.value?select.value:details.id)})})})();</script>';
+}
+$router->get('/downloads', function() use($config,$pdo){$mirror='https://gh-proxy.com/';$software=array();$rows=$pdo->query('SELECT * FROM download_resources WHERE status="active" ORDER BY app_name,sort_order,id')->fetchAll();foreach($rows as $row){if(!isset($software[$row['app_name']]))$software[$row['app_name']]=array('name'=>$row['app_name'],'version'=>$row['version'],'description'=>$row['description'],'project'=>$row['project_url'],'platforms'=>array());$software[$row['app_name']]['platforms'][$row['platform']][]=array($row['filename'],$row['source_url'],$row['version'],$row['description'],$row['project_url']);}$software=array_values($software);/* legacy fallback data follows */if(!$software)$software=array(array('name'=>'FlClash','version'=>'v0.8.98','description'=>'跨平台的 Clash 代理客户端，界面简洁，适合日常使用。','project'=>'https://github.com/chen08209/FlClash','platforms'=>array('Windows'=>array(array('FlClash-0.8.98-windows-amd64-setup.exe','https://github.com/chen08209/FlClash/releases/download/v0.8.98/FlClash-0.8.98-windows-amd64-setup.exe')),'macOS'=>array(array('FlClash-0.8.98-macos-amd64.dmg','https://github.com/chen08209/FlClash/releases/download/v0.8.98/FlClash-0.8.98-macos-amd64.dmg')),'Linux'=>array(array('FlClash-0.8.98-linux-amd64.AppImage','https://github.com/chen08209/FlClash/releases/download/v0.8.98/FlClash-0.8.98-linux-amd64.AppImage')),'Android'=>array(array('FlClash-0.8.98-android-arm64-v8a.apk','https://github.com/chen08209/FlClash/releases/download/v0.8.98/FlClash-0.8.98-android-arm64-v8a.apk'),array('FlClash-0.8.98-android-armeabi-v7a.apk','https://github.com/chen08209/FlClash/releases/download/v0.8.98/FlClash-0.8.98-android-armeabi-v7a.apk'),array('FlClash-0.8.98-android-x86_64.apk','https://github.com/chen08209/FlClash/releases/download/v0.8.98/FlClash-0.8.98-android-x86_64.apk')))),array('name'=>'Clash Verge Rev','version'=>'请以项目页最新版本为准','description'=>'基于 Clash Meta 的桌面客户端，支持主流桌面系统。','project'=>'https://github.com/clash-verge-rev/clash-verge-rev','platforms'=>array('Windows'=>array(null),'macOS'=>array(null),'Linux'=>array(null),'Android'=>array(null))),array('name'=>'v2rayN','version'=>'请以项目页最新版本为准','description'=>'Windows 平台常用的代理客户端，支持多种协议配置。','project'=>'https://github.com/2dust/v2rayN','platforms'=>array('Windows'=>array(null),'macOS'=>array(null),'Linux'=>array(null),'Android'=>array(null))),array('name'=>'v2rayNG','version'=>'请以项目页最新版本为准','description'=>'Android 平台代理客户端，适合移动设备使用。','project'=>'https://github.com/2dust/v2rayNG','platforms'=>array('Windows'=>array(null),'macOS'=>array(null),'Linux'=>array(null),'Android'=>array(null))));page('软件下载',downloads_editorial($software,$config,$mirror),$config);});
+$router->get('/articles', function() use($config,$pdo){page('帮助中心',help_article_list($pdo,$config),$config);});
 $router->get('/articles/{id}', function($id) use($config,$pdo){list($title,$body)=help_article_detail($pdo,$id);page($title,$body,$config);});
 function lottery_panel($pdo,$service,$uid){
     $setting=$service->setting('lottery');$cfg=$service->config('lottery');$enabled=$service->enabled('lottery');$prizes=array();$used=0;
@@ -1176,19 +1328,89 @@ function leader_panel($service,$uid,$config)
 }
 function referral_panel($pdo,$service,$uid,$config)
 {
-    $sum=$service->referralSummary($uid);$cfg=$service->config('referral');$enabled=$service->enabled('referral');$history=$service->commissionHistory($uid,isset($_GET['page'])?(int)$_GET['page']:1,10);
-    $base=rtrim(isset($config['app']['base_url'])?$config['app']['base_url']:'','/');$link=$base.'/register?ref='.rawurlencode($sum['code']);$rate=rtrim(rtrim(number_format((int)$cfg['rate_bps']/100,2,'.',''),'0'),'.');
-    $html='<div class="referral-page"><header class="referral-heading"><div><span class="referral-eyebrow">邀请有礼 · 分享共赢</span><h1>让好体验，带来新奖励</h1><p>邀请好友完成首笔有效付款，佣金自动返至消费余额。</p></div><a class="secondary-button" href="/wallet">我的余额 →</a></header><section class="referral-invite"><div class="referral-invite-copy"><span class="referral-pill">'.($enabled?'活动进行中':'活动暂未开启').'</span><h2>分享一份好体验<br>收获 <strong>'.e($rate).'%</strong> 邀请返佣</h2><p>'.($enabled?'好友通过你的专属链接注册并完成有效付款，即可获得奖励。':'当前不产生新返佣，已有奖励和邀请记录仍可查看。').'</p><div class="referral-link"><input id="referral-invite-link" readonly aria-label="专属邀请链接" value="'.e($link).'"><button class="button" type="button" id="referral-copy">复制邀请链接</button></div><small id="referral-copy-status" role="status">专属邀请码：'.e($sum['code']).'</small></div><div class="referral-art" aria-hidden="true"><div class="referral-art-orbit"></div><div class="referral-art-card"><span>邀请奖励</span><b>+'.e($rate).'<small>%</small></b><em>自动存入余额</em></div><span class="referral-art-spark">＋</span></div></section><section class="referral-stats"><div><span>有效邀请</span><strong>'.(int)$sum['invited'].'<small> 人</small></strong><p>已通过专属链接建立关联</p></div><div><span>有效到账返佣</span><strong>¥'.e(WalletService::formatAmount($sum['wallet_credited'])).'</strong><p>已到账且未撤销的新佣金</p></div><div><span>待入账奖励</span><strong>¥'.e(WalletService::formatAmount($sum['wallet_pending'])).'</strong><p>余额空间不足，等待处理</p></div></section>';
-    if($sum['wallet_recovery_pending']>0)$html.='<div class="referral-alert">部分好友订单已退款，待追回佣金 ¥'.e(WalletService::formatAmount($sum['wallet_recovery_pending'])).'。将由管理员核对处理，不会自动抵扣后续奖励。</div>';
-    $html.='<div class="referral-layout"><section class="referral-records"><div class="referral-section-head"><div><h2>返佣记录</h2><p>每一份分享，都有迹可循。</p></div><span>共 '.(int)$history['total'].' 条</span></div><div class="table-wrap"><table><thead><tr><th>好友 / 时间</th><th>返佣金额</th><th>奖励状态</th></tr></thead><tbody>';
-    foreach($history['items'] as $row){$parts=explode('@',(string)$row['email'],2);$masked=$parts[0]!==''?mb_substr($parts[0],0,1,'UTF-8').'***'.(isset($parts[1])?'@'.$parts[1]:''):'已注销用户';$state=$row['settlement_mode']==='legacy'?'历史佣金':($row['recovery_status']==='pending'?'待追回':($row['status']==='credited'?'已返余额':($row['status']==='pending_credit'?'待入账':'已撤销')));$html.='<tr><td><b>'.e($masked).'</b><small>'.e($row['created_at']).'</small></td><td class="referral-record-amount">¥'.e(WalletService::formatAmount($row['amount_cents'])).'</td><td><span class="referral-state '.($row['status']==='credited'?'is-credited':'').'">'.e($state).'</span></td></tr>';}
-    if(!$history['items'])$html.='<tr><td colspan="3"><div class="referral-empty"><span>＋</span><b>第一份奖励，从分享开始</b><p>复制上方链接，邀请好友一起体验。</p></div></td></tr>';
-    $html.='</tbody></table></div><div class="referral-pagination"><span>第 '.(int)$history['page'].' / '.(int)$history['pages'].' 页</span>';if($history['page']>1)$html.='<a href="/events?view=referral&amp;page='.($history['page']-1).'">上一页</a>';if($history['page']<$history['pages'])$html.='<a href="/events?view=referral&amp;page='.($history['page']+1).'">下一页</a>';
-    $html.='</div></section><aside class="referral-rules"><span class="referral-eyebrow">简单三步，奖励到账</span><h2>如何获得返佣？</h2><ol><li><b>分享专属链接</b><p>好友通过链接注册，建立邀请关系。</p></li><li><b>好友完成首笔有效付款</b><p>按订单实际支付金额的 '.e($rate).'% 计算奖励。</p></li><li><b>佣金自动返余额</b><p>可直接支付站内订单，无需申请提现。</p></li></ol><div class="referral-rule-note">订单取消或退款会撤销返佣。余额不足时记为待追回；达到余额上限的奖励待人工入账。仅新佣金适用，历史佣金不自动转换。</div></aside></div>';
-    if($sum['earned']>0||$service->withdrawals($uid)){$html.='<details class="referral-legacy"><summary>历史佣金与提现记录<span>与新返余额奖励分别记账</span></summary><p>历史累计有效佣金 '.e(money($sum['earned'])).'，可申请提现 '.e(money($sum['available'])).'。历史资金不自动转入余额。</p>';if($sum['available']>0)$html.='<form method="post" action="/events/withdraw">'.csrf_field().'<label>历史提现金额（元）<input name="amount" inputmode="decimal" required></label><label>收款方式<input name="channel" maxlength="30" required></label><label>收款账号<input name="account_no" maxlength="190" required></label><button class="secondary-button">提交历史提现审核</button></form>';$labels=array('pending'=>'待审核','approved'=>'已批准','paid'=>'已打款','rejected'=>'已驳回');foreach($service->withdrawals($uid) as $w)$html.='<p>'.e($w['created_at']).' · '.e(money($w['amount_cents'])).' · '.e(isset($labels[$w['status']])?$labels[$w['status']]:'待核对').'</p>';$html.='</details>';}
-    return $html.'</div><script>(function(){var b=document.getElementById("referral-copy"),i=document.getElementById("referral-invite-link"),s=document.getElementById("referral-copy-status");b.addEventListener("click",function(){function fallback(){i.focus();i.select();s.textContent="链接已选中，请手动复制"}if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(i.value).then(function(){s.textContent="邀请链接已复制，快分享给好友吧"},fallback)}else fallback()})})();</script>';
+    $labels=array(''=>'全部','pending_credit'=>'待入账','credited'=>'已入账','recovery'=>'待追回','reversed'=>'已撤回','legacy'=>'历史佣金');
+    $status=$_GET['status']??'';$range=$_GET['range']??'30';$search=$_GET['q']??'';$page=$_GET['page']??'1';$invitePage=$_GET['invite_page']??'1';
+    if(!is_string($status)||!isset($labels[$status])||!is_string($range)||!in_array($range,array('30','90','all'),true)||!is_string($search)||mb_strlen($search,'UTF-8')>80||!is_string($page)||!preg_match('/^[1-9][0-9]{0,8}$/D',$page)||!is_string($invitePage)||!preg_match('/^[1-9][0-9]{0,8}$/D',$invitePage)){http_response_code(400);return '<section class="ri-empty"><h1>返佣筛选参数无效</h1><p>请选择有效状态、时间范围和页码。</p><a href="/events?view=referral">返回拉人返佣</a></section>';}
+    $search=trim($search);$sum=$service->referralSummary($uid);$cfg=$service->config('referral');$enabled=$service->enabled('referral');$withdrawals=$service->withdrawals($uid);
+    $base=rtrim($config['app']['base_url']??'','/');$link=$base.'/register?ref='.rawurlencode($sum['code']);$rate=rtrim(rtrim(number_format((int)$cfg['rate_bps']/100,2,'.',''),'0'),'.');
+    $stateSql='CASE WHEN c.settlement_mode="legacy" THEN "legacy" WHEN c.recovery_status="pending" THEN "recovery" WHEN c.status="credited" THEN "credited" WHEN c.status="pending_credit" THEN "pending_credit" WHEN c.status="reversed" THEN "reversed" ELSE "unknown" END';
+    $where='c.referrer_user_id=?';$args=array($uid);if($status!==''){$where.=' AND ('.$stateSql.')=?';$args[]=$status;}if($range!=='all'){$where.=' AND c.updated_at>=?';$args[]=date('Y-m-d H:i:s',time()-(int)$range*86400);}if($search!==''){$where.=' AND c.commission_no LIKE ? ESCAPE \'!\'';$args[]='%'.strtr($search,array('!'=>'!!','%'=>'!%','_'=>'!_')).'%';}
+    $q=$pdo->prepare('SELECT COUNT(*) FROM referral_commissions c WHERE '.$where);$q->execute($args);$total=(int)$q->fetchColumn();$pages=max(1,(int)ceil($total/6));$current=min((int)$page,$pages);
+    $q=$pdo->prepare('SELECT c.commission_no,c.amount_cents,c.status,c.settlement_mode,c.recovery_status,c.created_at,c.updated_at,u.email,'.$stateSql.' ui_state FROM referral_commissions c LEFT JOIN users u ON u.id=c.referred_user_id WHERE '.$where.' ORDER BY c.id DESC LIMIT 6 OFFSET '.(($current-1)*6));$q->execute($args);$items=$q->fetchAll();
+    $invitePages=max(1,(int)ceil($sum['invited']/5));$inviteCurrent=min((int)$invitePage,$invitePages);$q=$pdo->prepare('SELECT u.email,r.created_at FROM referral_relations r LEFT JOIN users u ON u.id=r.user_id WHERE r.referrer_user_id=? AND r.status="active" ORDER BY r.id DESC LIMIT 5 OFFSET '.(($inviteCurrent-1)*5));$q->execute(array($uid));$invites=$q->fetchAll();
+    $url=function($changes=array(),$anchor='')use($status,$range,$search,$current,$inviteCurrent){return '/events?'.http_build_query(array_merge(array('view'=>'referral','status'=>$status,'range'=>$range,'q'=>$search,'page'=>$current,'invite_page'=>$inviteCurrent),$changes),'','&',PHP_QUERY_RFC3986).$anchor;};
+    $mask=function($email){$parts=explode('@',(string)$email,2);return $parts[0]!==''?mb_substr($parts[0],0,1,'UTF-8').'***'.(isset($parts[1])?'@'.$parts[1]:''):'已注销用户';};
+    $html='<div class="ri-page"><header class="ao-welcome ri-welcome"><div><p class="ao-kicker">INVITE &amp; EARN</p><h1>拉人返佣</h1><p>分享你的邀请链接，按规则获得好友购买返佣。</p></div><a href="#referral-rules">查看返佣规则 ↗</a></header><div class="ri-top-grid"><section class="ri-invite"><h2>我的专属邀请链接</h2><p>通过此链接注册的好友将绑定邀请关系。</p><div class="ri-link"><input id="referral-invite-link" readonly aria-label="专属邀请链接" value="'.e($link).'"><button type="button" class="ao-primary" data-copy="referral-invite-link">复制链接</button></div><div class="ri-code"><label for="referral-invite-code">邀请码</label><input id="referral-invite-code" readonly value="'.e($sum['code']).'"><button type="button" data-copy="referral-invite-code">复制邀请码</button></div><p class="ri-rate">当前返佣比例 <b>'.e($rate).'%</b> · '.($enabled?'活动进行中':'活动暂未开启，当前不产生新返佣').'。</p><p id="referral-copy-status" role="status" class="ri-copy-status"></p></section><aside class="ri-guide" id="referral-rules"><h2>好服务，值得分享。</h2><ol><li><span>01</span>好友通过邀请链接注册</li><li><span>02</span>好友完成首笔符合规则的 VPN 付款</li><li><span>03</span>佣金按规则入账账户余额</li></ol><p>订单取消或退款可能触发佣金撤回；具体以系统记录及活动规则为准。</p></aside></div><section class="ri-stats" aria-label="我的返佣统计"><div><span>邀请人数</span><strong>'.(int)$sum['invited'].'<small> 人</small></strong></div><div><span>待入账佣金</span><strong>¥'.e(WalletService::formatAmount($sum['wallet_pending'])).'</strong></div><div><span>已入账佣金</span><strong>¥'.e(WalletService::formatAmount($sum['wallet_credited'])).'</strong></div><div><span>待追回佣金</span><strong>¥'.e(WalletService::formatAmount($sum['wallet_recovery_pending'])).'</strong></div></section><div class="ri-balance"><p>佣金入账后可用于订单全额支付。</p><a href="/wallet?type=referral_credit&amp;range=all">查看余额账本 ↗</a></div>';
+    if($sum['wallet_recovery_pending']>0)$html.='<p class="ri-alert">待追回佣金由管理员核对处理，不会自动抵扣后续奖励。</p>';
+    $tabs='';foreach($labels as $key=>$label)$tabs.='<a href="'.e($url(array('status'=>$key,'page'=>1),'#referral-records')).'"'.($status===$key?' aria-current="page"':'').'>'.$label.'</a>';
+    $options='';foreach(array('30'=>'最近30天','90'=>'最近90天','all'=>'全部时间') as $value=>$label)$options.='<option value="'.$value.'"'.($range===(string)$value?' selected':'').'>'.$label.'</option>';
+    $html.='<section class="ri-records" id="referral-records"><h2>返佣记录</h2><div class="ri-toolbar"><nav class="ri-tabs" aria-label="返佣状态筛选">'.$tabs.'</nav><form method="get" action="/events#referral-records"><input type="hidden" name="view" value="referral"><input type="hidden" name="status" value="'.e($status).'"><label class="ri-sr" for="referral-search">搜索返佣编号</label><input type="search" id="referral-search" name="q" maxlength="80" placeholder="搜索返佣编号…" value="'.e($search).'"><label class="ri-sr" for="referral-range">更新时间范围</label><select id="referral-range" name="range">'.$options.'</select><button type="submit">筛选</button></form></div><p class="ri-privacy">仅展示脱敏好友与本人返佣编号，不公开好友订单。时间范围按返佣更新时间筛选；上方统计为全部记录。</p><div class="ri-table-wrap"><table class="ri-table"><thead><tr><th scope="col">好友</th><th scope="col">返佣编号</th><th scope="col">佣金金额</th><th scope="col">状态</th><th scope="col">更新时间</th><th scope="col">操作</th></tr></thead><tbody>';
+    foreach($items as $row){$state=$row['ui_state'];$stateLabel=$labels[$state]??'待核对';$html.='<tr class="ri-record"><td>'.e($mask($row['email'])).'</td><td class="ri-number">'.e($row['commission_no']).'</td><td class="ri-amount">¥'.e(WalletService::formatAmount((int)$row['amount_cents'])).'</td><td><span class="ri-state is-'.e($state).'">'.e($stateLabel).'</span></td><td><time datetime="'.e(str_replace(' ','T',$row['updated_at'])).'">'.e(substr($row['updated_at'],0,16)).'</time></td><td>'.($state==='credited'?'<a href="/wallet?type=referral_credit&amp;range=all">查看入账</a>':'<details class="ri-detail"><summary>查看详情</summary><div><b>'.e($row['commission_no']).'</b><p>结算方式：'.($row['settlement_mode']==='legacy'?'历史佣金':'账户余额').'</p><p>记录状态：'.e($stateLabel).'</p><p>创建时间：'.e($row['created_at']).'</p><p>历史状态：'.e(array('available'=>'可申请提现','approved'=>'已批准','paid'=>'已打款','reversed'=>'已撤回','pending'=>'待处理')[$row['status']]??$stateLabel).'</p></div></details>').'</td></tr>';}
+    if(!$items)$html.='<tr><td colspan="6" class="ri-empty">暂无匹配的返佣记录，分享后可在这里查看真实进度。</td></tr>';
+    $html.='</tbody></table></div><nav class="ri-pagination" aria-label="返佣记录分页"><span>共 '.$total.' 条 · 第 '.$current.' / '.$pages.' 页</span>'.($current>1?'<a rel="prev" href="'.e($url(array('page'=>$current-1),'#referral-records')).'">上一页</a>':'').'<b aria-current="page">'.$current.'</b>'.($current<$pages?'<a rel="next" href="'.e($url(array('page'=>$current+1),'#referral-records')).'">下一页 ›</a>':'<span aria-disabled="true">下一页 ›</span>').'</nav></section><div class="ri-bottom-grid"><section class="ri-friends" id="referral-invitations"><header><h2>我的邀请</h2><span>已绑定 '.(int)$sum['invited'].' 人</span></header><div class="ri-table-wrap"><table class="ri-table"><thead><tr><th scope="col">好友</th><th scope="col">绑定时间</th><th scope="col">绑定状态</th></tr></thead><tbody>';
+    foreach($invites as $friend)$html.='<tr class="ri-friend"><td>'.e($mask($friend['email'])).'</td><td>'.e(substr($friend['created_at'],0,16)).'</td><td><span class="ri-bound">已绑定</span></td></tr>';
+    if(!$invites)$html.='<tr><td colspan="3" class="ri-empty">暂无已绑定的邀请好友。</td></tr>';
+    $html.='</tbody></table></div>';if($invitePages>1){$html.='<nav class="ri-pagination" aria-label="邀请记录分页"><span>第 '.$inviteCurrent.' / '.$invitePages.' 页</span>';foreach(array(-1=>'上一页',1=>'下一页') as $step=>$label)if($inviteCurrent+$step>=1&&$inviteCurrent+$step<=$invitePages)$html.='<a href="'.e($url(array('invite_page'=>$inviteCurrent+$step),'#referral-invitations')).'">'.$label.'</a>';$html.='</nav>';}
+    $html.='</section><section class="ri-faq"><h2>常见问题</h2><details open><summary>佣金何时入账？</summary><p>活动开启期间，好友首笔符合条件的 VPN 付款按规则返佣；余额达到上限时待人工入账，处理状态以记录为准。</p></details><details><summary>好友退款后佣金如何处理？</summary><p>订单取消或退款会撤回返佣；余额不足时记为待追回，由管理员核对，不会自动抵扣后续奖励。</p></details><details><summary>返佣余额可以怎样使用？</summary><p>新佣金入消费余额，可用于站内订单全额支付，不支持提现。历史佣金仍按原流程人工审核，不自动转换为余额。</p></details><details><summary>如何确认邀请是否成功？</summary><p>好友通过专属链接完成注册后建立邀请关系，可在“我的邀请”查看已绑定记录。分享链接本身不代表获得奖励。</p></details></section></div>';
+    if($sum['earned']>0||$withdrawals){$html.='<details class="ri-legacy"><summary>历史佣金与提现记录 <small>与新返余额奖励分别记账</small></summary><p>历史累计有效佣金 ¥'.e(WalletService::formatAmount($sum['earned'])).'，可申请提现 ¥'.e(WalletService::formatAmount($sum['available'])).'。历史资金不自动转入余额。</p>';if($sum['available']>0)$html.='<form method="post" action="/events/withdraw">'.csrf_field().'<label>历史提现金额（元）<input name="amount" inputmode="decimal" required></label><label>收款方式<input name="channel" maxlength="30" required></label><label>收款账号<input name="account_no" maxlength="190" required></label><button type="submit">提交历史提现审核</button></form>';$withdrawLabels=array('pending'=>'待审核','approved'=>'已批准','paid'=>'已打款','rejected'=>'已驳回');foreach($withdrawals as $w)$html.='<p>'.e($w['created_at']).' · ¥'.e(WalletService::formatAmount((int)$w['amount_cents'])).' · '.e($withdrawLabels[$w['status']]??'待核对').'</p>';$html.='</details>';}
+    return $html.'<div class="ri-help"><p>ⓘ 请真实分享，邀请绑定与返佣结果以系统记录和活动规则为准。</p><strong>记录有疑问？</strong><a class="ao-button" href="/tickets#new-ticket">提交工单 ↗</a></div></div><script>(function(){var status=document.getElementById("referral-copy-status");document.querySelectorAll("[data-copy]").forEach(function(button){button.addEventListener("click",function(){var input=document.getElementById(button.dataset.copy);function fallback(){input.focus();input.select();status.textContent="内容已选中，请手动复制"}if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(input.value).then(function(){status.textContent=button.dataset.copy==="referral-invite-code"?"邀请码已复制":"邀请链接已复制"},fallback)}else fallback()})})})();</script>';
 }
-$router->get('/events', function() use($config,$pdo){$views=array(''=>'活动中心','lottery'=>'活动抽奖','referral'=>'拉人返佣','group'=>'好友拼单','free'=>'团长免单');$view=isset($_GET['view'])&&isset($views[$_GET['view']])?$_GET['view']:'';$service=new ActivityService($pdo);$title=$views[$view];if($view==='group'){$uid=Security::requireUser();return page($title,group_panel($pdo,$uid,$config),$config);}if($view==='free'){$uid=Security::requireUser();return page($title,leader_panel($service,$uid,$config),$config);}if($view==='referral'){$uid=Security::requireUser();return page($title,referral_panel($pdo,$service,$uid,$config),$config);}$body='<div class="benefits-wrap events-wrap"><header class="ux-page-head"><div><h1>'.e($title).'</h1><p>查看活动规则、参与记录与奖励状态。</p></div></header><section class="events-hero"><span>MEMBER ACTIVITIES</span><h2>'.($view===''?'发现更多会员活动':e($title)).'</h2><p>活动默认关闭，具体规则以后台配置和页面状态为准。</p></section>';if($view===''){$eventSettings=$pdo->query('SELECT activity_key FROM activity_settings WHERE status="enabled" AND (start_at IS NULL OR start_at<=NOW()) AND (end_at IS NULL OR end_at>=NOW())')->fetchAll(PDO::FETCH_COLUMN);$body.='<div class="event-grid">';foreach(array('lottery'=>array('幸运抽奖','按活动规则参与抽奖，领取站内优惠券。','优惠门槛与有效期以实际发券为准。','events'),'referral'=>array('邀请返佣','分享专属邀请链接，好友首笔有效付款后获得奖励。','符合规则的佣金自动返消费余额。','account'),'group'=>array('VPN 拼团','邀请好友一起选购，达到活动人数后享受拼团优惠。','只有确认付款才计入人数，成团后进入交付。','shop'),'free'=>array('团长优惠券','按活动规则邀请好友，达到有效邀请门槛后获券。','奖励方案与使用条件以活动详情为准。','orders')) as $eventKey=>$eventInfo){$body.='<a class="event-tile event-'.$eventKey.'" href="/events?view='.$eventKey.'"><span class="event-small-icon">'.user_nav_icon($eventInfo[3]).'</span><strong>'.e($eventInfo[0]).'</strong><small>'.e($eventInfo[1]).'</small><p class="event-rule">'.e($eventInfo[2]).'</p><em class="event-state">'.(in_array($eventKey==='free'?'leader':$eventKey,$eventSettings,true)?'活动已开启':'暂未开启').'</em><span class="event-art" aria-hidden="true">'.user_nav_icon($eventInfo[3]).'</span><b class="event-entry">查看活动详情 →</b></a>';}$body.='</div>';}elseif($view==='lottery'){$uid=Security::requireUser();$body.=lottery_panel($pdo,$service,$uid);}elseif($view==='group'){Security::requireUser();$groups=$service->groupCampaigns();$list='';foreach($groups as $g){$plans=$service->allowedGroupPlans($g['id']);$planText='';foreach($plans as $plan)$planText.='<option value="'.(int)$plan['id'].'">'.e($plan['product_name'].' / '.$plan['name'].' / '.$plan['duration_days'].' 天 / '.money($plan['price_cents'])).'</option>';$list.='<div class="event-group-row"><b>'.e($g['title']).'</b><span>'.(int)$g['current_members'].' / '.(int)$g['target_members'].' 人</span><small>截止 '.e($g['expires_at']).'</small><form method="post" action="/events/group/join">'.csrf_field().'<input type="hidden" name="campaign_id" value="'.(int)$g['id'].'"><select name="plan_id" required>'.$planText.'</select><button class="secondary-button" type="submit">加入并下单</button></form></div>';}$groupCfg=$service->config('group');$allowedPlanIds=array_map('intval',isset($groupCfg['plan_ids'])&&is_array($groupCfg['plan_ids'])?$groupCfg['plan_ids']:array());$plans=array();if($allowedPlanIds){$in=implode(',',array_fill(0,count($allowedPlanIds),'?'));$s=$pdo->prepare('SELECT pp.id,pp.name plan_name,pp.duration_days,pp.price_cents,p.name product_name FROM product_plans pp JOIN products p ON p.id=pp.product_id WHERE pp.id IN ('.$in.') AND pp.status="active" AND p.status="active" AND '.catalog_vpn_condition($pdo,'p').' ORDER BY p.sort_order,p.id,pp.sort_order,pp.id');$s->execute($allowedPlanIds);$plans=$s->fetchAll();}$options='';foreach($plans as $plan)$options.='<option value="'.(int)$plan['id'].'">'.e($plan['product_name'].' / '.$plan['plan_name'].' / '.$plan['duration_days'].' 天 / '.money($plan['price_cents'])).'</option>';$body.='<section class="event-detail-card"><h2>好友拼单</h2><p>选择后台开放的具体套餐方案创建或加入拼团；只有付款成功才计入成团人数。</p><form method="post" action="/events/group/create">'.csrf_field().'<label>选择套餐方案<select name="plan_id" required>'.$options.'</select></label><button class="button" type="submit">创建拼团</button></form>'.($list?:'<div class="empty">当前没有进行中的拼团。</div>').'</section>';}$body.='</div>';page($title,$body,$config);});
+function events_overview($pdo, $config) {
+    $service = new ActivityService($pdo);
+    $settings = array();
+    foreach ($pdo->query('SELECT *, (status="enabled" AND (start_at IS NULL OR start_at<=NOW()) AND (end_at IS NULL OR end_at>=NOW())) AS is_live FROM activity_settings')->fetchAll() as $row) $settings[$row['activity_key']] = $row;
+    $configs = array();
+    foreach (array('lottery','referral','group','leader') as $key) {
+        $saved = isset($settings[$key]) ? json_decode($settings[$key]['config_json'], true) : array();
+        $configs[$key] = array_merge($service->defaults($key)['config'], is_array($saved) ? $saved : array());
+    }
+    $prizes = array();
+    if (isset($settings['lottery'])) {
+        $s = $pdo->prepare('SELECT name,value_cents,min_amount_cents,valid_days FROM lottery_prizes WHERE activity_id=? AND status="active" AND weight>0 AND (remaining_quantity<0 OR remaining_quantity>0) ORDER BY sort_order,id');
+        $s->execute(array($settings['lottery']['id']));
+        $prizes = $s->fetchAll();
+    }
+    $plans = array();
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array)(isset($configs['group']['plan_ids']) ? $configs['group']['plan_ids'] : array())))));
+    if ($ids) {
+        $s = $pdo->prepare('SELECT pp.id,pp.name plan_name,pp.duration_days,pp.price_cents,p.name product_name FROM product_plans pp JOIN products p ON p.id=pp.product_id WHERE pp.id IN ('.implode(',',array_fill(0,count($ids),'?')).') AND pp.status="active" AND p.status="active" AND '.catalog_vpn_condition($pdo,'p').' ORDER BY p.sort_order,p.id,pp.sort_order,pp.id');
+        $s->execute($ids);
+        $plans = $s->fetchAll();
+    }
+    $user = !empty($_SESSION['user_id']);
+    $lotteryLive = !empty($settings['lottery']['is_live']);
+    $groupLive = !empty($settings['group']['is_live']) && (!$settings['group']['end_at'] || strtotime($settings['group']['end_at']) > time());
+    $groupPlansReady = count($plans) === count($ids) && count($ids) > 0;
+    $referralLive = !empty($settings['referral']['is_live']);
+    $leaderLive = !empty($settings['leader']['is_live']);
+    $html = '<div class="ep-page ev-page"><nav class="ep-crumb" aria-label="面包屑"><a href="/">首页</a><span>/</span><span>活动中心</span></nav><header class="ep-intro"><div><span class="ep-kicker">EVENTS &amp; REWARDS</span><h1>一起参与，让惊喜发生。</h1><p>发现订阅活动、邀请奖励与每日抽奖，查看规则后再参与。</p></div><a href="#my-event-records">我的活动记录 ↗</a></header><div class="ep-toolbar ev-tabs"><nav class="ep-categories" aria-label="活动分类"><a href="/events" aria-current="page">全部活动</a><a href="#daily-draw">每日抽奖</a><a href="#group-events">拼团活动</a><a href="#invite-friends">邀请奖励</a></nav><a href="#event-rules">活动规则 ↗</a></div><div class="ev-featured"><section class="ev-draw" id="daily-draw"><span class="ep-kicker">01 DAILY DRAW</span><div class="ev-card-heading"><h2>每日抽奖</h2><span class="ev-state">'.($lotteryLive ? ($prizes ? '活动已开启' : '奖池待配置') : '暂未开启').'</span></div><p>获得优惠券的机会，从今天开始。</p><div class="ev-prize-grid" aria-label="奖项预览，不代表中奖概率">';
+    $prizeIndex = 0;
+    for ($i=0; $i<9; $i++) {
+        if ($i===4) {
+            $html .= '<a class="ev-draw-entry" href="/events?view=lottery">'.(!$lotteryLive || !$prizes ? '查看抽奖 ↗' : ($user ? '前往抽奖 ↗' : '登录抽奖 ↗')).'</a>';
+        } else {
+            $prize = $prizes && $i%3!==1 ? $prizes[$prizeIndex++ % count($prizes)] : null;
+            $html .= '<div class="ev-prize">'.($prize ? '<span>'.e($prize['name']).'</span><small>抵扣券 · '.e(money($prize['value_cents'])).'</small>' : '<span>'.($prizes ? '谢谢参与' : '奖池待配置').'</span>').'</div>';
+        }
+    }
+    $html .= '</div><div class="ev-draw-bottom"><p>每日最多 '.(int)$configs['lottery']['daily_limit'].' 次；奖项展示不代表概率。</p><div><a href="#prize-rules">查看奖品规则 ↗</a><a href="/events?view=lottery">我的中奖记录 ↗</a></div></div></section><section class="ev-invite" id="invite-friends"><span class="ep-kicker">02 INVITE FRIENDS</span><h2>好服务，<br>值得分享。</h2><p>邀请好友，按规则获得返佣奖励。</p><ol><li><span>01</span><b>登录获取邀请链接</b></li><li><span>02</span><b>好友通过链接注册并购买</b></li><li><span>03</span><b>符合规则后返佣入账余额</b></li></ol><a class="ep-button" href="/events?view=referral">'.($user ? '查看邀请链接' : '登录查看邀请链接').' ↗</a><small>'.($referralLive ? '活动已开启' : '暂未开启').' · 配置返佣比例 '.e(rtrim(rtrim(number_format(max(0,min(10000,(int)$configs['referral']['rate_bps']))/100,2,'.',''),'0'),'.')).'%。首笔有效 VPN 付款按实付金额返佣，退款撤销，余额不足待追回。</small></section></div><section id="group-events" class="ev-groups"><header><h2>拼团活动</h2><a href="#group-rules">查看拼团规则 ↗</a></header><div class="ev-group-grid">';
+    foreach ($plans as $plan) {
+        $percent = max(0,min(100,(int)$configs['group']['discount_percent']));
+        $cents = (int)$plan['price_cents'];
+        $price = intdiv($cents,100)*$percent + intdiv(($cents%100)*$percent,100);
+        $html .= '<article class="ev-group-card"><div class="ev-group-title">'.home_outline_icon('globe').'<div><h3>'.e($plan['product_name']).' <small>'.e($plan['plan_name']).'</small></h3><p>'.(int)$plan['duration_days'].' 天 · '.(!$groupLive ? '配置方案 · 活动暂未开启' : ($groupPlansReady ? '可选活动方案' : '配置方案 · 部分方案不可用，暂不可开团')).'</p></div></div><div class="ev-group-meta"><dl><div><dt>成团人数</dt><dd>'.max(2,min(100,(int)$configs['group']['target_members'])).' 人</dd></div><div><dt>活动价格</dt><dd>'.e(money($price)).'<small> / 实付比例 '.$percent.'%</small></dd></div></dl><a class="ep-button" href="/events?view=group">查看拼团 ↗</a></div></article>';
+    }
+    if (!$plans) $html .= '<div class="ev-group-empty"><h3>新的同行计划，敬请期待。</h3><p>当前暂无可参与的拼团方案。开放后会在这里展示真实套餐与活动价格。</p><a href="/events?view=group">查看拼团详情 ↗</a></div>';
+    $html .= '</div><p class="ev-group-note">付款后等待成团，成团成功后进入人工交付；未成团不交付。活动价格与资格以下单校验为准，不叠加优惠券。</p></section><aside class="ev-leader"><h2>团长免单，邀请一起参与。</h2><p>'.($leaderLive ? '活动已开启' : '暂未开启').' · 达到 '.(int)$configs['leader']['required_referrals'].' 名有效邀请后，按规则获指定方案固定面额抵扣券。</p><a class="ep-button" href="/events?view=free">查看活动详情 ↗</a></aside><section class="ep-faq" id="event-rules"><h2>参与之前，<br>这些规则请先了解。</h2><div><details open id="prize-rules"><summary>哪些商品可以使用优惠券？</summary><p>优惠券按适用范围、使用门槛与有效期使用，海外账号商品不参与优惠券与拼团。抽奖页登录后可查看本人剩余次数与中奖记录。';
+    if ($prizes) {
+        $html .= '当前可用奖品：';
+        foreach ($prizes as $prize) $html .= e($prize['name']).'（面额 '.e(money($prize['value_cents'])).'，满 '.e(money($prize['min_amount_cents'])).' 可用，有效 '.(int)$prize['valid_days'].' 天）；';
+        $html .= '配置中奖概率 '.max(0,min(100,(int)$configs['lottery']['win_weight'])).'%，具体奖项按权重抽取，库存及状态以参与时为准。';
+    } else $html .= '当前奖池暂无可用奖品。';
+    $html .= '</p></details><details id="group-rules"><summary>拼团失败后如何处理退款？</summary><p>只有确认付款才计入成团人数，成团后逐单人工交付。未成团不交付；余额支付退回余额，余额容量不足时等待重试；外部支付由管理员核对后按原渠道处理，不承诺即时到账。</p></details><details><summary>邀请返佣在哪里查看？</summary><p>登录邀请返佣页面查看本人邀请与奖励记录。好友首笔有效 VPN 付款符合规则后返消费余额；取消或退款将撤销返佣，余额不足时待追回，余额容量不足时待人工入账。</p><a href="/events?view=referral">查看邀请奖励 ↗</a></details><details><summary>团长奖励券如何领取？</summary><p>有效邀请达到当前配置门槛后，由现有付款结算流程自动发放指定方案固定面额抵扣券，无需手动领取；每人当前配置下发放一次。奖励不是直接开通服务，退款撤销返佣可能影响有效人数。</p><a href="/events?view=free">查看奖励规则 ↗</a></details></div></section><section class="ev-records" id="my-event-records"><p>登录后可查看自己的参与记录、中奖结果与邀请奖励。</p><nav aria-label="本人活动记录"><a href="/events?view=lottery">中奖记录 ↗</a><a href="/events?view=group">我的拼团 ↗</a><a href="/events?view=referral">邀请奖励 ↗</a></nav></section><section class="ep-help"><h2>需要帮助？</h2><a href="/articles">查看使用说明 ↗</a><a href="/tickets">提交工单 ↗</a></section><footer class="ep-footer"><a class="ep-footer-brand" href="/">'.home_outline_icon('cloud').'<b>'.e($config['app']['name']).'</b></a><p>数字服务，简单一点。</p><nav><a href="/announcements">系统公告</a><a href="/articles">帮助中心</a></nav><small>© '.date('Y').' '.e($config['app']['name']).'</small></footer></div>';
+    return $html;
+}
+$router->get('/events', function() use($config,$pdo){if(!isset($_GET['view']) || !is_string($_GET['view']) || !in_array($_GET['view'],array('lottery','referral','group','free'),true)) return page('活动中心',events_overview($pdo,$config),$config);$views=array(''=>'活动中心','lottery'=>'活动抽奖','referral'=>'拉人返佣','group'=>'好友拼单','free'=>'团长免单');$view=isset($_GET['view'])&&isset($views[$_GET['view']])?$_GET['view']:'';$service=new ActivityService($pdo);$title=$views[$view];if($view==='group'){$uid=Security::requireUser();return page($title,group_panel($pdo,$uid,$config),$config);}if($view==='free'){$uid=Security::requireUser();return page($title,leader_panel($service,$uid,$config),$config);}if($view==='referral'){$uid=Security::requireUser();return page($title,referral_panel($pdo,$service,$uid,$config),$config);}$body='<div class="benefits-wrap events-wrap"><header class="ux-page-head"><div><h1>'.e($title).'</h1><p>查看活动规则、参与记录与奖励状态。</p></div></header><section class="events-hero"><span>MEMBER ACTIVITIES</span><h2>'.($view===''?'发现更多会员活动':e($title)).'</h2><p>活动默认关闭，具体规则以后台配置和页面状态为准。</p></section>';if($view===''){$eventSettings=$pdo->query('SELECT activity_key FROM activity_settings WHERE status="enabled" AND (start_at IS NULL OR start_at<=NOW()) AND (end_at IS NULL OR end_at>=NOW())')->fetchAll(PDO::FETCH_COLUMN);$body.='<div class="event-grid">';foreach(array('lottery'=>array('幸运抽奖','按活动规则参与抽奖，领取站内优惠券。','优惠门槛与有效期以实际发券为准。','events'),'referral'=>array('邀请返佣','分享专属邀请链接，好友首笔有效付款后获得奖励。','符合规则的佣金自动返消费余额。','account'),'group'=>array('VPN 拼团','邀请好友一起选购，达到活动人数后享受拼团优惠。','只有确认付款才计入人数，成团后进入交付。','shop'),'free'=>array('团长优惠券','按活动规则邀请好友，达到有效邀请门槛后获券。','奖励方案与使用条件以活动详情为准。','orders')) as $eventKey=>$eventInfo){$body.='<a class="event-tile event-'.$eventKey.'" href="/events?view='.$eventKey.'"><span class="event-small-icon">'.user_nav_icon($eventInfo[3]).'</span><strong>'.e($eventInfo[0]).'</strong><small>'.e($eventInfo[1]).'</small><p class="event-rule">'.e($eventInfo[2]).'</p><em class="event-state">'.(in_array($eventKey==='free'?'leader':$eventKey,$eventSettings,true)?'活动已开启':'暂未开启').'</em><span class="event-art" aria-hidden="true">'.user_nav_icon($eventInfo[3]).'</span><b class="event-entry">查看活动详情 →</b></a>';}$body.='</div>';}elseif($view==='lottery'){$uid=Security::requireUser();$body.=lottery_panel($pdo,$service,$uid);}elseif($view==='group'){Security::requireUser();$groups=$service->groupCampaigns();$list='';foreach($groups as $g){$plans=$service->allowedGroupPlans($g['id']);$planText='';foreach($plans as $plan)$planText.='<option value="'.(int)$plan['id'].'">'.e($plan['product_name'].' / '.$plan['name'].' / '.$plan['duration_days'].' 天 / '.money($plan['price_cents'])).'</option>';$list.='<div class="event-group-row"><b>'.e($g['title']).'</b><span>'.(int)$g['current_members'].' / '.(int)$g['target_members'].' 人</span><small>截止 '.e($g['expires_at']).'</small><form method="post" action="/events/group/join">'.csrf_field().'<input type="hidden" name="campaign_id" value="'.(int)$g['id'].'"><select name="plan_id" required>'.$planText.'</select><button class="secondary-button" type="submit">加入并下单</button></form></div>';}$groupCfg=$service->config('group');$allowedPlanIds=array_map('intval',isset($groupCfg['plan_ids'])&&is_array($groupCfg['plan_ids'])?$groupCfg['plan_ids']:array());$plans=array();if($allowedPlanIds){$in=implode(',',array_fill(0,count($allowedPlanIds),'?'));$s=$pdo->prepare('SELECT pp.id,pp.name plan_name,pp.duration_days,pp.price_cents,p.name product_name FROM product_plans pp JOIN products p ON p.id=pp.product_id WHERE pp.id IN ('.$in.') AND pp.status="active" AND p.status="active" AND '.catalog_vpn_condition($pdo,'p').' ORDER BY p.sort_order,p.id,pp.sort_order,pp.id');$s->execute($allowedPlanIds);$plans=$s->fetchAll();}$options='';foreach($plans as $plan)$options.='<option value="'.(int)$plan['id'].'">'.e($plan['product_name'].' / '.$plan['plan_name'].' / '.$plan['duration_days'].' 天 / '.money($plan['price_cents'])).'</option>';$body.='<section class="event-detail-card"><h2>好友拼单</h2><p>选择后台开放的具体套餐方案创建或加入拼团；只有付款成功才计入成团人数。</p><form method="post" action="/events/group/create">'.csrf_field().'<label>选择套餐方案<select name="plan_id" required>'.$options.'</select></label><button class="button" type="submit">创建拼团</button></form>'.($list?:'<div class="empty">当前没有进行中的拼团。</div>').'</section>';}$body.='</div>';page($title,$body,$config);});
 $router->post('/events/lottery', function() use($config,$pdo){$uid=Security::requireUser();post_csrf();unset($_SESSION['lottery_result']);try{$r=(new ActivityService($pdo))->lottery($uid);$_SESSION['lottery_result']=$r;flash('success',$r['won']?'恭喜中奖，优惠券 '.$r['coupon'].' 已发放。':'谢谢参与，明天再来试试。');}catch(Exception $e){flash('error',$e->getMessage());}redirect('/events?view=lottery');});
 $router->post('/events/withdraw', function() use($config,$pdo){$uid=Security::requireUser();post_csrf();try{$raw=trim((string)$_POST['amount']);if(!preg_match('/^\d+(?:\.\d{1,2})?$/',$raw))throw new InvalidArgumentException('提现金额格式不正确。');$parts=explode('.',$raw);$cents=((int)$parts[0])*100+(int)str_pad(isset($parts[1])?$parts[1]:'',2,'0');(new ActivityService($pdo))->requestWithdrawal($uid,$cents,trim($_POST['channel']),trim(isset($_POST['account_name'])?$_POST['account_name']:''),trim($_POST['account_no']));flash('success','提现申请已提交，等待管理员人工审核。');}catch(Exception $e){flash('error',$e->getMessage());}redirect('/events?view=referral');});
 $router->post('/events/group/create', function() use($config,$pdo){$uid=Security::requireUser();post_csrf();try{$planId=(int)$_POST['plan_id'];$id=(new ActivityService($pdo))->createGroup($uid,$planId);$s=$pdo->prepare('SELECT product_id FROM product_plans WHERE id=?');$s->execute(array($planId));$productId=(int)$s->fetchColumn();redirect('/order-confirm?product_id='.$productId.'&plan_id='.$planId.'&group_id='.(int)$id);}catch(Exception $e){flash('error',$e->getMessage());redirect('/events?view=group');}});

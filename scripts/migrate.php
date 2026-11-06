@@ -11,6 +11,13 @@ function run_migrations($pdo, $root)
     $platformTableCreated=!(int)$pdo->query("SELECT COUNT(*) FROM system_settings WHERE setting_key='account_platforms_initialized'")->fetchColumn();
     $pdo->exec("CREATE TABLE IF NOT EXISTS account_platforms (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,code VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL UNIQUE,name VARCHAR(100) NOT NULL,sort_order INT UNSIGNED NOT NULL DEFAULT 0,created_at DATETIME NOT NULL,updated_at DATETIME NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     if($platformTableCreated){$s=$pdo->prepare('INSERT IGNORE INTO account_platforms(code,name,sort_order,created_at,updated_at) VALUES(?,?,?,?,?)');$now=date('Y-m-d H:i:s');foreach(array(array('telegram','Telegram',10),array('google','Google',20)) as $platform)$s->execute(array($platform[0],$platform[1],$platform[2],$now,$now));$pdo->exec("INSERT IGNORE INTO system_settings(setting_key,setting_value,updated_at) VALUES('account_platforms_initialized','1',NOW())");}
+    // 系统发货复用交付及审计记录，身份留空而不伪造管理员。
+    if(!$hasColumn('admin_logs','actor_type'))$pdo->exec("ALTER TABLE admin_logs ADD actor_type VARCHAR(20) NOT NULL DEFAULT 'admin'");
+    foreach(array('admin_logs'=>'admin_id','delivery_records'=>'created_by') as $table=>$column){
+        $s=$pdo->prepare('SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?');
+        $s->execute(array($table,$column));
+        if($s->fetchColumn()==='NO')$pdo->exec('ALTER TABLE '.$table.' MODIFY '.$column.' BIGINT UNSIGNED NULL');
+    }
     // Historical products/orders are VPN; never derive old order types from mutable products.
     $accountColumns=array(
         'products'=>array('product_type'=>"VARCHAR(20) NOT NULL DEFAULT 'vpn'",'account_platform'=>'VARCHAR(32) NULL','account_specification'=>'TEXT NULL','account_after_sales'=>'TEXT NULL'),
