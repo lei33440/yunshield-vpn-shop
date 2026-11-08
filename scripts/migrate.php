@@ -5,6 +5,8 @@ function run_migrations($pdo, $root)
     foreach (array_filter(array_map('trim', preg_split('/;\s*(?:\r?\n|$)/', $sql))) as $statement) $pdo->exec($statement);
     $hasColumn = function($table, $column) use ($pdo) { $s=$pdo->prepare('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?'); $s->execute(array($table,$column)); return (int)$s->fetchColumn()>0; };
     $hasIndex = function($table, $index) use ($pdo) { $s=$pdo->prepare('SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND INDEX_NAME=?'); $s->execute(array($table,$index)); return (int)$s->fetchColumn()>0; };
+    if(!$hasColumn('orders','request_key'))$pdo->exec('ALTER TABLE orders ADD request_key VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL');
+    if(!$hasIndex('orders','uk_order_request'))$pdo->exec('ALTER TABLE orders ADD UNIQUE KEY uk_order_request(user_id,request_key)');
     if(!$hasColumn('vpn_categories','description'))$pdo->exec('ALTER TABLE vpn_categories ADD description TEXT NULL');
     if(!$hasColumn('products','vpn_category_id'))$pdo->exec('ALTER TABLE products ADD vpn_category_id BIGINT UNSIGNED NULL');
     if(!$hasIndex('products','idx_product_vpn_category'))$pdo->exec('ALTER TABLE products ADD KEY idx_product_vpn_category(vpn_category_id)');

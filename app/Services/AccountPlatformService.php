@@ -4,6 +4,7 @@ class AccountPlatformService
     private $pdo;
     public function __construct($pdo){$this->pdo=$pdo;}
     public function all(){return $this->pdo->query('SELECT * FROM account_platforms ORDER BY sort_order,id')->fetchAll();}
+    public static function generateCode(){return 'ap_'.bin2hex(random_bytes(12));}
     public function requireCode($code,$lock=false)
     {
         if(!is_string($code)||!preg_match('/\A[a-z][a-z0-9_-]{0,31}\z/D',$code))throw new InvalidArgumentException('平台编码无效。');

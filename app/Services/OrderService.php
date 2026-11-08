@@ -3,16 +3,25 @@ class OrderService
 {
     private $pdo;
     public function __construct($pdo) { $this->pdo = $pdo; }
-    public function create($userId, $productId, $planId, $note, $promotionCode = '', $quantity = 1)
+    public function create($userId, $productId, $planId, $note, $promotionCode = '', $quantity = 1, $requestKey = '')
     {
         foreach(array($userId,$productId,$planId) as $id)if((!is_int($id)&&!is_string($id))||!preg_match('/\A[1-9][0-9]*\z/D',(string)$id))throw new InvalidArgumentException('商品、方案或用户参数无效。');
         if(!is_string($note)||!is_string($promotionCode))throw new InvalidArgumentException('订单备注或优惠参数格式无效。');
         if($quantity!==1&&$quantity!=='1')throw new InvalidArgumentException('每笔订单只能购买一个商品。');
+        if(!is_string($requestKey)||($requestKey!==''&&!preg_match('/\A[a-f0-9]{64}\z/D',$requestKey)))throw new InvalidArgumentException('订单请求标识无效。');
         // 团锁内非锁定计数只读其他席位，使用当前已提交视图避免快照读导致超卖。
         $this->pdo->exec('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
         $this->pdo->beginTransaction();
         try {
             $promotionCode=trim((string)$promotionCode);
+            if($requestKey!==''){
+                $this->lockSettlementUsers(array('user_id'=>$userId));
+                $s=$this->pdo->prepare('SELECT * FROM orders WHERE user_id=? AND request_key=?');$s->execute(array($userId,$requestKey));$existing=$s->fetch();
+                if($existing){
+                    if((int)$existing['product_id']!==(int)$productId||(int)$existing['product_plan_id']!==(int)$planId||$existing['promotion_code']!==$promotionCode||$existing['customer_note']!==substr($note,0,500))throw new InvalidArgumentException('同一订单请求不能更改套餐、优惠码或备注。');
+                    $this->pdo->commit();return $existing['order_no'];
+                }
+            }
             $stmt = $this->pdo->prepare('SELECT * FROM products WHERE id=? AND status="active"'); $stmt->execute(array($productId)); $p = $stmt->fetch();
             if (!$p) throw new RuntimeException('套餐不存在或已下架。');
             $type=$this->productType($p['product_type']);
@@ -36,6 +45,7 @@ class OrderService
             $sql='INSERT INTO orders(order_no,user_id,product_id,product_plan_id,product_name_snapshot,plan_name_snapshot,product_description_snapshot,product_type_snapshot,account_platform_snapshot,account_platform_name_snapshot,account_specification_snapshot,account_after_sales_snapshot,traffic_snapshot,region_snapshot,device_limit_snapshot,duration_days_snapshot,unit_price_cents_snapshot,original_amount_cents,discount_amount_cents,promotion_code,total_amount_cents,status,customer_note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)';
             $this->pdo->prepare($sql)->execute(array($no,$userId,$p['id'],$plan['id'],$p['name'],$plan['name'],$p['description'],$type,$type==='account'?$p['account_platform']:null,$type==='account'?$platformName:null,$type==='account'?$p['account_specification']:null,$type==='account'?$p['account_after_sales']:null,$type==='vpn'?$p['traffic']:null,$type==='vpn'?$p['region']:null,$type==='vpn'?$p['device_limit']:null,$type==='vpn'?$plan['duration_days']:null,$original,$original,$discount,$promotionCode,$total,'pending_payment',substr($note,0,500),$now,$now));
             $id=$this->pdo->lastInsertId();
+            if($requestKey!=='')$this->pdo->prepare('UPDATE orders SET request_key=? WHERE id=?')->execute(array($requestKey,$id));
             $this->pdo->prepare('INSERT INTO payment_records(order_id,method,gateway_type,amount_cents,status,created_at,updated_at) VALUES(?,?,?, ?,"pending",?,?)')->execute(array($id,$total===0?'zero':'manual',$total===0?'zero':'',$total,$now,$now));$initialPaymentId=(int)$this->pdo->lastInsertId();
             if(isset($promotion['coupon']))$activity->applyPromotion($id,$promotion,$promotionCode);elseif(isset($promotion['group'])){$activity->attachGroupOrder($id,$promotion);$this->pdo->prepare('INSERT INTO order_promotions(order_id,promotion_key,promotion_type,promotion_id,promotion_code,discount_amount_cents,idempotency_key,created_at,updated_at) VALUES(?,"group","group",?,?,?, ?,?,?)')->execute(array($id,$promotion['group']['id'],$promotionCode,$discount,'group:'.$id,$now,$now));}
             $this->event($id,'created',null,'pending_payment','订单已提交，等待人工确认付款。','user',$userId,$now);

@@ -46,15 +46,16 @@ function register_ticket_routes($router, $pdo, $config)
         $service=new TicketService($pdo);
         $data=$service->listing($admin?null:$actor,array('status'=>$status),max(1,(int)$scalar($_GET,'page','1')),20);
         if($admin) {
-            $body='<div class="tickets-page"><h1>售后工单</h1><form method="get"><label>状态<select name="status"><option value="">全部状态</option>';
+            $body='<div class="tickets-page admin-tickets-page">'.admin_heading('售后工单','集中查看用户问题，跟进回复与处理进度。').'<section class="admin-ticket-panel" aria-label="售后工单列表"><div class="admin-ticket-toolbar"><div><h2>'.e($status!==''?$labels[$status]:'全部工单').'<span>'.(int)$data['total'].'</span></h2><p>按最近更新时间排列</p></div><form method="get" action="/admin/tickets" class="admin-ticket-filter"><label for="admin-ticket-status">工单状态</label><select id="admin-ticket-status" name="status"><option value="">全部状态</option>';
             foreach($labels as $value=>$label)$body.='<option value="'.$value.'"'.($status===$value?' selected':'').'>'.$label.'</option>';
-            $body.='</select></label><button class="secondary-button">筛选</button></form>';
-            $body.='<section class="table-wrap"><table><thead><tr><th>编号</th><th>用户</th><th>主题</th><th>状态</th><th>更新时间</th></tr></thead><tbody>';
+            $body.='</select><button class="button" type="submit">筛选</button>'.($status!==''?'<a class="admin-ticket-reset" href="/admin/tickets">重置</a>':'').'</form></div>';
+            $body.='<section class="table-wrap admin-ticket-table"><table><thead><tr><th>工单编号</th><th>用户</th><th>问题主题</th><th>处理状态</th><th>更新时间</th><th>操作</th></tr></thead><tbody>';
             foreach($data['items'] as $ticket) {
-                $body.='<tr><td><a href="'.$path.'/'.(int)$ticket['id'].'">'.e($ticket['ticket_no']).'</a></td><td>#'.(int)$ticket['user_id'].'</td><td>'.e($ticket['subject']).'</td><td>'.e(isset($labels[$ticket['status']])?$labels[$ticket['status']]:$ticket['status']).'</td><td>'.e($ticket['updated_at']).'</td></tr>';
+                $ticketUrl=$path.'/'.(int)$ticket['id'];
+                $body.='<tr><td><a class="admin-ticket-number" href="'.$ticketUrl.'">'.e($ticket['ticket_no']).'</a></td><td><span class="admin-ticket-user">#'.(int)$ticket['user_id'].'</span></td><td><a class="admin-ticket-subject" href="'.$ticketUrl.'">'.e($ticket['subject']).'</a></td><td><span class="admin-ticket-status" data-ticket-status="'.e($ticket['status']).'">'.e(isset($labels[$ticket['status']])?$labels[$ticket['status']]:$ticket['status']).'</span></td><td><time class="admin-ticket-updated" datetime="'.e(str_replace(' ','T',$ticket['updated_at'])).'">'.e($ticket['updated_at']).'</time></td><td><a class="secondary-button admin-ticket-open" href="'.$ticketUrl.'" aria-label="'.e('查看工单：'.$ticket['ticket_no']).'">查看工单 <span aria-hidden="true">↗</span></a></td></tr>';
             }
-            if(!$data['items'])$body.='<tr><td colspan="5">暂无工单。</td></tr>';
-            $body.='</tbody></table></section>'.$pagination($path,$data['page'],$data['pages'],'page',array('status'=>$status)).'</div>';
+            if(!$data['items'])$body.='<tr><td colspan="6"><div class="admin-ticket-empty"><strong>暂无匹配的工单</strong><p>当前没有此状态的工单，可以切换状态查看其他记录。</p></div></td></tr>';
+            $body.='</tbody></table></section><footer class="admin-ticket-footer"><span>共 '.(int)$data['total'].' 条工单</span>'.$pagination($path,$data['page'],$data['pages'],'page',array('status'=>$status)).'</footer></section><p class="admin-ticket-note">点击工单编号或主题查看沟通记录；待客服回复的工单需要继续跟进。</p></div>';
             return admin_page('售后工单',$body,'','/admin/tickets',$pdo,$config);
         }
     };

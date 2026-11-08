@@ -1,0 +1,99 @@
+/* 活动组件独立作用域，沿用首页暖白朱砂色彩。 */
+.promotion-dialog{--promotion-paper:#fffcf7;--promotion-ink:#28221e;--promotion-muted:#665b51;--promotion-accent:#a63f25;--promotion-line:#d8bca7;--promotion-serif:"Noto Serif SC","Noto Serif CJK SC","Songti SC","SimSun",serif;position:fixed;inset:0;z-index:1000;box-sizing:border-box;width:min(574px,calc(100% - 32px));height:fit-content;max-width:574px;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));margin:auto;padding:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;border:1px solid #fff5e8;border-radius:27px;background:radial-gradient(ellipse at 86% 5%,#f7e7d8a6,transparent 45%),linear-gradient(125deg,#fff9f0,#fbf2e7 55%,#fffcf7);color:var(--promotion-ink);box-shadow:0 24px 90px #30201540;font:16px/1.5 var(--promotion-serif);text-align:left;color-scheme:light}
+.promotion-dialog:not([open]){display:none}
+.promotion-dialog::backdrop{background:#35291d73;backdrop-filter:blur(2px)}
+.promotion-dialog *{box-sizing:border-box}
+.promotion-dialog .promotion-card{position:relative;isolation:isolate;padding:40px 29px 19px;overflow:hidden;border-radius:inherit}
+.promotion-dialog .promotion-globe{position:absolute;z-index:-1;top:3px;right:-31px;width:290px;height:164px;color:#b85e37;opacity:.65;pointer-events:none;mask-image:linear-gradient(#000 38%,transparent 100%);animation:promotion-art-enter .45s ease-out both}
+.promotion-dialog .promotion-close{position:absolute;top:9px;right:9px;display:grid;place-items:center;width:44px;min-width:44px;height:44px;min-height:44px;margin:0;padding:10px;border:0;border-radius:50%;background:transparent;color:var(--promotion-ink);cursor:pointer;box-shadow:none}
+.promotion-dialog .promotion-close svg{display:block;width:24px;height:24px}
+.promotion-dialog .promotion-heading{padding:0 12px}
+.promotion-dialog .promotion-tag{display:inline-block;padding:2px 20px;border:1.5px solid var(--promotion-accent);border-radius:99px;color:var(--promotion-accent);font-size:21px;font-weight:700;line-height:1.5}
+.promotion-dialog .promotion-title{margin:17px 0 0;font:800 clamp(30px,4.1vw,50px)/1.22 var(--promotion-serif);letter-spacing:-.045em;color:var(--promotion-ink);overflow-wrap:anywhere}
+.promotion-dialog .promotion-subtitle{margin:5px 0 0;font:700 29px/1.45 var(--promotion-serif);color:var(--promotion-ink);overflow-wrap:anywhere}
+.promotion-dialog .promotion-description{margin:10px 0 0;font:14px/1.7 system-ui,"Microsoft YaHei",sans-serif;color:var(--promotion-muted);overflow-wrap:anywhere}
+.promotion-dialog .promotion-coupon-terms{margin:8px 0 0;color:var(--promotion-accent);font:13px/1.6 system-ui,"Microsoft YaHei",sans-serif;overflow-wrap:anywhere}
+.promotion-dialog .promotion-countdown{margin-top:12px;padding:0 21px}
+.promotion-dialog .promotion-rule{display:flex;align-items:center;justify-content:center;gap:22px;margin:0 0 10px;font:700 21px/1.5 var(--promotion-serif);color:var(--promotion-ink);text-align:center}
+.promotion-dialog .promotion-rule::before,.promotion-dialog .promotion-rule::after{content:"";flex:1;min-width:8px;height:1px;background:#b99a80}
+.promotion-dialog .promotion-time-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+.promotion-dialog .promotion-time{min-width:0;padding:3px 4px 6px;border-radius:11px;background:#f2e5d6b3;text-align:center}
+.promotion-dialog .promotion-time b{display:block;font:700 36px/1.12 Georgia,"Times New Roman",serif;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.promotion-dialog .promotion-time span{display:block;font-size:17px;line-height:1.3}
+.promotion-dialog .promotion-categories{margin-top:19px;padding:6px 15px 8px;border-radius:16px;background:#f1e1cf9c}
+.promotion-dialog .promotion-categories .promotion-rule{margin-bottom:5px;padding:0 55px;gap:24px;color:#81351f;font-size:26px}
+.promotion-dialog .promotion-category-list{display:grid;gap:3px;margin:0;padding:0}
+.promotion-dialog .promotion-category{display:grid;grid-template-columns:minmax(95px,.85fr) minmax(0,2fr);align-items:center;gap:16px;padding:7px 14px;border-radius:8px;background:#fffcf74d}
+.promotion-dialog .promotion-category dt{margin:0;padding-right:14px;border-right:1px solid #b99a80;font-size:22px;font-weight:700;text-align:center;overflow-wrap:anywhere}
+.promotion-dialog .promotion-category dd{min-width:0;margin:0;font-size:19px;line-height:1.45;overflow-wrap:anywhere}
+.promotion-dialog .promotion-category-description{margin:0 0 6px;color:var(--promotion-muted);font:13px/1.6 system-ui,"Microsoft YaHei",sans-serif;white-space:normal}
+.promotion-dialog .promotion-category-plans{display:grid;gap:6px;margin:0;padding:0;list-style:none;font-size:16px;line-height:1.6}
+.promotion-dialog .promotion-category-plans>li{min-width:0;overflow-wrap:anywhere}
+.promotion-dialog .promotion-scope-note{margin:4px 0 0;padding:2px 4px;border-radius:6px;background:#edd8bf66;color:#923b21;font-size:20px;font-weight:700;text-align:center}
+.promotion-dialog .promotion-coupon{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:16px;margin-top:14px;padding:7px 18px;border:1px dashed #b78e72;border-radius:12px}
+.promotion-dialog .promotion-code-label{padding-right:18px;border-right:1px solid #b99a80;font-size:20px;white-space:nowrap}
+.promotion-dialog .promotion-code{min-width:0;font:700 32px/1.3 Georgia,"Times New Roman",serif;letter-spacing:.05em;overflow-wrap:anywhere;user-select:all;text-align:center;color:var(--promotion-ink);background:transparent}
+.promotion-dialog .promotion-copy{min-width:74px;min-height:44px;margin:0;padding:4px 12px;border:1px solid var(--promotion-accent);border-radius:9px;background:transparent;color:var(--promotion-accent);font:19px/1.4 var(--promotion-serif);cursor:pointer;box-shadow:none}
+.promotion-dialog .promotion-copy-status{margin:0;min-height:16px;color:var(--promotion-accent);font:12px/1.4 system-ui,sans-serif;text-align:center;overflow-wrap:anywhere}
+.promotion-dialog a.promotion-cta{display:flex;align-items:center;justify-content:center;gap:18px;min-height:54px;margin:0;padding:8px 16px;border:1px solid var(--promotion-accent);border-radius:13px;background:var(--promotion-accent);color:#fffaf2!important;text-decoration:none;font:700 27px/1.4 var(--promotion-serif);letter-spacing:.08em}
+.promotion-dialog .promotion-cta span{font:32px/1 system-ui,sans-serif}
+.promotion-dialog .promotion-dismiss{display:flex;align-items:center;justify-content:center;gap:12px;min-height:44px;margin:10px 0 0;color:var(--promotion-ink);font:20px/1.4 var(--promotion-serif);cursor:pointer}
+.promotion-dialog .promotion-dismiss input{flex:0 0 21px;width:21px;height:21px;min-height:0;margin:0;accent-color:var(--promotion-accent)}
+.promotion-dialog :is(button,a,input,code):focus-visible{outline:2px solid var(--promotion-accent);outline-offset:3px}
+.promotion-dialog :is(.promotion-copy,.promotion-close):hover{background:#edddcd}
+.promotion-dialog a.promotion-cta:hover{background:#89321b;color:#fffaf2}
+.promotion-dialog .promotion-sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+@keyframes promotion-art-enter{from{opacity:0;translate:0 6px}to{opacity:.65;translate:0 0}}
+@media(max-width:600px){
+ .promotion-dialog{width:calc(100% - 24px);border-radius:23px}
+ .promotion-dialog .promotion-card{padding:28px 15px 12px}
+ .promotion-dialog .promotion-heading{padding:0 12px}
+ .promotion-dialog .promotion-globe{width:225px;height:128px;right:-30px;top:0}
+ .promotion-dialog .promotion-tag{padding:1px 16px;font-size:17px}
+ .promotion-dialog .promotion-title{margin-top:15px;font-size:clamp(27px,8.9vw,38px)}
+ .promotion-dialog .promotion-subtitle{font-size:clamp(19px,6.2vw,25px);margin-top:3px}
+ .promotion-dialog .promotion-countdown{padding:0 8px;margin-top:10px}
+ .promotion-dialog .promotion-rule{font-size:17px;gap:16px;margin-bottom:7px}
+ .promotion-dialog .promotion-time-grid{gap:12px}
+ .promotion-dialog .promotion-time{padding:4px 2px 5px;border-radius:8px}
+ .promotion-dialog .promotion-time b{font-size:30px}
+ .promotion-dialog .promotion-time span{font-size:14px}
+ .promotion-dialog .promotion-categories{margin-top:15px;padding:5px 8px 6px;border-radius:13px}
+ .promotion-dialog .promotion-categories .promotion-rule{padding:0 28px;font-size:22px;gap:16px}
+ .promotion-dialog .promotion-category{grid-template-columns:minmax(78px,.85fr) minmax(0,2fr);gap:12px;padding:5px 8px}
+ .promotion-dialog .promotion-category dt{font-size:18px;padding-right:10px}
+ .promotion-dialog .promotion-category dd{font-size:15px}
+ .promotion-dialog .promotion-category-plans{font-size:14px}
+ .promotion-dialog .promotion-scope-note{font-size:16px}
+ .promotion-dialog .promotion-coupon{gap:10px;margin-top:13px;padding:4px 10px;border-radius:9px}
+ .promotion-dialog .promotion-code-label{font-size:17px;padding-right:10px}
+ .promotion-dialog .promotion-code{font-size:27px}
+ .promotion-dialog .promotion-copy{min-width:62px;padding:3px 9px;font-size:17px}
+ .promotion-dialog a.promotion-cta{min-height:49px;font-size:23px;border-radius:12px}
+ .promotion-dialog .promotion-dismiss{margin-top:7px;font-size:17px;gap:10px}
+}
+@media(max-width:350px){.promotion-dialog .promotion-heading{padding-inline:3px}.promotion-dialog .promotion-card{padding-inline:12px}.promotion-dialog .promotion-time-grid{gap:8px}.promotion-dialog .promotion-categories .promotion-rule{padding-inline:12px}.promotion-dialog .promotion-category{grid-template-columns:72px minmax(0,1fr);gap:8px;padding-inline:5px}.promotion-dialog .promotion-category dt{font-size:16px}.promotion-dialog .promotion-category dd{font-size:14px}.promotion-dialog .promotion-coupon{gap:7px;padding-inline:7px}.promotion-dialog .promotion-code{font-size:22px}.promotion-dialog .promotion-code-label{font-size:15px;padding-right:7px}}
+@media(prefers-reduced-motion:reduce){.promotion-dialog .promotion-globe{animation:none}}
+/* 公开活动套餐页，每张卡片对应一个参与方案，不覆盖整站样式。 */
+.promotion-catalog{box-sizing:border-box;width:min(1200px,100%);min-width:0;margin:0 auto;padding:32px;color:#28221e}
+.promotion-catalog *{box-sizing:border-box}
+.promotion-catalog .promotion-catalog-header{max-width:800px;margin-bottom:28px}
+.promotion-catalog .promotion-catalog-header h1{margin:0 0 12px;color:#28221e;font:700 clamp(30px,4vw,46px)/1.3 "Noto Serif SC","Songti SC","SimSun",serif;overflow-wrap:anywhere}
+.promotion-catalog .promotion-catalog-header p{margin:8px 0;color:#665b51;font-size:15px;line-height:1.8;overflow-wrap:anywhere}
+.promotion-catalog .promotion-catalog-code{display:inline-flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:12px;padding:10px 16px;border:1px dashed #b78e72;border-radius:12px;background:#fffcf7;color:#a63f25}
+.promotion-catalog .promotion-catalog-code code,.promotion-catalog code.promotion-catalog-code{font:700 23px/1.4 Georgia,serif;letter-spacing:.06em;overflow-wrap:anywhere;user-select:all}
+.promotion-catalog .promotion-catalog-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;align-items:stretch}
+.promotion-catalog .promotion-catalog-plan{display:flex;flex-direction:column;min-width:0;padding:24px;border:1px solid #e5dacf;border-radius:20px;background:linear-gradient(155deg,#faede2,#fffcf7 65%);box-shadow:0 2px 8px #49321c06}
+.promotion-catalog .promotion-catalog-plan :is(h2,h3){margin:0 0 10px;color:#28221e;font:700 24px/1.4 "Noto Serif SC","Songti SC","SimSun",serif;overflow-wrap:anywhere}
+.promotion-catalog .promotion-catalog-plan h3{font-size:20px}
+.promotion-catalog .promotion-catalog-plan p{margin:6px 0 12px;color:#665b51;font-size:14px;line-height:1.8;overflow-wrap:anywhere}
+.promotion-catalog .promotion-catalog-plan strong{display:block;margin:12px 0;color:#a63f25;font:700 30px/1.3 Georgia,"Noto Serif SC",serif;overflow-wrap:anywhere}
+.promotion-catalog .promotion-catalog-plan a.button{display:flex;align-items:center;justify-content:center;min-height:48px;margin-top:auto;padding:10px 16px;border:1px solid #a63f25;border-radius:99px;background:#a63f25;color:#fffaf2;text-decoration:none;font-size:15px;font-weight:650}
+.promotion-catalog .promotion-catalog-plan a.button:hover{background:#89321b;color:#fffaf2}
+.promotion-catalog a:focus-visible{outline:2px solid #a63f25;outline-offset:3px}
+@media(max-width:960px){.promotion-catalog .promotion-catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.promotion-catalog{padding:24px 16px}.promotion-catalog .promotion-catalog-grid{grid-template-columns:minmax(0,1fr);gap:16px}.promotion-catalog .promotion-catalog-plan{padding:22px}}
+/* 预览弹窗固定在自身画布内，不进入浏览器顶层。 */
+.promotion-preview-stage .promotion-dialog{position:absolute;inset:24px 0 auto;max-height:calc(100% - 48px);margin:0 auto;z-index:2}
+.promotion-preview-stage--desktop .promotion-dialog{top:65px}
+.promotion-preview-stage--mobile .promotion-dialog{top:60px;max-height:calc(100% - 84px)}

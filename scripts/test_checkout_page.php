@@ -34,5 +34,6 @@ $account=run_checkout(2,8);
 checkout_ok(strpos($account,'name="quantity" value="1"')!==false&&strpos($account,'name="promotion_code"')===false&&strpos($account,'单个账号')!==false,'账号商品仍单份且不开放优惠');
 checkout_ok(strpos(run_checkout(2,8,array('quantity'=>'2')),'账号商品不参与优惠或拼团')!==false,'拒绝账号数量篡改');
 checkout_ok(strpos(run_checkout(1,8),'套餐或期限方案不存在')!==false,'拒绝跨商品方案');
-checkout_ok(strpos($source,'create($uid,(int)$_POST[\'product_id\'],(int)$_POST[\'plan_id\']')!==false,'下单仍调用原OrderService');
+checkout_ok(strpos($source,'$no=(new OrderService($pdo))->create($uid,')!==false,'下单仍调用原OrderService');
+checkout_ok(preg_match('/name="request_key" value="[a-f0-9]{64}"/',$body)===1,'确认表单附带订单幂等键');
 if(in_array('--html',$_SERVER['argv'],true))echo '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/style.css"><link rel="stylesheet" href="/assets/customer-warm.css"><body class="user-page checkout-body pc-commerce public-page"><main class="user-main">'.$body.'</main></body></html>';

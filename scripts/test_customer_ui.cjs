@@ -15,8 +15,12 @@ fixtures.push({ name: 'orders-empty', url: '/orders?status=cancelled', html: exe
 const orderHtml = execFileSync('php', [path.join(__dirname, 'test_order_detail_page.php'), '--html'], { encoding: 'utf8' });
 const checkoutHtml = execFileSync('php', [path.join(__dirname, 'test_checkout_page.php'), '--html'], { encoding: 'utf8' });
 const paymentHtml = execFileSync('php', [path.join(__dirname, 'test_order_detail_page.php'), '--payment-html'], { encoding: 'utf8' });
+const temporaryHtml = execFileSync('php', [path.join(__dirname, 'test_order_detail_page.php'), '--temporary-html'], { encoding: 'utf8' });
 async function inspect(page, name, fixture = false) {
   console.log(`检查 ${name}${fixture ? '（隔离数据）' : ''}`);
+  await page.waitForLoadState('load');
+  const promotionClose = page.locator('dialog.promotion-dialog[open] [data-promotion-close]');
+  if (await promotionClose.count()) await promotionClose.click();
   const geometry = await page.evaluate(() => ({
     width: innerWidth, scrollWidth: document.documentElement.scrollWidth,
     background: getComputedStyle(document.body).backgroundColor,
@@ -27,6 +31,24 @@ async function inspect(page, name, fixture = false) {
   }));
   results.push({ name, fixture, url: page.url(), ...geometry });
   assert(geometry.scrollWidth <= geometry.width + 1, `${name} 横向溢出 ${geometry.scrollWidth}/${geometry.width}`);
+  if (await page.locator('body:is(.events-overview-page,.downloads-page,.help-overview-page)').count()) {
+    const shellColors = await page.locator('.home-shell,.home-main-column').evaluateAll(nodes => nodes.map(node => getComputedStyle(node).backgroundColor));
+    assert.deepEqual(shellColors, [geometry.background, geometry.background], `${name} 外壳应与页面底色一致，导航下方不能露出白色横条`);
+  }
+  for (const banner of await page.locator('.service-announcement-banner').all()) {
+    const style = await banner.evaluate(e => {
+      const s = getComputedStyle(e);
+      return { background: s.backgroundColor, color: s.color, border: s.border, radius: s.borderRadius, padding: s.padding, gap: s.gap, shadow: s.boxShadow };
+    });
+    assert.deepEqual(style, { background: 'rgb(238, 230, 218)', color: 'rgb(102, 91, 81)', border: '1px solid rgb(229, 218, 207)', radius: '14px', padding: '12px 18px', gap: '12px', shadow: 'none' }, `${name} 置顶通知应统一为首页模板`);
+    assert.match(await banner.getAttribute('href'), /^\/announcements\/\d+$/, '保留真实公告详情入口');
+    if (geometry.width <= 600) {
+      const label = await banner.locator('span').boundingBox();
+      const title = await banner.locator('b').boundingBox();
+      const detail = await banner.locator('small').boundingBox();
+      assert(title.y >= label.y + label.height && Math.abs(title.y - detail.y) < 3, '移动端通知类型单独一行，标题与详情同行');
+    }
+  }
   for (const crumb of await page.locator('.ep-crumb').all()) {
     const style = await crumb.evaluate(e => {
       const s = getComputedStyle(e);
@@ -40,6 +62,19 @@ async function inspect(page, name, fixture = false) {
       return { background: s.backgroundColor, shadow: s.boxShadow, backdrop: s.backdropFilter };
     });
     assert.deepEqual(style, { background: 'rgba(0, 0, 0, 0)', shadow: 'none', backdrop: 'none' }, `${name} 页脚不能残留白底或玻璃导航样式`);
+  }
+  if (await page.locator('.mo-search').count()) {
+    const controls = await page.evaluate(() => {
+      const search = document.querySelector('.mo-search'), input = search.querySelector('[name="q"]'), sort = document.querySelector('.mo-sort');
+      return { searchRadius: getComputedStyle(search).borderRadius, inputBackground: getComputedStyle(input).backgroundColor, inputBorder: getComputedStyle(input).borderTopWidth, searchButtonBackground: getComputedStyle(search.querySelector('button')).backgroundColor, sortRadius: getComputedStyle(sort).borderRadius, heights: [search.querySelector('button'), sort.querySelector('select'), sort.querySelector('button')].map(e => e.getBoundingClientRect().height), sortWidth: sort.getBoundingClientRect().width, resultsWidth: document.querySelector('.mo-results-bar').getBoundingClientRect().width };
+    });
+    assert.equal(controls.searchRadius, '99px', '搜索使用完整胶囊外框');
+    assert.equal(controls.inputBackground, 'rgba(0, 0, 0, 0)', '搜索输入框不能残留白色内底');
+    assert.equal(controls.inputBorder, '0px');
+    assert.equal(controls.searchButtonBackground, 'rgb(166, 63, 37)', '搜索按钮使用朱砂色');
+    assert.equal(controls.sortRadius, '99px', '排序和应用按钮作为一组');
+    assert(controls.heights.every(h => h >= 44), '查询与排序控件保持44px点击区域');
+    if (geometry.width <= 600) assert(Math.abs(controls.sortWidth - controls.resultsWidth) <= 1, '手机排序栏铺满可用宽度');
   }
   const headerNav = page.locator('.home-nav,.ao-main-nav,.auth-header>nav[aria-label="主导航"]');
   if (await headerNav.count()) {
@@ -173,6 +208,24 @@ async function inspect(page, name, fixture = false) {
         await page.route(base + fixture.url, route => route.fulfill({ contentType: 'text/html; charset=utf-8', body: fixture.html }));
         await page.goto(base + fixture.url);
         await inspect(page, `${fixture.name}-${width}`, true);
+        if (fixture.name === 'orders') {
+          // 查询请求仅回显隔离HTML，不访问真实账户或业务订单。
+          const queryRoute = base + '/orders?**';
+          await page.route(queryRoute, route => route.fulfill({ contentType: 'text/html; charset=utf-8', body: fixture.html }));
+          await page.locator('.mo-search input[name="q"]').fill('CX-UI-TEST');
+          const searchRequest = page.waitForRequest(request => request.isNavigationRequest() && new URL(request.url()).pathname === '/orders');
+          await page.locator('.mo-search button').click();
+          const searchUrl = new URL((await searchRequest).url());
+          assert.equal(searchUrl.searchParams.get('q'), 'CX-UI-TEST', '搜索保留订单号参数');
+          await page.waitForLoadState('load');
+          await page.locator('.mo-sort select').selectOption('oldest');
+          const sortRequest = page.waitForRequest(request => request.isNavigationRequest() && new URL(request.url()).pathname === '/orders');
+          await page.locator('.mo-sort button').click();
+          assert.equal(new URL((await sortRequest).url()).searchParams.get('sort'), 'oldest', '应用按钮提交最早排序');
+          await page.waitForLoadState('load');
+          await page.unroute(queryRoute);
+          results.push({ check: '订单号搜索与排序GET提交（隔离拦截）', width, passed: true });
+        }
         if (width === 390 && fixture.name === 'orders') {
           await page.locator('.ao-menu-toggle').click();
           assert(await page.locator('.ao-sidebar').isVisible(), '手机账户菜单可展开');
@@ -234,6 +287,42 @@ async function inspect(page, name, fixture = false) {
       assert(await page.locator('#subscription-link').isVisible(), '显示链接可用');
       await page.locator('[data-detail-reveal="subscription-link"]').click();
       assert(await page.locator('#subscription-link').isHidden(), '隐藏链接可用');
+      const clientSettings = page.locator('.order-client-settings');
+      assert.equal(await clientSettings.getAttribute('open'), null, '高级格式默认收起');
+      await clientSettings.locator('summary').click();
+      assert(await page.locator('#subscription-client').isVisible());
+      assert.equal(await page.locator('#subscription-client option').count(), 11);
+      await page.locator('#subscription-client').selectOption('sing-box');
+      assert(await page.locator('#subscription-link').isHidden(), '切换格式不会自动泄露链接');
+      const expectedClientUrl = await page.locator('#subscription-client option:checked').getAttribute('data-url');
+      await page.locator('[data-detail-copy="subscription-link"]').click();
+      assert.equal(await page.evaluate(() => navigator.clipboard.readText()), expectedClientUrl, '复制使用当前客户端格式');
+      await inspect(page, `order-client-settings-${width}`, true);
+      await clientSettings.evaluate(el => scrollTo({ top: scrollY + el.getBoundingClientRect().top - 110, behavior: 'instant' }));
+      await page.screenshot({ path: path.join(output, `order-client-settings-viewport-${width}.png`), animations: 'disabled' });
+      await clientSettings.locator('summary').focus();
+      await page.keyboard.press('Enter');
+      assert.equal(await clientSettings.getAttribute('open'), null, '高级格式可用键盘收起');
+      await page.unroute(base + '/orders/FIXTURE-VPN');
+      await page.route(base + '/orders/FIXTURE-VPN', route => route.fulfill({ contentType: 'text/html; charset=utf-8', body: temporaryHtml }));
+      await page.goto(base + '/orders/FIXTURE-VPN');
+      await inspect(page, `order-temporary-${width}`, true);
+      assert(await page.locator('#temporary-subscription-link').isHidden(), '临时链接默认隐藏');
+      await page.locator('.od-temporary-guide').click();
+      assert.equal(new URL(page.url()).hash, '#temporary-subscription', '下滑提示指向真实临时订阅');
+      await page.waitForFunction(() => {
+        const top = document.querySelector('#temporary-subscription').getBoundingClientRect().top;
+        const padding = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+        const maxScroll = Math.max(0, document.documentElement.scrollHeight - innerHeight);
+        const expectedTop = Math.max(padding + 96, scrollY + top - maxScroll);
+        return Math.abs(top - expectedTop) <= 2;
+      });
+      const temporaryBounds = await page.locator('#temporary-subscription').boundingBox();
+      assert(temporaryBounds.y >= 64 && temporaryBounds.y < (await page.evaluate(() => innerHeight)), '临时订阅定位后不被吸顶导航遮挡');
+      await page.screenshot({ path: path.join(output, `order-temporary-anchor-${width}.png`), animations: 'disabled' });
+      await page.locator('[data-detail-copy="temporary-subscription-link"]').click();
+      assert((await page.evaluate(() => navigator.clipboard.readText())).includes('FIXTURE-TEMP'), '引导后临时订阅可复制');
+      results.push({ check: '临时订阅下滑定位、高级格式展开及当前链接复制', width, passed: true });
       await page.unroute(base + '/orders/FIXTURE-VPN');
       await page.route(base + '/orders/FIXTURE-VPN', route => route.fulfill({ contentType: 'text/html; charset=utf-8', body: paymentHtml }));
       await page.goto(base + '/orders/FIXTURE-VPN');
@@ -249,6 +338,41 @@ async function inspect(page, name, fixture = false) {
       }
       await page.unroute(base + '/orders/FIXTURE-VPN');
       results.push({ check: '隔离订单复制、显隐及付款选择', width, passed: true });
+    }
+    for (const width of [1101, 1280, 1440, 390]) {
+      await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
+      for (const [name, url] of [['login', '/login'], ['register', '/register'], ['forgot', '/password/forgot']]) {
+        await page.goto(base + url);
+        await page.waitForLoadState('networkidle');
+        const card = page.locator('.auth-brand-card');
+        if (width > 1100) {
+          const layout = await card.evaluate(card => {
+            const s = getComputedStyle(card), bounds = card.getBoundingClientRect();
+            const rows = [...card.querySelectorAll('.auth-desktop-features li')].map(row => {
+              const r = row.getBoundingClientRect();
+              return { x: r.x, right: r.right, bottom: r.bottom };
+            });
+            return { padding: parseFloat(s.paddingLeft), overflow: s.overflow, bounds: { x: bounds.x, right: bounds.right, bottom: bounds.bottom }, rows };
+          });
+          assert.equal(layout.rows.length, 4, '四项账户功能完整保留');
+          assert(layout.padding >= 26 && layout.overflow === 'hidden', '卡片保留内边距并裁切装饰');
+          assert(layout.rows.every(row => row.x >= layout.bounds.x + 25 && row.right <= layout.bounds.right - 25), '功能卡片不贴边');
+          assert(layout.bounds.bottom - layout.rows[3].bottom <= 40, '移除底部过量留白');
+          assert(layout.bounds.x >= 0 && layout.bounds.right <= width, '品牌卡片完整位于视口内');
+        } else assert(await card.isHidden(), '手机保留以表单为主的单列布局');
+        assert(await page.locator('.auth-form-panel input[name="_csrf"]').count(), '真实表单保留CSRF字段');
+        assert(await page.locator('.auth-form-panel button[type="submit"]').isVisible());
+        if (name === 'login') {
+          const input = page.locator('.auth-form-panel input[type="password"]');
+          await page.locator('.auth-password-toggle').click();
+          assert.equal(await page.locator('.auth-password-toggle').getAttribute('aria-pressed'), 'true');
+          assert.equal(await input.count(), 0, '密码显示按钮正常工作');
+          await page.locator('.auth-password-toggle').click();
+        }
+        assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), '认证页无横向溢出');
+        await page.screenshot({ path: path.join(output, `auth-${name}-${width}.png`), fullPage: true, animations: 'disabled' });
+        results.push({ check: '认证品牌卡片布局与真实表单控件', name, width, passed: true });
+      }
     }
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto(base + '/');
