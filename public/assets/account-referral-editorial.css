@@ -1,79 +1,79 @@
 /* 拉人返佣独立界面，沿用原有结算与历史提现业务。 */
 .account-referral-editorial .ao-main{min-height:0}
-body.account-referral-editorial .ao-footer{color:#242830}
+body.account-referral-editorial .ao-footer{color:var(--ink)}
 body.account-referral-editorial .ri-welcome{align-items:flex-end;margin-bottom:12px}
 body.account-referral-editorial .ri-welcome p{line-height:1.5}
 body.account-referral-editorial .ri-welcome h1{font-size:36px;line-height:1.35}
-body.account-referral-editorial .ri-welcome .ao-kicker{font-size:14px;color:#171717;letter-spacing:1.6px;margin-bottom:4px}
-.ri-welcome>a{font-size:16px;color:#281cff;font-weight:600;white-space:nowrap;margin-bottom:12px}
+body.account-referral-editorial .ri-welcome .ao-kicker{font-size:14px;color:var(--ink);letter-spacing:1.6px;margin-bottom:4px}
+.ri-welcome>a{font-size:16px;color:var(--accent);font-weight:600;white-space:nowrap;margin-bottom:12px}
 .ri-top-grid{display:grid;grid-template-columns:minmax(0,1.43fr) minmax(0,1fr);gap:15px}
-.ri-invite{border:1px solid #c8d2e4;border-radius:10px;padding:12px 20px 10px;min-width:0}
+.ri-invite{border:1px solid var(--line);border-radius:20px;padding:12px 20px 10px;min-width:0}
 body.account-referral-editorial :is(.ri-invite,.ri-guide) h2{font-size:25px;line-height:1.4}
 .ri-invite>p{font-size:15px;line-height:1.65}
 .ri-link{display:flex;gap:10px;margin:12px 0}
-body.account-referral-editorial .ri-page input,body.account-referral-editorial .ri-page select{width:100%;min-width:0;max-width:100%;padding:5px 10px;margin:0;border:1px solid #b8c4dc;border-radius:5px;background:#fff;color:#20242c;font:inherit;font-size:14px;line-height:1.5;box-shadow:none}
-body.account-referral-editorial .ri-page button{width:auto;margin:0;padding:4px 14px;border:1px solid #969fb4;border-radius:5px;background:#fff;color:#16191e;font:inherit;font-size:14px;font-weight:600;line-height:1.5;white-space:nowrap;box-shadow:none;cursor:pointer}
-body.account-referral-editorial .ri-page button.ao-primary{background:#281aff;border-color:#281aff;color:#fff}
+body.account-referral-editorial .ri-page input,body.account-referral-editorial .ri-page select{width:100%;min-width:0;max-width:100%;padding:5px 10px;margin:0;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:#20242c;font:inherit;font-size:14px;line-height:1.5;box-shadow:none}
+body.account-referral-editorial .ri-page button{width:auto;margin:0;padding:4px 14px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:#16191e;font:inherit;font-size:14px;font-weight:600;line-height:1.5;white-space:nowrap;box-shadow:none;cursor:pointer}
+body.account-referral-editorial .ri-page button.ao-primary{background:var(--accent);border-color:var(--accent);color:#fff}
 .ri-link input{flex:1}
 .ri-code{display:flex;align-items:center;gap:15px}
 .ri-code label{font-size:17px;font-weight:700;white-space:nowrap;margin:0}
 body.account-referral-editorial .ri-code input{flex:1;border:0;padding:0;font-size:20px;font-weight:700;background:transparent}
-body.account-referral-editorial .ri-rate{border-top:1px solid #d5dce8;margin-top:13px;padding-top:8px;font-size:13px;color:#535b66}
-body.account-referral-editorial .ri-copy-status{font-size:12px;min-height:0;color:#291cff;line-height:1.5}
+body.account-referral-editorial .ri-rate{border-top:1px solid var(--line);margin-top:13px;padding-top:8px;font-size:13px;color:#535b66}
+body.account-referral-editorial .ri-copy-status{font-size:12px;min-height:0;color:var(--accent);line-height:1.5}
 .ri-copy-status:empty{display:none}
-.ri-guide{background:#f3f4f8;border-radius:10px;padding:13px 21px;min-width:0}
+.ri-guide{background:var(--soft);border-radius:20px;padding:13px 21px;min-width:0}
 body.account-referral-editorial .ri-guide ol{list-style:none;margin-top:7px;padding:0}
-.ri-guide li{display:flex;gap:15px;align-items:center;font-size:15px;border-bottom:1px solid #d9dfeb;padding:5px 0;line-height:1.5}
-.ri-guide li span{border:1px solid #bfc9dc;border-radius:5px;padding:0 7px;font-size:16px;line-height:1.25;background:#ffffff90;flex-shrink:0}
+.ri-guide li{display:flex;gap:15px;align-items:center;font-size:15px;border-bottom:1px solid var(--line);padding:5px 0;line-height:1.5}
+.ri-guide li span{border:1px solid var(--line);border-radius:5px;padding:0 7px;font-size:16px;line-height:1.25;background:var(--panel);flex-shrink:0}
 body.account-referral-editorial .ri-guide>p{font-size:13px;margin-top:8px;line-height:1.65;color:#3e4550}
-.ri-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid #cbd4e5;border-radius:9px;margin-top:16px;padding:8px 7px}
-.ri-stats>div{text-align:center;min-width:0;border-right:1px solid #cbd4e5}
+.ri-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);border-radius:18px;margin-top:16px;padding:8px 7px}
+.ri-stats>div{text-align:center;min-width:0;border-right:1px solid var(--line)}
 .ri-stats>div:last-child{border:0}
 .ri-stats span{font-size:16px;font-weight:600}
 .ri-stats strong{display:block;font-family:Georgia,'Noto Serif SC',serif;font-size:30px;line-height:1.25;overflow-wrap:anywhere}
 .ri-stats small{font-size:21px}
-.ri-balance{display:flex;justify-content:space-between;gap:16px;align-items:center;border-radius:6px;background:#f3f4f8;padding:5px 18px;margin-top:8px;font-size:13px}
-.ri-balance a{color:#281cff;font-size:15px;font-weight:600;white-space:nowrap}
+.ri-balance{display:flex;justify-content:space-between;gap:16px;align-items:center;border-radius:6px;background:var(--soft);padding:5px 18px;margin-top:8px;font-size:13px}
+.ri-balance a{color:var(--accent);font-size:15px;font-weight:600;white-space:nowrap}
 body.account-referral-editorial .ri-alert{font-size:12px;color:#7e5917;margin-top:5px}
 .ri-records{margin-top:15px;min-width:0;scroll-margin-top:20px}
 body.account-referral-editorial .ri-records>h2{font-size:27px;line-height:1.5}
 .ri-toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
-body.account-referral-editorial .ri-tabs{display:flex;flex-wrap:wrap;gap:12px;border-bottom:1px solid #d7ddec;flex:1}
+body.account-referral-editorial .ri-tabs{display:flex;flex-wrap:wrap;gap:12px;border-bottom:1px solid var(--line);flex:1}
 .ri-tabs a{position:relative;padding:8px 5px 10px;white-space:nowrap;font-size:16px}
 .ri-tabs a[aria-current=page]{font-weight:700}
-.ri-tabs a[aria-current=page]:after{position:absolute;content:'';bottom:0;left:0;right:0;height:3px;background:#291aff}
+.ri-tabs a[aria-current=page]:after{position:absolute;content:'';bottom:0;left:0;right:0;height:3px;background:var(--accent)}
 body.account-referral-editorial .ri-toolbar form{display:flex;gap:8px;align-items:center;max-width:100%;margin:0;padding:0;border:0;background:none;box-shadow:none;border-radius:0}
 body.account-referral-editorial .ri-toolbar input[type=search]{max-width:185px;padding:4px 10px;font-size:13px}
 body.account-referral-editorial .ri-toolbar select{width:auto;font-size:13px;padding:4px 7px}
 body.account-referral-editorial .ri-toolbar button{font-size:12px;padding:4px 9px}
 body.account-referral-editorial .ri-privacy{font-size:11px;color:#697283;margin:5px 0 7px;line-height:1.6}
-.ri-table-wrap{max-width:100%;overflow-x:auto;border:1px solid #cbd4e5;border-radius:9px;padding:0 12px 5px}
+.ri-table-wrap{max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:18px;padding:0 12px 5px}
 body.account-referral-editorial .ri-table{width:100%;margin:0;border:0;border-collapse:collapse;background:none;font-size:14px;line-height:1.6;box-shadow:none}
-body.account-referral-editorial .ri-table :is(th,td){border:0;border-bottom:1px solid #d9dfeb;padding:4px 6px;text-align:left;background:none;color:#1e2228;vertical-align:top}
-body.account-referral-editorial .ri-table th{font-size:14px;font-weight:600;background:#f3f4f7;white-space:nowrap;padding-top:5px;padding-bottom:5px}
+body.account-referral-editorial .ri-table :is(th,td){border:0;border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;background:none;color:#1e2228;vertical-align:top}
+body.account-referral-editorial .ri-table th{font-size:14px;font-weight:600;background:var(--paper);white-space:nowrap;padding-top:5px;padding-bottom:5px}
 body.account-referral-editorial .ri-table tr:last-child td{border-bottom:0}
 .ri-records .ri-table{min-width:740px}
 .ri-records .ri-table td{white-space:nowrap}
 body.account-referral-editorial .ri-number{max-width:175px;white-space:normal;overflow-wrap:anywhere}
 .ri-amount{font-family:Georgia,serif;font-weight:700}
-.ri-table a,.ri-detail summary{color:#281cff;font-weight:600}
-.ri-state{display:inline-block;position:relative;line-height:1.4;padding:1px 7px;margin-left:9px;font-size:12px;background:#f0f0f2;border-radius:4px;white-space:nowrap}
-.ri-state:before,.ri-bound:before{content:'';display:inline-block;width:7px;height:7px;background:#919191;border-radius:50%;position:absolute;left:-10px;top:7px}
+.ri-table a,.ri-detail summary{color:var(--accent);font-weight:600}
+.ri-state{display:inline-block;position:relative;line-height:1.4;padding:1px 7px;margin-left:9px;font-size:12px;background:var(--soft);border-radius:4px;white-space:nowrap}
+.ri-state:before,.ri-bound:before{content:'';display:inline-block;width:7px;height:7px;background:var(--muted);border-radius:50%;position:absolute;left:-10px;top:7px}
 .ri-state.is-credited{background:#e1f5e5;color:#285d34}
 .ri-state.is-credited:before,.ri-bound:before{background:#168d20}
 .ri-state.is-pending_credit,.ri-state.is-recovery{background:#fff3d8;color:#735719}
 .ri-state.is-pending_credit:before,.ri-state.is-recovery:before{background:#ffb000}
-.ri-state.is-legacy{background:#ece9ff;color:#574284}
+.ri-state.is-legacy{background:var(--soft);color:var(--muted)}
 .ri-detail summary{cursor:pointer;list-style:none}
 .ri-detail summary::-webkit-details-marker{display:none}
 .ri-detail>div{white-space:normal;font-size:12px;font-weight:400;width:160px;padding:7px 0;color:#596170;overflow-wrap:anywhere}
 body.account-referral-editorial .ri-detail p{font-size:12px;line-height:1.7;margin-top:3px}
 body.account-referral-editorial .ri-pagination{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;margin-top:7px;font-size:13px}
-.ri-pagination>a,.ri-pagination>b,.ri-pagination>[aria-disabled]{padding:2px 10px;border:1px solid #d1d8e5;border-radius:5px;font-size:13px;font-weight:400}
-.ri-pagination>b{background:#281aff;border-color:#281aff;color:#fff}
-.ri-pagination>[aria-disabled]{background:#f5f5f6;color:#9499a2}
+.ri-pagination>a,.ri-pagination>b,.ri-pagination>[aria-disabled]{padding:2px 10px;border:1px solid var(--line);border-radius:5px;font-size:13px;font-weight:400}
+.ri-pagination>b{background:var(--accent);border-color:var(--accent);color:#fff}
+.ri-pagination>[aria-disabled]{background:var(--paper);color:var(--muted)}
 .ri-bottom-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.13fr);gap:22px;margin-top:18px}
-.ri-friends,.ri-faq{border:1px solid #cbd4e5;border-radius:9px;padding:8px 14px;min-width:0}
+.ri-friends,.ri-faq{border:1px solid var(--line);border-radius:18px;padding:8px 14px;min-width:0}
 .ri-friends header{display:flex;gap:12px;align-items:center;justify-content:space-between}
 body.account-referral-editorial :is(.ri-friends,.ri-faq) h2{font-size:24px;line-height:1.5;margin-bottom:4px}
 .ri-friends header>span{font-size:13px;color:#596578;white-space:nowrap}
@@ -82,29 +82,29 @@ body.account-referral-editorial :is(.ri-friends,.ri-faq) h2{font-size:24px;line-
 body.account-referral-editorial .ri-friends .ri-table{font-size:13px}
 .ri-bound{position:relative;margin-left:12px;white-space:nowrap}
 .ri-bound:before{top:5px}
-.ri-faq details{border-bottom:1px solid #cfd7e6;padding:5px 0}
+.ri-faq details{border-bottom:1px solid var(--line);padding:5px 0}
 .ri-faq details:last-child{border-bottom:0}
-.ri-faq details[open]{background:#f8f9fc;border:1px solid #d5dced;border-radius:6px;padding:5px 9px}
+.ri-faq details[open]{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:5px 9px}
 .ri-faq summary{display:flex;gap:10px;align-items:center;justify-content:space-between;cursor:pointer;font-size:15px;font-weight:600;list-style:none}
 .ri-faq summary::-webkit-details-marker{display:none}
 .ri-faq summary:after{content:'⌄';font-family:Arial,sans-serif}
 .ri-faq details[open] summary:after{content:'⌃'}
 body.account-referral-editorial .ri-faq p{font-size:12px;line-height:1.7;margin-top:4px;color:#4b5360}
-.ri-legacy{border:1px solid #d5dce8;border-radius:8px;padding:10px 15px;margin-top:14px}
+.ri-legacy{border:1px solid var(--line);border-radius:18px;padding:10px 15px;margin-top:14px}
 .ri-legacy summary{font-size:16px;font-weight:600;cursor:pointer}
 .ri-legacy small{font-size:12px;color:#6d7685;font-weight:400}
 body.account-referral-editorial .ri-legacy p{font-size:13px;line-height:1.8;margin-top:8px}
 body.account-referral-editorial .ri-legacy form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0;padding:0;border:0;background:none;box-shadow:none}
 .ri-legacy label{font-size:13px;min-width:0}
 body.account-referral-editorial .ri-legacy input{margin-top:5px}
-.ri-help{display:flex;align-items:center;gap:16px;margin-top:15px;border:1px solid #d9dce5;border-radius:8px;background:#f6f6f7;padding:7px 12px}
+.ri-help{display:flex;align-items:center;gap:16px;margin-top:15px;border:1px solid var(--line);border-radius:18px;background:var(--soft);padding:7px 12px}
 .ri-help p{flex:1;font-size:12px;line-height:1.7}
 .ri-help strong{font-size:17px;white-space:nowrap}
 body.account-referral-editorial .ri-help .ao-button{font-size:13px;min-height:28px;padding:2px 12px;white-space:nowrap}
 body.account-referral-editorial .ri-empty{padding:22px 12px;font-size:14px;color:#626e80;white-space:normal;text-align:center}
 .ri-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
-.ri-page :is(a,button,input,select,summary):focus-visible{outline:2px solid #3021ff;outline-offset:3px}
+.ri-page :is(a,button,input,select,summary):focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 @media(min-width:1600px){.ri-records .ri-table{font-size:15px}.ri-stats strong{font-size:34px}}
 @media(max-width:1200px){.ri-top-grid{grid-template-columns:1fr}.ri-guide ol{display:flex;flex-wrap:wrap;gap:8px 20px}.ri-guide li{border:0}.ri-guide{padding:13px 20px}.ri-bottom-grid{gap:15px}.ri-toolbar{gap:7px}.ri-tabs{min-width:100%}}
 @media(max-width:950px){.ri-bottom-grid{grid-template-columns:1fr}.ri-help{flex-wrap:wrap}.ri-help p{flex-basis:100%}.ri-stats strong{font-size:26px}.ri-stats span{font-size:14px}.ri-welcome>a{font-size:14px}}
-@media(max-width:720px){body.account-referral-editorial .ri-welcome{display:block}body.account-referral-editorial .ri-welcome h1{font-size:32px}.ri-welcome>a{display:inline-block;margin:8px 0 0}body.account-referral-editorial .ri-welcome p{font-size:14px}.ri-invite{padding:12px 14px}.ri-guide{padding:13px 15px}body.account-referral-editorial :is(.ri-invite,.ri-guide) h2{font-size:23px}.ri-invite>p{font-size:13px}.ri-link{gap:7px;flex-wrap:wrap}.ri-link input{flex-basis:100%}body.account-referral-editorial .ri-page button{font-size:13px;padding:4px 12px}.ri-code{gap:9px;flex-wrap:wrap}.ri-code label{font-size:15px}body.account-referral-editorial .ri-code input{font-size:17px;min-width:120px}.ri-code button{margin-left:auto!important}.ri-guide ol{display:block}.ri-guide li{font-size:14px;padding:6px 0}.ri-stats{grid-template-columns:repeat(2,minmax(0,1fr));padding:0}.ri-stats>div{padding:9px 3px}.ri-stats>div:nth-child(2){border-right:0}.ri-stats>div:nth-child(-n+2){border-bottom:1px solid #cbd4e5}.ri-stats strong{font-size:25px}.ri-stats small{font-size:18px}.ri-balance{flex-wrap:wrap;gap:4px;padding:7px 12px}.ri-balance a{font-size:13px}.ri-tabs a{font-size:14px;padding:7px 2px 9px}body.account-referral-editorial .ri-tabs{gap:10px}.ri-toolbar form{flex-wrap:wrap;width:100%}body.account-referral-editorial .ri-toolbar input[type=search]{max-width:none;flex:1;min-width:115px}body.account-referral-editorial .ri-toolbar select{font-size:12px}.ri-table-wrap{padding:0 7px 4px}body.account-referral-editorial .ri-pagination{font-size:12px;gap:7px}.ri-pagination>a,.ri-pagination>b,.ri-pagination>[aria-disabled]{font-size:12px;padding:2px 8px}.ri-bottom-grid{margin-top:16px}.ri-friends,.ri-faq{padding:9px 11px}.ri-help{gap:8px 12px}.ri-help strong{font-size:15px}body.account-referral-editorial .ri-help .ao-button{font-size:12px}body.account-referral-editorial .ri-legacy form{grid-template-columns:1fr}.ri-legacy summary small{display:block}.ri-faq summary{font-size:14px}}
+@media(max-width:720px){body.account-referral-editorial .ri-welcome{display:block}body.account-referral-editorial .ri-welcome h1{font-size:32px}.ri-welcome>a{display:inline-block;margin:8px 0 0}body.account-referral-editorial .ri-welcome p{font-size:14px}.ri-invite{padding:12px 14px}.ri-guide{padding:13px 15px}body.account-referral-editorial :is(.ri-invite,.ri-guide) h2{font-size:23px}.ri-invite>p{font-size:13px}.ri-link{gap:7px;flex-wrap:wrap}.ri-link input{flex-basis:100%}body.account-referral-editorial .ri-page button{font-size:13px;padding:4px 12px}.ri-code{gap:9px;flex-wrap:wrap}.ri-code label{font-size:15px}body.account-referral-editorial .ri-code input{font-size:17px;min-width:120px}.ri-code button{margin-left:auto!important}.ri-guide ol{display:block}.ri-guide li{font-size:14px;padding:6px 0}.ri-stats{grid-template-columns:repeat(2,minmax(0,1fr));padding:0}.ri-stats>div{padding:9px 3px}.ri-stats>div:nth-child(2){border-right:0}.ri-stats>div:nth-child(-n+2){border-bottom:1px solid var(--line)}.ri-stats strong{font-size:25px}.ri-stats small{font-size:18px}.ri-balance{flex-wrap:wrap;gap:4px;padding:7px 12px}.ri-balance a{font-size:13px}.ri-tabs a{font-size:14px;padding:7px 2px 9px}body.account-referral-editorial .ri-tabs{gap:10px}.ri-toolbar form{flex-wrap:wrap;width:100%}body.account-referral-editorial .ri-toolbar input[type=search]{max-width:none;flex:1;min-width:115px}body.account-referral-editorial .ri-toolbar select{font-size:12px}.ri-table-wrap{padding:0 7px 4px}body.account-referral-editorial .ri-pagination{font-size:12px;gap:7px}.ri-pagination>a,.ri-pagination>b,.ri-pagination>[aria-disabled]{font-size:12px;padding:2px 8px}.ri-bottom-grid{margin-top:16px}.ri-friends,.ri-faq{padding:9px 11px}.ri-help{gap:8px 12px}.ri-help strong{font-size:15px}body.account-referral-editorial .ri-help .ao-button{font-size:12px}body.account-referral-editorial .ri-legacy form{grid-template-columns:1fr}.ri-legacy summary small{display:block}.ri-faq summary{font-size:14px}}

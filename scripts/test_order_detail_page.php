@@ -12,7 +12,7 @@ function flash($type,$text) {}
 function detail_ok($ok,$label) {
     if (!$ok) throw new RuntimeException('FAIL '.$label);
     $GLOBALS['detail_checks']++;
-    if (!in_array('--html',$_SERVER['argv'],true)) echo 'PASS '.$label.PHP_EOL;
+    if (!in_array('--html',$_SERVER['argv'],true) && !in_array('--payment-html',$_SERVER['argv'],true)) echo 'PASS '.$label.PHP_EOL;
 }
 // 复用 test_orders_page.php 的词法标记提取器，绝不执行 index.php 顶层代码。
 function detail_function($source,$name) {
@@ -108,7 +108,7 @@ try {
         }
     }
     detail_ok(strpos($html,'/assets/order-detail-editorial.css')!==false&&strpos($html,'order-detail-editorial"')!==false&&strpos($html,'account-orders-editorial.css')===false,'完整详情外壳加载独立 CSS 和 body 类，不加载列表 CSS');
-    detail_ok(strpos($html,'href="/orders" aria-current="page"')!==false&&strpos($html,'href="/account/overview" aria-current="page"')===false,'共享外壳侧栏正确高亮我的订单');
+    detail_ok(strpos($html,'href="/orders" aria-current="page"')!==false&&strpos(substr($html,strpos($html,'<aside class="ao-sidebar"'),strpos($html,'</aside>')-strpos($html,'<aside class="ao-sidebar"')),'href="/account/overview" aria-current="page"')===false,'共享外壳侧栏正确高亮我的订单');
     $pageSource=detail_function($source,'page');
     detail_ok(strpos($pageSource,'^/orders/[^/]+$')!==false&&strpos($pageSource,"'/orders', 'order-detail'")!==false,'正常 page 分发器选择详情专用外壳');
     $listSource=detail_function($source,'account_orders_page');
@@ -133,6 +133,9 @@ try {
     detail_ok($px->query('//form[starts-with(@action,"/payment/start/")]//input[@name="_csrf" and @value="fixture-csrf"]')->length===2&&strpos($payment,'/alipay')!==false&&strpos($payment,'/wxpay')!==false,'测试支付网关启用时仅渲染原支付表单并保留 CSRF');
     $pdo->exec('UPDATE users SET balance_cents=0 WHERE id=1');detail_ok(detail_xpath(detail_run())->query('//form[contains(@action,"balance-pay")]/button[@disabled]')->length===1,'余额不足时禁用余额支付');
     $pdo->exec("UPDATE users SET balance_cents=25000 WHERE id=1;UPDATE orders SET payment_started_at='2026-11-06' WHERE id=1");detail_ok(detail_xpath(detail_run())->query('//form[contains(@action,"balance-pay")]/button[@disabled]')->length===1,'已发起在线支付时禁用余额支付');
+    $confirmingBody=detail_run();
+    detail_ok(strpos($confirmingBody,'付款确认中')!==false&&strpos($confirmingBody,'尚未确认到账')!==false&&strpos($confirmingBody,'/orders/FIXTURE-VPN/payment-result')!==false,'在线支付发起后区分确认中并提供真实刷新入口，不伪造到账');
+    detail_ok(strpos($confirmingBody,'order-reference-confirming')!==false,'付款确认中独立视觉状态不改变订单业务状态');
     $pdo->exec("UPDATE orders SET status='delivered' WHERE id=1");
     $minimal=array('subscription'=>$payload['subscription']);detail_delivery(1,$minimal);$result=detail_run();
     detail_ok(strpos($result,'粘贴订阅链接并按教程完成导入')!==false&&strpos($result,'od-dates')===false&&strpos($result,'2027-11-06')===false,'缺少使用说明时提供默认指引且不伪造日期');
@@ -143,7 +146,13 @@ try {
     $result=detail_run();detail_ok(strpos($result,$evil)===false&&substr_count($result,e($evil))>=5,'商品、套餐、秘密、使用说明和日期均进行 XSS 转义');
     detail_ok(strpos(order_detail_subscription('https://legacy.example.test/fixture?x=1&y=2',$config),'本链接不支持多客户端切换')!==false,'保留 legacy 原链接，不伪造客户端格式');
     detail_ok((int)$pdo->query('PRAGMA query_only')->fetchColumn()===0,'所有 GET 均受 query_only 和 total_changes 保护，仅在保护外修改测试数据');
-    if(in_array('--html',$_SERVER['argv'],true))echo $html;
+    detail_ok(strpos(order_detail_script(),'form.requestSubmit(button)')!==false && strpos(order_detail_script(),'radio.disabled=button.disabled')!==false,'移动付款复用原表单和禁用状态，不另行构造支付请求');
+    detail_ok(strpos(order_detail_script(),"radio.name='mobile_payment_method'")!==false && strpos(order_detail_script(),"pay.disabled=!selected")!==false,'支付方式使用原生单选且无可用渠道时禁用付款按钮');
+    if(in_array('--payment-html',$_SERVER['argv'],true)){
+        $pdo->exec("UPDATE orders SET status='pending_payment',payment_started_at=NULL,product_name_snapshot='虚构畅享订阅',plan_name_snapshot='虚构年卡' WHERE id=1;UPDATE users SET balance_cents=3200 WHERE id=1;UPDATE order_events SET description='订单已提交，等待付款' WHERE order_id=1");
+        ob_start();account_overview_shell('订单详情',detail_run(),'',0,$pdo,$config,'/orders','order-detail');$paymentHtml=ob_get_clean();
+        echo $paymentHtml;
+    }elseif(in_array('--html',$_SERVER['argv'],true))echo $html;
     else echo '订单详情页测试全部通过（共 '.$detail_checks." 项）\n";
 } finally {
     foreach($savedEnv as $key=>$value)putenv($value===false?$key:$key.'='.$value);

@@ -1,5 +1,5 @@
 /* 软件下载独立视觉层，下载资源与链接沿用原有配置。 */
-body.user-page.downloads-page.pc-storefront.public-page .home-main-column>main.user-main{display:block;width:100%;max-width:none;margin:0;padding:0;background:#fff;border:0;box-shadow:none}
+body.user-page.downloads-page.pc-storefront.public-page .home-main-column>main.user-main{display:block;width:100%;max-width:none;margin:0;padding:0;background:var(--paper);border:0;box-shadow:none}
 .dl-page section,.dl-page details,.dl-page .download-resource{scroll-margin-top:25px}
 .dl-page .ep-crumb{padding:24px 0 28px;font-size:14px}
 .dl-page .ep-intro{padding:0 0 24px}
@@ -11,15 +11,15 @@ body.user-page.downloads-page.pc-storefront.public-page .home-main-column>main.u
 .dl-filters{display:flex;align-items:center;gap:clamp(14px,3vw,42px);min-width:0}
 body.user-page.downloads-page.pc-storefront.public-page .download-filter{position:relative;display:block;flex-shrink:0;padding:12px 8px;margin:0;background:none;border:0;border-radius:0;box-shadow:none;color:#131418;font-size:18px;line-height:1.6;white-space:nowrap;cursor:pointer}
 body.user-page.downloads-page.pc-storefront.public-page .download-filter.is-active{font-weight:700}
-.download-filter.is-active:after{content:"";position:absolute;bottom:0;left:0;right:0;height:2px;background:#111}
-body.user-page.downloads-page.pc-storefront.public-page .dl-search{display:flex;align-items:center;gap:10px;flex:0 1 310px;min-width:160px;margin:0;padding:3px 12px;border:1px solid #cbd0db;border-radius:30px;background:#fff;box-shadow:none}
+.download-filter.is-active:after{content:"";position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--accent)}
+body.user-page.downloads-page.pc-storefront.public-page .dl-search{display:flex;align-items:center;gap:10px;flex:0 1 310px;min-width:160px;margin:0;padding:3px 12px;border:1px solid var(--line);border-radius:30px;background:var(--panel);box-shadow:none}
 .dl-search svg{width:18px;height:18px}
 body.user-page.downloads-page.pc-storefront.public-page .dl-search input{width:100%;min-width:0;margin:0;padding:3px 0;border:0;background:none;box-shadow:none;color:#1d2028;font-size:14px;line-height:1.6}
 body.user-page.downloads-page.pc-storefront.public-page .dl-search button{padding:0;margin:0;border:0;background:none;box-shadow:none;font-size:16px;color:#333;cursor:pointer}
 .dl-note{padding:12px 0 24px;font-size:15px;color:#656b77}
 .dl-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;align-items:start}
-.dl-card{min-width:0;padding:24px 36px 20px;border:1px solid #d2d8e3;border-radius:13px;background:#fff}
-.dl-card>header{display:flex;align-items:center;gap:30px;padding-bottom:18px;border-bottom:1px solid #dce0e8;min-width:0}
+.dl-card{min-width:0;padding:24px 36px 20px;border:1px solid var(--line);border-radius:20px;background:var(--panel)}
+.dl-card>header{display:flex;align-items:center;gap:30px;padding-bottom:18px;border-bottom:1px solid var(--line);min-width:0}
 .dl-card>header>svg{width:74px;height:74px;flex-shrink:0;stroke-width:1.1}
 .dl-card>header>div{min-width:0}
 .dl-card .ep-kicker{font-size:12px;margin-bottom:0;letter-spacing:.14em}
@@ -30,11 +30,11 @@ body.user-page.downloads-page.pc-storefront.public-page .dl-search button{paddin
 .dl-card dt{font-weight:500;color:#333944}
 .dl-card dd{margin:0;min-width:0;color:#393e49}
 .dl-select-label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-body.user-page.downloads-page.pc-storefront.public-page .dl-version{display:block;width:100%;max-width:100%;min-width:0;min-height:36px;margin:0;padding:5px 34px 5px 14px;border:1px solid #bfc6d4;border-radius:5px;background-color:#fff;box-shadow:none;color:#20242d;font-size:14px;text-overflow:ellipsis}
+body.user-page.downloads-page.pc-storefront.public-page .dl-version{display:block;width:100%;max-width:100%;min-width:0;min-height:36px;margin:0;padding:5px 34px 5px 14px;border:1px solid var(--line);border-radius:5px;background-color:var(--panel);box-shadow:none;color:#20242d;font-size:14px;text-overflow:ellipsis}
 .dl-card-actions{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-top:20px}
 body.user-page.downloads-page.pc-storefront.public-page .dl-card-actions .ep-button{flex:1;min-height:38px;margin:0;padding:5px 12px;font-size:16px;border-radius:5px;white-space:nowrap}
-body.user-page.downloads-page.pc-storefront.public-page .dl-card-actions .dl-primary{color:#fff;background:#2921ff;border-color:#2921ff;box-shadow:0 3px 8px #3020ff17}
-body.user-page.downloads-page.pc-storefront.public-page .dl-card-actions .dl-primary:hover{background:#1d16dc}
+body.user-page.downloads-page.pc-storefront.public-page .dl-card-actions .dl-primary{color:var(--panel);background:var(--accent);border-color:var(--accent);box-shadow:0 3px 8px color-mix(in srgb,var(--accent) 9%,transparent)}
+body.user-page.downloads-page.pc-storefront.public-page .dl-card-actions .dl-primary:hover{background:color-mix(in srgb,var(--accent) 86%,var(--ink))}
 .dl-card-actions>a:last-child{flex:1;text-align:center;font-weight:600;font-size:16px;white-space:nowrap}
 .dl-versions{margin-top:12px;color:#727987;font-size:12px}
 .dl-versions>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:12px}
@@ -42,29 +42,29 @@ body.user-page.downloads-page.pc-storefront.public-page .dl-card-actions .dl-pri
 .dl-versions>summary:after{content:"+";margin-left:auto}
 .dl-versions[open]>summary:after{content:"−"}
 .dl-versions>div{padding-top:8px}
-body.user-page.downloads-page.pc-storefront.public-page .download-resource{display:block;min-width:0;margin:0;padding:14px 0;background:none;border:0;border-top:1px solid #dce0e8;border-radius:0;box-shadow:none}
-.dl-page .download-resource:target{background:#f5f5ff}
+body.user-page.downloads-page.pc-storefront.public-page .download-resource{display:block;min-width:0;margin:0;padding:14px 0;background:none;border:0;border-top:1px solid var(--line);border-radius:0;box-shadow:none}
+.dl-page .download-resource:target{background:var(--tint)}
 .dl-page .download-resource h3{font-size:17px;overflow-wrap:anywhere;font-weight:600}
-.dl-page .download-resource h3 small{font-size:12px;color:#6f7580;font-weight:400}
-.dl-page .download-resource p{font-size:13px;color:#6f7580;overflow-wrap:anywhere;margin:5px 0}
+.dl-page .download-resource h3 small{font-size:12px;color:var(--muted);font-weight:400}
+.dl-page .download-resource p{font-size:13px;color:var(--muted);overflow-wrap:anywhere;margin:5px 0}
 .dl-resource-links{display:flex;flex-wrap:wrap;gap:20px;margin-top:10px}
-body.user-page.downloads-page.pc-storefront.public-page .dl-resource-links a{display:inline-block;margin:0;padding:0;background:none;border:0;border-radius:0;box-shadow:none;transform:none;color:#2621de;font-size:13px;text-decoration:underline;text-underline-offset:4px}
+body.user-page.downloads-page.pc-storefront.public-page .dl-resource-links a{display:inline-block;margin:0;padding:0;background:none;border:0;border-radius:0;box-shadow:none;transform:none;color:var(--accent);font-size:13px;text-decoration:underline;text-underline-offset:4px}
 .dl-resource-links .download-disabled{font-size:13px;color:#888}
 .dl-unavailable{min-height:36px;font-size:14px;color:#7b808a}
-.dl-page .download-no-match{padding:32px;margin:18px 0;border:1px solid #d4d9e3;border-radius:10px;background:#f8f9fb;font-size:16px;color:#666e7c}
-.dl-steps{display:grid;grid-template-columns:30% 1fr;gap:5%;margin:28px -14px 0;padding:26px 32px;background:#f5f6f9;border-radius:13px}
-.dl-steps>h2{align-self:center;border-right:1px solid #d8dce5;padding:28px 20px 28px 0;font-size:clamp(26px,3.4vw,42px);line-height:1.4;font-weight:700}
+.dl-page .download-no-match{padding:32px;margin:18px 0;border:1px solid var(--line);border-radius:18px;background:var(--paper);font-size:16px;color:#666e7c}
+.dl-steps{display:grid;grid-template-columns:30% 1fr;gap:5%;margin:28px -14px 0;padding:26px 32px;background:var(--soft);border-radius:20px}
+.dl-steps>h2{align-self:center;border-right:1px solid var(--line);padding:28px 20px 28px 0;font-size:clamp(26px,3.4vw,42px);line-height:1.4;font-weight:700}
 .dl-steps ol{list-style:none;padding:0}
-.dl-steps li{display:flex;align-items:baseline;gap:32px;border-bottom:1px solid #d8dce5;padding:6px 0}
-.dl-steps li>span{font-family:Georgia,serif;font-size:25px;line-height:1;padding-right:28px;border-right:1px solid #a8afbd;color:#6c727e}
+.dl-steps li{display:flex;align-items:baseline;gap:32px;border-bottom:1px solid var(--line);padding:6px 0}
+.dl-steps li>span{font-family:Georgia,serif;font-size:25px;line-height:1;padding-right:28px;border-right:1px solid var(--line);color:#6c727e}
 .dl-steps h3{font-size:18px;font-weight:600}
 .dl-steps p{font-size:14px;color:#707784;line-height:1.7}
 .dl-steps>div>p{padding-top:10px}
 .dl-guides{display:grid;grid-template-columns:1fr 1fr;gap:5%;margin:32px 0 26px}
-.dl-guides>div:first-child{border-right:1px solid #d6dce6;padding-right:30px}
+.dl-guides>div:first-child{border-right:1px solid var(--line);padding-right:30px}
 .dl-guides h2{font-size:27px;margin-bottom:12px}
 .dl-guides ul{margin:0;padding-left:22px;font-size:16px;line-height:2.2;color:#4b525e}
-.dl-guides>div>a{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:7px 0;border-bottom:1px solid #d7dce6;font-size:16px}
+.dl-guides>div>a{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:7px 0;border-bottom:1px solid var(--line);font-size:16px}
 .dl-page .ep-faq{margin-top:0;padding:25px 0;grid-template-columns:27% 1fr;gap:4%}
 .dl-page .ep-faq>h2{font-size:29px}
 .dl-page .ep-faq summary{font-size:18px}
@@ -73,7 +73,7 @@ body.user-page.downloads-page.pc-storefront.public-page .dl-resource-links a{dis
 .dl-page .ep-help h2,.dl-page .ep-help>a{font-size:17px}
 .dl-page .ep-footer{font-size:13px}
 .dl-page .ep-footer>div>a{font-size:20px}
-.dl-page a:focus-visible,.dl-page summary:focus-visible,.dl-page button:focus-visible,.dl-page select:focus-visible{outline:2px solid #3831ff;outline-offset:4px}
+.dl-page a:focus-visible,.dl-page summary:focus-visible,.dl-page button:focus-visible,.dl-page select:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
 .dl-page .ep-intro h1>span,.dl-steps>h2>span{display:inline-block}
 .dl-page.is-enhanced .dl-versions:not([open]){margin-top:0}
 .dl-page.is-enhanced .dl-versions:not([open])>summary{display:none}

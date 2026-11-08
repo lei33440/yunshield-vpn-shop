@@ -248,3 +248,63 @@ body.user-page.accounts-page.pc-storefront.public-page .ac-page .ep-faq summary{
 body.user-page.accounts-page.pc-storefront.public-page .ac-page .ep-help{padding:24px 0}
 }
 @media(prefers-reduced-motion:reduce){.ep-card{transition:none}}
+
+/* ZIP 商城设计增量层：只作用于商品路由，保留其他共用页面外壳。 */
+body.user-page:is(.products-page,.accounts-page,.account-detail-page).pc-storefront.public-page{--ep-line:#e5dacf;--ep-paper:#f5f2ec;--ep-panel:#fffcf7;--ep-accent:#a63f25;--ep-ink:#28221e;--ep-muted:#665b51;background:var(--ep-paper);color:var(--ep-ink);font-family:system-ui,"Microsoft YaHei","PingFang SC",sans-serif;letter-spacing:0}
+body.user-page:is(.products-page,.accounts-page,.account-detail-page).pc-storefront.public-page :is(.home-shell,.home-main-column,.home-main-column>main.user-main){background:var(--ep-paper)}
+body.user-page:is(.products-page,.accounts-page,.account-detail-page).pc-storefront.public-page :is(.home-topnav,.home-nav-drawer,.home-drawer-nav,.editorial-nav-search form){background:var(--ep-panel);border-color:var(--ep-line)}
+body.user-page:is(.products-page,.accounts-page,.account-detail-page).pc-storefront.public-page .home-nav-link.is-active{color:var(--ep-accent)}
+body.user-page:is(.products-page,.accounts-page,.account-detail-page).pc-storefront.public-page .home-nav-link.is-active:after{background:var(--ep-accent)}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-page{width:min(1200px,calc(100% - 32px));padding-bottom:24px}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-page :is(h1,h2,h3){color:var(--ep-ink)}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-intro{padding:8px 0 28px;align-items:center}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-intro h1{font-size:clamp(28px,4vw,48px);white-space:normal;line-height:1.4}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-intro p{font-size:16px;max-width:48em;margin-top:12px;color:var(--ep-muted)}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page :is(.ep-kicker,.ep-card-category em,.ep-intro>a){color:var(--ep-accent)}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-toolbar{display:flex;flex-wrap:wrap;gap:16px;padding:16px;background:var(--ep-panel);border:1px solid var(--ep-line);border-radius:20px}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-categories{width:100%;flex-basis:100%;gap:8px;flex-wrap:wrap;margin:0}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-categories a{min-height:44px;padding:9px 14px;font-size:14px;border-radius:99px}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-categories a[aria-current]{background:#f5e5da;color:var(--ep-accent)}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-categories a[aria-current]:after{display:none}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-tools{width:100%;flex-wrap:wrap;gap:12px;justify-content:space-between;margin:0}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-periods{max-width:100%;flex-wrap:wrap;border-color:var(--ep-line)}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-periods :is(a,span){min-height:40px;display:flex;align-items:center;justify-content:center;font-size:14px}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-periods [aria-current]{background:var(--ep-accent);box-shadow:none}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page :is(.ep-sort select,.ac-search){background:var(--ep-panel);border-color:var(--ep-line);min-height:44px;font-size:14px}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-grid{grid-template-columns:minmax(0,1fr);gap:18px}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-card{padding:22px;border:1px solid var(--ep-line);border-radius:20px;background:var(--ep-panel);box-shadow:none;transition:none}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-card:is(:hover,:focus-within){border-color:#bc9580;box-shadow:0 4px 16px #49321c0a}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-card.is-featured{border-color:#c68e76;background:linear-gradient(155deg,#faede2,var(--ep-panel) 65%)}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-card-category{font-size:14px;min-height:30px}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-card-title{flex-wrap:wrap;align-items:start;gap:6px 10px;min-height:3.4em}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-card-title h2{font-size:24px;white-space:normal;overflow:visible;overflow-wrap:anywhere;line-height:1.4}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-card-title>span{max-width:100%;white-space:normal;overflow-wrap:anywhere;font-size:14px;color:var(--ep-muted)}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-card .ep-caption{font-size:14px;line-height:1.7;-webkit-line-clamp:2;min-height:3.4em;color:var(--ep-muted)}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-price{flex-wrap:wrap;row-gap:8px;margin-top:20px;padding-bottom:20px;font-variant-numeric:tabular-nums;color:var(--ep-accent)}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-price>span{font-size:26px}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-price strong{font-size:48px;overflow-wrap:anywhere;white-space:normal}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-price b{font-size:28px}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-price small{font:14px/1.6 system-ui,"Microsoft YaHei",sans-serif;color:var(--ep-muted)}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-card dl{display:grid;gap:0;margin:12px 0 24px;font-size:14px;line-height:1.7}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-card dl>div{display:grid;grid-template-columns:6.5em minmax(0,1fr);gap:12px;padding:9px 0;border-bottom:1px solid var(--ep-line)}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-card dt{color:var(--ep-muted)}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-card dd{color:var(--ep-ink);font-variant-numeric:tabular-nums}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-button{min-height:46px;border:1px solid var(--ep-accent);border-radius:99px;background:var(--ep-panel);color:var(--ep-accent);font-size:15px}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .is-featured .ep-button{background:var(--ep-accent);border-color:var(--ep-accent);color:#fff;box-shadow:none}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-button:hover{background:#f5e5da;border-color:#89321b;color:#89321b}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .is-featured .ep-button:hover{background:#89321b;color:#fff}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page :is(.ep-flow,.ac-delivery,.ep-empty){grid-column:1/-1;min-height:0;background:#eee6da;border:1px solid var(--ep-line);border-radius:20px}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-flow li p{display:block;grid-column:2;font-size:14px;color:var(--ep-muted);margin-top:5px}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page :is(.ep-results,.ep-faq details p,.ep-flow-bottom p){color:var(--ep-muted);font-size:14px}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-faq summary{min-height:44px;font-size:16px}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page :is(a,summary,select,button,input):focus-visible{outline:2px solid var(--ep-accent);outline-offset:3px}
+@media(min-width:680px){
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(min-width:1050px){
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-page{width:min(1200px,calc(100% - 80px))}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-toolbar{align-items:center}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-categories{width:auto;flex:1}
+body.user-page:is(.products-page,.accounts-page).pc-storefront.public-page .ep-tools{width:auto;flex:0 1 auto}
+}
