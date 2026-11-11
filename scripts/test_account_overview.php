@@ -12,11 +12,11 @@ function overview_ok($ok,$label){if(!$ok)throw new RuntimeException('FAIL '.$lab
 function overview_function($source,$name){$tokens=token_get_all($source);$capture=false;$depth=0;$opened=false;$result='';foreach($tokens as $i=>$token){if(!$capture&&is_array($token)&&$token[0]===T_FUNCTION){$j=$i+1;while(isset($tokens[$j])&&is_array($tokens[$j])&&$tokens[$j][0]===T_WHITESPACE)$j++;if(isset($tokens[$j])&&is_array($tokens[$j])&&$tokens[$j][1]===$name)$capture=true;}if(!$capture)continue;$text=is_array($token)?$token[1]:$token;$result.=$text;if($token==='{'){$opened=true;$depth++;}elseif($token==='}'&&--$depth===0&&$opened)return $result;}throw new RuntimeException('函数缺失 '.$name);}
 set_error_handler(function($s,$m,$f,$l){throw new ErrorException($m,0,$s,$f,$l);});
 $pdo=new PDO('sqlite::memory:',null,null,array(PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC));
-$pdo->exec('CREATE TABLE users(id INTEGER PRIMARY KEY,display_name TEXT,email TEXT,balance_cents INTEGER,password_changed_at TEXT);CREATE TABLE orders(id INTEGER PRIMARY KEY,user_id INTEGER,order_no TEXT,product_name_snapshot TEXT,plan_name_snapshot TEXT,product_type_snapshot TEXT,duration_days_snapshot INTEGER,traffic_snapshot TEXT,total_amount_cents INTEGER,status TEXT);CREATE TABLE delivery_records(order_id INTEGER,is_current INTEGER,opened_at TEXT,expires_at TEXT,secret TEXT);CREATE TABLE notifications(id INTEGER PRIMARY KEY,user_id INTEGER,title TEXT,content TEXT,order_no TEXT,target_type TEXT,target_id INTEGER,created_at TEXT,read_at TEXT)');
+$pdo->exec('CREATE TABLE users(id INTEGER PRIMARY KEY,display_name TEXT,email TEXT,balance_cents INTEGER,password_changed_at TEXT);CREATE TABLE orders(id INTEGER PRIMARY KEY,user_id INTEGER,order_no TEXT,product_name_snapshot TEXT,plan_name_snapshot TEXT,product_type_snapshot TEXT,duration_days_snapshot INTEGER,traffic_snapshot TEXT,total_amount_cents INTEGER,status TEXT,order_kind TEXT DEFAULT "purchase",parent_order_id INTEGER);CREATE TABLE delivery_records(order_id INTEGER,is_current INTEGER,opened_at TEXT,expires_at TEXT,secret TEXT);CREATE TABLE notifications(id INTEGER PRIMARY KEY,user_id INTEGER,title TEXT,content TEXT,order_no TEXT,target_type TEXT,target_id INTEGER,created_at TEXT,read_at TEXT)');
 $pdo->exec("INSERT INTO users VALUES(1,'云间旅人','overview@example.test',6800,NULL),(2,'其他用户','other@example.test',999999,NULL)");
-$insert=$pdo->prepare('INSERT INTO orders VALUES(?,1,?,?,?,?,30,?,19800,?)');
+$insert=$pdo->prepare('INSERT INTO orders(id,user_id,order_no,product_name_snapshot,plan_name_snapshot,product_type_snapshot,duration_days_snapshot,traffic_snapshot,total_amount_cents,status) VALUES(?,1,?,?,?,?,30,?,19800,?)');
 foreach(array('delivered','delivered','delivered','pending_delivery','paid_waiting_group','pending_payment') as $i=>$state)$insert->execute(array($i+1,'TEST-'.($i+1),'内存测试订阅','年卡','vpn','100 GB',$state));
-$pdo->exec("INSERT INTO orders VALUES(99,2,'PRIVATE-ORDER','其他用户私有商品','方案','vpn',30,'100 GB',999999,'pending_payment')");
+$pdo->exec("INSERT INTO orders(id,user_id,order_no,product_name_snapshot,plan_name_snapshot,product_type_snapshot,duration_days_snapshot,traffic_snapshot,total_amount_cents,status) VALUES(99,2,'PRIVATE-ORDER','其他用户私有商品','方案','vpn',30,'100 GB',999999,'pending_payment')");
 $d=$pdo->prepare('INSERT INTO delivery_records VALUES(?,1,?,?,?)');
 $d->execute(array(1,'2020-01-01',null,'PRIVATE-SECRET'));
 $d->execute(array(2,'2020-01-01','2020-02-01','PRIVATE-SECRET'));
@@ -28,8 +28,12 @@ $source=file_get_contents($root.'/public/index.php');
 foreach(array('user_nav_icon','home_outline_icon','money','status_text','account_overview_shell') as $name)eval(str_replace('__DIR__',var_export($root.'/public',true),overview_function($source,$name)));
 $start=strpos($source,'$workspacePage = function(');$end=strpos($source,"\$router->get('/wallet',",$start);
 overview_ok($start!==false&&$end!==false,'真实路由提取边界');eval(substr($source,$start,$end-$start));
+$pdo->exec("INSERT INTO orders(id,user_id,order_no,product_name_snapshot,plan_name_snapshot,product_type_snapshot,duration_days_snapshot,traffic_snapshot,total_amount_cents,status,order_kind,parent_order_id) VALUES(94,1,'RENEWAL-CHILD','续费子单','年卡','vpn',365,'100 GB',19800,'delivered','renewal',3)");
+$d->execute(array(94,date('Y-m-d'),date('Y-m-d',time()+86400*365),'RENEWAL-SECRET'));
 $before=$pdo->query('SELECT total_changes()')->fetchColumn();
 $router->dispatch('GET','/account/overview');$body=$GLOBALS['overview_body'];
+$doc=new DOMDocument();$doc->loadHTML('<?xml encoding="UTF-8">'.$body,LIBXML_NONET|LIBXML_NOERROR|LIBXML_NOWARNING);$xp=new DOMXPath($doc);
+overview_ok($xp->query('//article[@class="ao-subscription"]//a[contains(@href,"RENEWAL-CHILD")]')->length===0&&strpos($body,'仅显示最近 2 项，共 3 项')!==false&&strpos($body,'<span>有效订阅</span><strong>1</strong>')!==false,'续费子单不重复计入总览订阅或有效订阅，即使存在current记录');
 overview_ok(strpos($body,'ao-welcome')!==false&&strpos($body,'云间旅人')!==false,'默认总览使用新布局与真实昵称');
 foreach(array('待付款','等待交付','等待成团','有效订阅') as $label)overview_ok(strpos($body,'<span>'.$label.'</span><strong>1</strong>')!==false,'独立真实计数 '.$label);
 overview_ok(strpos($body,'</span>68.00')!==false&&strpos($body,'不支持拆分付款')!==false,'余额金额和支付说明');

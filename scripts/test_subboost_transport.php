@@ -10,6 +10,7 @@ function curl_setopt($ch,$key,$value){$ch->options[$key]=$value;return true;}
 function curl_setopt_array($ch,$options){foreach($options as $key=>$value)curl_setopt($ch,$key,$value);return true;}
 function curl_exec($ch){$response=json_encode($GLOBALS['transport_response']);$write=$ch->options[CURLOPT_WRITEFUNCTION];return $write($ch,$response)===strlen($response);}
 function curl_getinfo($ch,$key){return 200;}
+function curl_errno($ch){return 0;}
 function curl_close($ch){}
 // 仅为测试给原始类加命名空间，调用真实构造器、request、校验及链接生成逻辑。
 $source=file_get_contents($root.'/app/Services/SubBoostClient.php');

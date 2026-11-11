@@ -8,7 +8,7 @@ function register_vpn_category_routes($router,$pdo,$config)
     $router->get('/admin/vpn-categories',function()use($pdo,$config){
         Security::requireAdmin();
         $rows=$pdo->query('SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.vpn_category_id=c.id AND p.product_type="vpn") AS product_count FROM vpn_categories c ORDER BY c.sort_order,c.id')->fetchAll();
-        $body='<div class="admin-vpn-category-page">'.admin_heading('订阅分类','维护VPN订阅分类；使用中的分类不能删除，旧套餐可保持未分类。','<a class="secondary-button" href="/admin/products">订阅套餐</a> <a class="button" href="/admin/vpn-categories/new">＋ 新建分类</a>');
+        $body='<div class="admin-vpn-category-page">'.admin_heading('订阅分类','维护VPN订阅分类；使用中的分类不能删除，旧套餐可保持未分类。','<div class="admin-catalog-heading-actions"><a class="secondary-button" href="/admin/products">订阅套餐</a><a class="button" href="/admin/vpn-categories/new">＋ 新建分类</a></div>');
         $body.='<div class="admin-product-grid">';
         foreach($rows as $row){$id=(int)$row['id'];$body.='<article class="admin-product-card vpn-category-card"><h3>'.e($row['name']).'</h3><p>排序 '.(int)$row['sort_order'].' · '.(int)$row['product_count'].' 个订阅套餐（含草稿、下架）</p><div class="admin-product-actions"><a href="/admin/vpn-categories/'.$id.'/edit">编辑</a><a href="/admin/products?category='.$id.'">查看套餐</a><form method="post" action="/admin/vpn-categories/'.$id.'/delete">'.csrf_field().'<button type="submit" data-confirm="确认删除此分类？使用中的分类无法删除。">删除</button></form></div></article>';}
         if(!$rows)$body.='<div class="admin-info-banner">暂无订阅分类。创建分类后，可在套餐编辑页选择归属；未分类套餐不受影响。</div>';

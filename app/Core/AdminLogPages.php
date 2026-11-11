@@ -54,7 +54,7 @@ function admin_log_body($history)
         $href = admin_log_url(array('tab'=>$key, 'from'=>$f['from'], 'to'=>$f['to']));
         $body .= '<a href="'.e($href).'"'.($tab === $key ? ' class="selected" aria-current="page"' : '').'>'.e($label).'</a>';
     }
-    $body .= '</nav>';
+    $body .= '<a href="/admin/subboost-tasks">SubBoost任务</a></nav>';
     if ($tab === 'email') {
         $body .= '<nav class="admin-log-tabs admin-log-sources" aria-label="邮件日志来源">';
         foreach (array('queue'=>'通知队列','test'=>'SMTP 测试') as $key=>$label) {

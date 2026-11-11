@@ -1,10 +1,12 @@
 <?php
-// 错误仅包含固定代码，禁止记录响应正文、链接、curl 诊断或凭证。
+// 错误仅包含固定代码；传输诊断仅保留状态编号，不记录正文、链接、cURL 文本或凭证。
 class SubBoostClient
 {
     private $url;
     private $secret;
     private $connectTo=null;
+    private $diagnostic=array();
+    public function diagnostics(){return $this->diagnostic;}
     public static function settings($config=array())
     {
         $fallback=isset($config['subboost'])?$config['subboost']:array();
@@ -38,6 +40,7 @@ class SubBoostClient
     public function status($no){return $this->request('GET','/api/shop/subscriptions/'.rawurlencode($no));}
     private function request($method,$path,$body=null)
     {
+        $this->diagnostic=array();
         if($this->connectTo!==null&&!defined('CURLOPT_CONNECT_TO'))throw new RuntimeException('invalid_configuration');
         $ch=curl_init($this->url.$path);$response='';
         // CONNECT_TO 不改 URL、HTTP Host 或 TLS 身份，端口沿用公开 URL。
@@ -47,7 +50,8 @@ class SubBoostClient
             CURLOPT_PROTOCOLS=>CURLPROTO_HTTP|CURLPROTO_HTTPS,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,
             CURLOPT_WRITEFUNCTION=>function($ch,$chunk)use(&$response){if(strlen($response)+strlen($chunk)>65536)return 0;$response.=$chunk;return strlen($chunk);}));
         if($body!==null){$json=json_encode($body,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);if($json===false)throw new RuntimeException('invalid_request');curl_setopt($ch,CURLOPT_POSTFIELDS,$json);}
-        $ok=curl_exec($ch);$code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);
+        $ok=curl_exec($ch);$code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);
+        $this->diagnostic=array('http_status'=>$code,'transport_errno'=>curl_errno($ch));curl_close($ch);
         if($ok===false)throw new RuntimeException('http_transport_failed');
         if($code!==200)throw new RuntimeException('http_'.$code);
         $data=json_decode($response,true);

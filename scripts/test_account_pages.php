@@ -26,7 +26,7 @@ for($i=0,$n=count($extractorTokens);$i<$n;$i++){
 }
 if(count($extractorFound)!==count($extractorNames))throw new RuntimeException('Missing cost test extractor');
 $source=file_get_contents($root.'/public/index.php');
-pc_functions($root.'/public/index.php',array('product_form','plan_description_html','money','status_text','order_timeline','order_detail_secret','order_detail_subscription','order_detail_script','post_csrf','copy_subscription_script','delivery_email_notice','delivery_duration_presets','delivery_duration_script','product_plans_input','save_product_plans','product_input','user_nav_icon','shop_plan_period','shop_plan_key','shop_plan_daily','shop_traffic_gb','shop_tagline','account_orders_page','account_subscriptions_page'));
+pc_functions($root.'/public/index.php',array('product_form','plan_description_html','money','status_text','order_timeline','order_detail_secret','order_detail_subscription','order_detail_script','post_csrf','copy_subscription_script','delivery_email_notice','delivery_duration_presets','delivery_duration_script','product_plans_input','save_product_plans','product_input','user_nav_icon','home_outline_icon','shop_plan_period','shop_plan_key','shop_plan_daily','shop_traffic_gb','shop_tagline','account_orders_page','account_subscriptions_page'));
 $config=array('security'=>array('encryption_key'=>bin2hex(random_bytes(32))),'app'=>array('timezone'=>'UTC','name'=>'isolated'));
 $router=new Router();account_catalog_routes($router,$pdo,$config);
 // Complete registration statements also support the multi-line public catalog route.
@@ -37,9 +37,11 @@ $workspaceStart=strpos($source,'$workspacePage = function(');$workspaceEnd=strpo
 if($workspaceStart===false||$workspaceEnd===false)throw new RuntimeException('Missing workspace route boundary');
 eval(substr($source,$workspaceStart,$workspaceEnd-$workspaceStart));
 eval(pc_route_source($source,'get','/wallet'));
-function ap_ok($value,$label){if(!$value)throw new RuntimeException('FAIL '.$label);echo 'PASS '.$label.PHP_EOL;}
+// Collect assertion failures so independent regressions still execute; never report success on failure.
+$apFailures=array();$apAssertions=0;
+function ap_ok($value,$label){global $apFailures,$apAssertions;$apAssertions++;if(!$value){$apFailures[]=$label;echo 'FAIL '.$label.PHP_EOL;return;}echo 'PASS '.$label.PHP_EOL;}
 function ap_sql($sql,$args=array()){global $pdo;$s=$pdo->prepare($sql);$s->execute($args);return $s;}
-function ap_run($method,$path,$get=array(),$post=array()){global $router;$GLOBALS['test_body']='';$GLOBALS['test_flash']=array();$_GET=$get;$_POST=$post+array('_csrf'=>'test');http_response_code(200);try{$router->dispatch($method,$path);}catch(PageRedirect $r){return $r->url;}return $GLOBALS['test_body'];}
+function ap_run($method,$path,$get=array(),$post=array()){global $router;$GLOBALS['test_body']='';$GLOBALS['test_flash']=array();$_GET=$get;if($method==='POST'&&$path==='/orders'){$post+=array('request_key'=>bin2hex(random_bytes(32)));foreach(array('product_id','plan_id') as $field)if(isset($post[$field])&&is_int($post[$field]))$post[$field]=(string)$post[$field];}$_POST=$post+array('_csrf'=>'test');http_response_code(200);try{$router->dispatch($method,$path);}catch(PageRedirect $r){return $r->url;}return $GLOBALS['test_body'];}
 function ap_reject($fn,$label){try{$fn();}catch(InvalidArgumentException $e){ap_ok(true,$label);return;}throw new RuntimeException('FAIL '.$label);}
 $tag='page_'.bin2hex(random_bytes(6));ap_sql('INSERT INTO users(email,password_hash,created_at,updated_at) VALUES(?,"isolated",NOW(),NOW())',array($tag.'@example.test'));$uid=(int)$pdo->lastInsertId();ap_sql('INSERT INTO admin_users(email,password_hash,created_at,updated_at) VALUES(?,"isolated",NOW(),NOW())',array('admin_'.$tag.'@example.test'));$aid=(int)$pdo->lastInsertId();$_SESSION=array('user_id'=>$uid,'user_password_changed_at'=>'','admin_id'=>$aid,'_csrf'=>'test');
 // 平台编码通过真实管理路由验证，仅写入显式指定的隔离数据库。
@@ -57,17 +59,68 @@ $platformInput['name']='更新平台_'.$tag;ap_run('POST','/admin/account-platfo
 $platformInput['code']=$nextCode;ap_run('POST','/admin/account-platforms/'.$platformId.'/save',array(),$platformInput);ap_ok(!empty($GLOBALS['test_flash']['error'])&&ap_sql('SELECT code FROM account_platforms WHERE id=?',array($platformId))->fetchColumn()===$platformCode,'服务端拒绝篡改已创建平台编码');
 $platformInput['code']=$platformCode;ap_run('POST','/admin/account-platforms/save',array(),$platformInput);ap_ok(!empty($GLOBALS['test_flash']['error']),'重复编码仍被唯一约束拒绝');
 ap_ok((int)ap_sql('SELECT COUNT(*) FROM admin_logs WHERE target_type="account_platform" AND target_id=? AND action IN ("create_account_platform","update_account_platform")',array($platformId))->fetchColumn()===2,'创建和更新保留审计，拒绝请求不新增审计');
-if(in_array('--platform-only',$argv,true)){echo "平台管理路由测试全部通过（9 项）\n";exit;}
+if(in_array('--platform-only',$argv,true)){if($apFailures)throw new RuntimeException(implode('; ',$apFailures));echo "平台管理路由测试全部通过（9 项）\n";exit;}
 $input=array('product_type'=>'account','name'=>$tag,'description'=>'public description','account_platform'=>'telegram','account_specification'=>'PUBLIC_SPEC_'.$tag,'account_after_sales'=>'PUBLIC_CARE_'.$tag,'status'=>'active','sort_order'=>'0','plans'=>array(array('id'=>0,'name'=>'single','price'=>'10.00','status'=>'active','sort_order'=>'0')));
+$planDescription="公开方案一\n</textarea><script>alert(31)</script>";
+$secondDescription='公开方案二：独享 & 支持说明';
+$input['plans'][0]['public_description']=$planDescription;
+$input['plans'][]=array('id'=>0,'name'=>'second','price'=>'20.00','status'=>'active','sort_order'=>'1','public_description'=>$secondDescription);
 ap_ok(account_catalog_ready($pdo),'complete schema is ready');ap_reject(function(){catalog_type(array());},'missing type rejected');ap_reject(function(){catalog_type(array('product_type'=>'unknown'));},'unknown type rejected');
-$url=ap_run('POST','/admin/products/create',array(),$input);ap_ok($url==='/admin/products'&&empty($GLOBALS['test_flash']['error']),'real create handler account success');$p=ap_sql('SELECT * FROM products WHERE name=?',array($tag))->fetch();$pid=(int)$p['id'];$plan=ap_sql('SELECT * FROM product_plans WHERE product_id=?',array($pid))->fetch();$planId=(int)$plan['id'];ap_ok($p['traffic']===null&&$p['region']===null&&$p['device_limit']===null&&$p['duration_days']===null&&$plan['duration_days']===null,'account VPN fields SQL NULL');
-$body=ap_run('GET','/accounts',array('platform'=>'telegram'));ap_ok(strpos($body,$tag)!==false,'platform list includes account');$body=ap_run('GET','/accounts',array('platform'=>'google'));ap_ok(strpos($body,$tag)===false,'platform list excludes other platform');ap_run('GET','/products/'.$pid);ap_ok(http_response_code()===404,'account on VPN URL is 404');
+$url=ap_run('POST','/admin/products/create',array(),$input);ap_ok($url==='/admin/accounts'&&empty($GLOBALS['test_flash']['error']),'账号创建成功后返回海外账号列表');$p=ap_sql('SELECT * FROM products WHERE name=?',array($tag))->fetch();$pid=(int)$p['id'];$plan=ap_sql('SELECT * FROM product_plans WHERE product_id=? ORDER BY sort_order,id LIMIT 1',array($pid))->fetch();$planId=(int)$plan['id'];ap_ok($p['traffic']===null&&$p['region']===null&&$p['device_limit']===null&&$p['duration_days']===null&&$plan['duration_days']===null,'account VPN fields SQL NULL');
+$savedPlans=ap_sql('SELECT * FROM product_plans WHERE product_id=? ORDER BY sort_order,id',array($pid))->fetchAll();
+ap_ok(count($savedPlans)===2&&$savedPlans[0]['public_description']===$planDescription&&$savedPlans[1]['public_description']===$secondDescription,'real create route stores two independent account plan descriptions');
+$input['plans'][0]['id']=$planId;$input['plans'][1]['id']=(int)$savedPlans[1]['id'];
+$planDescription="编辑公开方案一\n<script>alert(32)</script>";$input['plans'][0]['public_description']=$planDescription;
+ap_run('POST','/admin/products/'.$pid.'/edit',array(),$input);
+ap_ok(empty($GLOBALS['test_flash']['error'])&&ap_sql('SELECT public_description FROM product_plans WHERE id=?',array($planId))->fetchColumn()===$planDescription&&ap_sql('SELECT public_description FROM product_plans WHERE id=?',array($input['plans'][1]['id']))->fetchColumn()===$secondDescription,'real edit route updates only the selected plan description');
+// Route rejection must roll back all plan/product changes, not silently erase the text.
+foreach(array('array'=>array('bad'),'null'=>null,'integer'=>123,'boolean'=>false,'overlong'=>str_repeat('界',2001),'invalid UTF-8'=>"\xC3\x28",'truncated UTF-8'=>"\xE4\xB8") as $label=>$badDescription){
+    $beforePlans=ap_sql('SELECT * FROM product_plans WHERE product_id=? ORDER BY id',array($pid))->fetchAll();
+    $test=$input;$test['plans'][0]['public_description']=$badDescription;
+    ap_run('POST','/admin/products/'.$pid.'/edit',array(),$test);
+    ap_ok(!empty($GLOBALS['test_flash']['error'])&&ap_sql('SELECT * FROM product_plans WHERE product_id=? ORDER BY id',array($pid))->fetchAll()===$beforePlans,'real edit route rejects invalid plan description without changes: '.$label);
+    $test['name']=$tag.'_invalid_description';ap_run('POST','/admin/products/create',array(),$test);
+    ap_ok(!empty($GLOBALS['test_flash']['error'])&&(int)ap_sql('SELECT COUNT(*) FROM products WHERE name=?',array($test['name']))->fetchColumn()===0,'real create route rejects invalid plan description: '.$label);
+}
+$boundaryInput=$input;$boundaryInput['plans'][0]['public_description']=str_repeat("\u{1F600}",2000);
+ap_run('POST','/admin/products/'.$pid.'/edit',array(),$boundaryInput);
+ap_ok(empty($GLOBALS['test_flash']['error'])&&ap_sql('SELECT public_description FROM product_plans WHERE id=?',array($planId))->fetchColumn()===str_repeat("\u{1F600}",2000),'real route accepts 2000 Unicode characters, not a byte limit');
+ap_run('POST','/admin/products/'.$pid.'/edit',array(),$input);ap_ok(empty($GLOBALS['test_flash']['error']),'restore edited description through real route');
+$_POST=array('plans'=>array(array('name'=>'legacy','price'=>'1','status'=>'active','sort_order'=>'0')));$parsed=product_plans_input('account');ap_ok($parsed[0]['public_description']==='','omitted account plan description defaults to empty string');
+$_POST['plans'][0]['duration_days']='30';$_POST['plans'][0]['public_description']=array('ignored');$parsed=product_plans_input('vpn');ap_ok(!array_key_exists('public_description',$parsed[0]),'VPN parser does not accept or use account description field');
+// Inspect actual handler HTML with DOM, including normal list -> detail navigation.
+function ap_dom($body){$doc=new DOMDocument();$doc->loadHTML('<?xml encoding="UTF-8">'.$body,LIBXML_NONET|LIBXML_NOERROR|LIBXML_NOWARNING);return new DOMXPath($doc);}
+$editBody=ap_run('GET','/admin/products/'.$pid.'/edit');$xp=ap_dom($editBody);
+$descriptionFields=$xp->query('//textarea[@name="plans[0][public_description]"]');
+ap_ok($descriptionFields->length===1&&$descriptionFields->item(0)->textContent===$planDescription&&$xp->query('//textarea[@name="plans[1][public_description]"]')->item(0)->textContent===$secondDescription&&strpos($editBody,'<script>alert(32)</script>')===false,'backend real edit page independently escapes both plan description textareas');
+$closingInput=$input;$closingInput['plans'][0]['public_description']="</textarea><script>alert(31)</script>\n\" onfocus=\"alert(33) & <img src=x onerror=alert(34)>";
+ap_run('POST','/admin/products/'.$pid.'/edit',array(),$closingInput);$editBody=ap_run('GET','/admin/products/'.$pid.'/edit');$xp=ap_dom($editBody);
+ap_ok(empty($GLOBALS['test_flash']['error'])&&$xp->query('//textarea[@name="plans[0][public_description]"]')->item(0)->textContent===$closingInput['plans'][0]['public_description']&&strpos($editBody,e($closingInput['plans'][0]['public_description']))!==false&&strpos($editBody,$closingInput['plans'][0]['public_description'])===false,'backend real textarea closing-tag and attribute XSS payload stays text');
+$listBody=ap_run('GET','/accounts',array('platform'=>'telegram'));$xp=ap_dom($listBody);$detailLinks=$xp->query('//article//a[@href="/accounts/'.$pid.'"]');ap_ok($detailLinks->length===1,'normal catalog exposes a unique fixture detail link');
+$detailBody=ap_run('GET',$detailLinks->item(0)->getAttribute('href'));$xp=ap_dom($detailBody);
+foreach(array($planId=>$closingInput['plans'][0]['public_description'],$input['plans'][1]['id']=>$secondDescription) as $id=>$description){$radio=$xp->query('//input[@name="plan_id"][@value="'.$id.'"]');ap_ok($radio->length===1&&$radio->item(0)->getAttribute('data-description')===$description&&!$radio->item(0)->hasAttribute('onfocus')&&strpos($detailBody,e($description))!==false&&strpos($detailBody,'<script>alert(31)</script>')===false&&strpos($detailBody,'<img src=x onerror=alert(34)>')===false,'frontend radio data-description round-trips escaped plan '.$id);}
+$descriptionPanel=$xp->query('//*[@data-account-plan-description]');ap_ok($descriptionPanel->length===1&&$descriptionPanel->item(0)->textContent===$closingInput['plans'][0]['public_description']&&!$descriptionPanel->item(0)->hasAttribute('hidden')&&strpos($detailBody,'el.textContent=radio.dataset.description')!==false,'frontend first description is escaped text and switching uses textContent');
+$zeroInput=$input;$zeroInput['plans'][0]['public_description']='0';ap_run('POST','/admin/products/'.$pid.'/edit',array(),$zeroInput);
+ap_ok(empty($GLOBALS['test_flash']['error'])&&ap_sql('SELECT public_description FROM product_plans WHERE id=?',array($planId))->fetchColumn()==='0','literal zero description persists through real edit route');
+$zeroPanel=ap_dom(ap_run('GET','/accounts/'.$pid))->query('//*[@data-account-plan-description]')->item(0);
+ap_ok($zeroPanel&&$zeroPanel->textContent==='0'&&!$zeroPanel->hasAttribute('hidden'),'literal zero description is visible before JavaScript executes');
+ap_run('POST','/admin/products/'.$pid.'/edit',array(),$input);ap_ok(empty($GLOBALS['test_flash']['error']),'restore plan description after presentation XSS checks');
+$body=ap_run('GET','/accounts',array('platform'=>'telegram'));ap_ok(strpos($body,$tag)!==false,'platform list includes account');$body=ap_run('GET','/accounts',array('platform'=>'google'));ap_ok(strpos($body,'href="/accounts/'.$pid.'"')===false,'platform list excludes other platform');ap_run('GET','/products/'.$pid);ap_ok(http_response_code()===404,'account on VPN URL is 404');
 ap_sql('INSERT INTO products(name,description,product_type,traffic,region,device_limit,duration_days,price_cents,created_at,updated_at) VALUES(?,"VPN","vpn","10G","HK",1,30,1000,NOW(),NOW())',array('vpn_'.$tag));$vpn=(int)$pdo->lastInsertId();ap_run('GET','/accounts/'.$vpn);ap_ok(http_response_code()===404,'VPN on account URL is 404');
 $body=ap_run('GET','/products');ap_ok(strpos($body,'PUBLIC_SPEC_'.$tag)===false&&strpos($body,'data-name="'.$tag.'"')===false,'VPN catalog excludes account');
 $body=ap_run('GET','/order-confirm',array('product_id'=>$pid,'plan_id'=>$planId));ap_ok(strpos($body,'单个账号')!==false&&strpos($body,'name="promotion_code"')===false&&strpos($body,'0 天')===false,'checkout account no promotion or zero day');
+ap_ok(strpos($body,nl2br(e($planDescription)))!==false&&strpos($body,'<script>alert(32)</script>')===false&&strpos($body,$secondDescription)===false,'checkout selected plan description escapes XSS and preserves line breaks');
+$secondCheckout=ap_run('GET','/order-confirm',array('product_id'=>$pid,'plan_id'=>$input['plans'][1]['id']));ap_ok(strpos($secondCheckout,e($secondDescription))!==false&&strpos($secondCheckout,e($planDescription))===false,'checkout second plan displays its own independent description');
 ap_run('GET','/order-confirm',array('product_id'=>$pid,'plan_id'=>$planId,'group_id'=>1));ap_ok(http_response_code()===400,'checkout group tampering rejected');
 ap_run('POST','/orders',array(),array('product_id'=>$pid,'plan_id'=>$planId,'note'=>'','quantity'=>'2'));ap_ok(!empty($GLOBALS['test_flash']['error'])&&(int)ap_sql('SELECT COUNT(*) FROM orders WHERE user_id=?',array($uid))->fetchColumn()===0,'POST quantity tamper rejected');
 $url=ap_run('POST','/orders',array(),array('product_id'=>$pid,'plan_id'=>$planId,'note'=>'','quantity'=>'1'));$no=substr($url,8);ap_ok(strpos($url,'/orders/')===0,'real order POST success');
+ap_ok(ap_sql('SELECT plan_description_snapshot FROM orders WHERE order_no=?',array($no))->fetchColumn()===$planDescription,'account order snapshots the selected plan description');
+$input['plans'][0]['public_description']='下单后的新方案说明';ap_run('POST','/admin/products/'.$pid.'/edit',array(),$input);
+ap_ok(empty($GLOBALS['test_flash']['error'])&&ap_sql('SELECT public_description FROM product_plans WHERE id=?',array($planId))->fetchColumn()===$input['plans'][0]['public_description']&&ap_sql('SELECT plan_description_snapshot FROM orders WHERE order_no=?',array($no))->fetchColumn()===$planDescription,'later real route edits cannot alter an existing order description snapshot');
+$historicalBody=ap_run('GET','/orders/'.$no);ap_ok(strpos($historicalBody,nl2br(e($planDescription)))!==false&&strpos($historicalBody,'<script>alert(32)</script>')===false&&strpos($historicalBody,$input['plans'][0]['public_description'])===false,'normal historical order entry renders escaped original description snapshot, not edited live text');
+$historicalAdminBody=ap_run('GET','/admin/orders/'.$no);ap_ok(strpos($historicalAdminBody,nl2br(e($planDescription)))!==false&&strpos($historicalAdminBody,'<script>alert(32)</script>')===false&&strpos($historicalAdminBody,$input['plans'][0]['public_description'])===false,'admin historical order renders escaped original plan description snapshot');
+$pdo->beginTransaction();
+try{ap_sql('UPDATE orders SET plan_description_snapshot="0" WHERE order_no=?',array($no));$zeroAdmin=ap_dom(ap_run('GET','/admin/orders/'.$no))->query('//*[contains(concat(" ",normalize-space(@class)," ")," account-plan-snapshot ")]/p');ap_ok($zeroAdmin->length===1&&$zeroAdmin->item(0)->textContent==='0','admin order displays literal zero snapshot');}finally{$pdo->rollBack();}
 $changed=$input;$changed['product_type']='vpn';$changed['traffic']='10G';$changed['region']='HK';$changed['device_limit']='1';$changed['plans'][0]['duration_days']='30';ap_run('POST','/admin/products/'.$pid.'/edit',array(),$changed);ap_ok(!empty($GLOBALS['test_flash']['error'])&&ap_sql('SELECT product_type FROM products WHERE id=?',array($pid))->fetchColumn()==='account','edit immutable type rejected');
 ap_sql('UPDATE products SET account_specification="" WHERE id=?',array($pid));ap_run('POST','/admin/products/'.$pid.'/toggle');ap_ok(!empty($GLOBALS['test_flash']['error']),'toggle invalid account configuration rejected');ap_sql('UPDATE products SET account_specification=? WHERE id=?',array('CHANGED_SPEC',$pid));
 $service=new OrderService($pdo);$service->confirmPayment($no,$aid);$body=ap_run('GET','/admin/orders/'.$no);ap_ok(strpos($body,'账号交付内容')!==false&&strpos($body,'name="subscription"')===false&&strpos($body,'name="duration_preset"')===false,'admin account form no VPN inputs');$secret='PRIVATE_'.$tag.'<script>alert(1)</script>';
@@ -103,7 +156,7 @@ function ap_search_tags($body,$tag){
 function ap_search_ids($body){
     // 仅从真实商品卡的详情链接取商品编号，避免输入框或导航中的 q 回显造成假命中。
     preg_match_all('~<article\b([^>]*)>(.*?)</article\s*>~si',$body,$matches,PREG_SET_ORDER);$ids=array();
-    foreach($matches as $match){if(!ap_search_has_class(ap_search_attrs($match[1]),'account-catalog-card'))continue;$links=array();foreach(ap_search_tags($match[2],'a') as $link)if(isset($link['href'])&&preg_match('~\A/accounts/([0-9]+)\z~D',$link['href'],$id))$links[]=(int)$id[1];if(count($links)!==1)throw new RuntimeException('FAIL ambiguous account card detail link');$ids[]=$links[0];}
+    foreach($matches as $match){if(!ap_search_has_class(ap_search_attrs($match[1]),'ac-card'))continue;$links=array();foreach(ap_search_tags($match[2],'a') as $link)if(isset($link['href'])&&preg_match('~\A/accounts/([0-9]+)\z~D',$link['href'],$id))$links[]=(int)$id[1];if(count($links)!==1)throw new RuntimeException('FAIL ambiguous account card detail link');$ids[]=$links[0];}
     sort($ids,SORT_NUMERIC);return $ids;
 }
 function ap_search_expect($get,$expected,$label){$body=ap_run('GET','/accounts',$get);sort($expected,SORT_NUMERIC);ap_ok(http_response_code()===200&&ap_search_ids($body)===$expected,$label);return $body;}
@@ -141,18 +194,18 @@ ap_search_expect(array('platform'=>$searchPlatform),$visible,'unsearched catalog
 ap_search_expect(array('q'=>'','platform'=>$searchPlatform),$visible,'empty search equals no search');
 ap_search_expect(array('q'=>" \t\r\n",'platform'=>$searchPlatform),$visible,'whitespace search equals no search');
 $body=ap_search_expect(array('q'=>" \t".$needle.' ','platform'=>$searchPlatform),array($nameHit,$descriptionHit,$specHit),'search form and platform navigation render matching cards');
-list($formAttrs,$formBody)=ap_search_section($body,'form','account-catalog-search');
+list($formAttrs,$formBody)=ap_search_section($body,'form','ac-search');
 ap_ok(isset($formAttrs['method'],$formAttrs['action'])&&strtolower($formAttrs['method'])==='get'&&$formAttrs['action']==='/accounts','in-page account search GET action');
-$searchInputs=array();$platformInputs=array();foreach(ap_search_tags($formBody,'input') as $field){if(isset($field['id'])&&$field['id']==='account-search')$searchInputs[]=$field;if(isset($field['type'],$field['name'])&&strtolower($field['type'])==='hidden'&&$field['name']==='platform')$platformInputs[]=$field;}
-ap_ok(count($searchInputs)===1&&isset($searchInputs[0]['name'],$searchInputs[0]['value'])&&$searchInputs[0]['name']==='q'&&$searchInputs[0]['value']===$needle,'search input id name and trimmed value');
+$searchInputs=array();$platformInputs=array();foreach(ap_search_tags($formBody,'input') as $field){if(isset($field['name'],$field['type'])&&$field['name']==='q'&&$field['type']==='search')$searchInputs[]=$field;if(isset($field['type'],$field['name'])&&strtolower($field['type'])==='hidden'&&$field['name']==='platform')$platformInputs[]=$field;}
+ap_ok(count($searchInputs)===1&&isset($searchInputs[0]['name'],$searchInputs[0]['value'])&&$searchInputs[0]['name']==='q'&&$searchInputs[0]['value']===$needle,'search input type name and trimmed value');
 ap_ok(count($platformInputs)===1&&isset($platformInputs[0]['value'])&&$platformInputs[0]['value']===$searchPlatform,'search form preserves platform in hidden input');
-list($navAttrs,$navBody)=ap_search_section($body,'nav','account-platform-filter');$navLinks=ap_search_tags($navBody,'a');$allFound=false;$platformFound=false;
+list($navAttrs,$navBody)=ap_search_section($body,'nav','ac-platforms');$navLinks=ap_search_tags($navBody,'a');$allFound=false;$platformFound=false;
 foreach($navLinks as $link){ap_ok(isset($link['href']),'platform navigation href exists');$parts=parse_url($link['href']);$query=array();parse_str(isset($parts['query'])?$parts['query']:'',$query);ap_ok(isset($query['q'])&&$query['q']===$needle&&ap_search_url($link['href'],$query),'every platform navigation link preserves trimmed q');if(!isset($query['platform'])||$query['platform']==='')$allFound=true;if(isset($query['platform'])&&$query['platform']===$otherPlatform){$platformFound=true;ap_search_expect($query,array($otherHit),'following platform link preserves search intersection');}}
 ap_ok($allFound&&$platformFound,'all-platform and other-platform search navigation exist');
 $allBody=ap_search_expect(array('q'=>$needle),array($nameHit,$descriptionHit,$specHit,$otherHit),'all-platform search retains q and removes platform constraint');
-$allClear=array();foreach(ap_search_tags($allBody,'a') as $link)if(ap_search_has_class($link,'account-search-clear'))$allClear[]=$link;
+$allClear=array();foreach(ap_dom($allBody)->query('//p[@role="status"]//a[normalize-space(.)="清除搜索"]') as $link)$allClear[]=array('href'=>$link->getAttribute('href'));
 ap_ok(count($allClear)===1&&isset($allClear[0]['href'])&&$allClear[0]['href']==='/accounts','clear search without platform returns bare account catalog');
-$clearLinks=array();foreach(ap_search_tags($body,'a') as $link)if(ap_search_has_class($link,'account-search-clear'))$clearLinks[]=$link;
+$clearLinks=array();foreach(ap_dom($body)->query('//p[@role="status"]//a[normalize-space(.)="清除搜索"]') as $link)$clearLinks[]=array('href'=>$link->getAttribute('href'));
 ap_ok(count($clearLinks)===1&&isset($clearLinks[0]['href'])&&ap_search_url($clearLinks[0]['href'],array('platform'=>$searchPlatform)),'clear search link removes q and preserves platform');
 $clearQuery=array();parse_str((string)parse_url($clearLinks[0]['href'],PHP_URL_QUERY),$clearQuery);ap_search_expect($clearQuery,$visible,'following clear link restores platform catalog');
 $body=ap_search_expect(array('q'=>'missing_'.$tag,'platform'=>$searchPlatform),array(),'unmatched search has zero product cards');
@@ -175,9 +228,9 @@ ap_search_expect(array('q'=>"%' OR '1'='1"),array(),'SQL injection with percent 
 $attributeQuery="\" onfocus=\"alert(9)'><svg/onload=alert(8)> & ".$tag;
 $attributeHit=ap_search_fixture('属性转义 '.$tag,$attributeQuery,'普通公开规格',$searchPlatform);
 $body=ap_search_expect(array('q'=>$attributeQuery,'platform'=>$searchPlatform),array($attributeHit),'HTML metacharacters still match literal description');
-list($formAttrs,$formBody)=ap_search_section($body,'form','account-catalog-search');$escapedInput=false;foreach(ap_search_tags($formBody,'input') as $field)if(isset($field['id'])&&$field['id']==='account-search'){$escapedInput=isset($field['name'],$field['value'])&&$field['name']==='q'&&$field['value']===$attributeQuery&&!isset($field['onfocus'])&&!isset($field['onload']);}
+list($formAttrs,$formBody)=ap_search_section($body,'form','ac-search');$escapedInput=false;foreach(ap_search_tags($formBody,'input') as $field)if(isset($field['name'],$field['type'])&&$field['name']==='q'&&$field['type']==='search'){$escapedInput=isset($field['name'],$field['value'])&&$field['name']==='q'&&$field['value']===$attributeQuery&&!isset($field['onfocus'])&&!isset($field['onload']);}
 ap_ok($escapedInput&&strpos($formBody,e($attributeQuery))!==false&&strpos($body,$attributeQuery)===false&&strpos($body,'<svg/onload=alert(8)>')===false,'q is escaped inside HTML input attribute and card text');
-list($navAttrs,$navBody)=ap_search_section($body,'nav','account-platform-filter');foreach(ap_search_tags($navBody,'a') as $link){$query=array();parse_str((string)parse_url($link['href'],PHP_URL_QUERY),$query);ap_ok(isset($query['q'])&&$query['q']===$attributeQuery,'platform URL round-trips quotes ampersand and HTML characters');}
+list($navAttrs,$navBody)=ap_search_section($body,'nav','ac-platforms');foreach(ap_search_tags($navBody,'a') as $link){$query=array();parse_str((string)parse_url($link['href'],PHP_URL_QUERY),$query);ap_ok(isset($query['q'])&&$query['q']===$attributeQuery,'platform URL round-trips quotes ampersand and HTML characters');}
 // 复用前面真实交付的加密记录，不新增明文私密数据；售后与交付内容均不属于搜索字段。
 ap_ok(!empty($record['content_ciphertext']),'private search fixture reuses actual encrypted delivery');
 ap_search_expect(array('q'=>'PRIVATE_'.$tag),array(),'search excludes private delivered account content');
@@ -198,7 +251,7 @@ $hiddenLine='hidden_spec_'.$tag;$tail='hidden_tail_'.$tag;$longLine=str_repeat('
 $fullSpec="地区：美国\r\n类型：独享\r期限：30天\n".$longLine."\n".$hiddenLine;
 $specProduct=ap_search_fixture('规格标签 '.$tag,'规格标签介绍 '.$tag,$fullSpec,$searchPlatform);
 $body=ap_search_expect(array('q'=>$hiddenLine),array($specProduct),'fifth specification line remains searchable');
-list($attrs,$card)=ap_search_section($body,'article','account-catalog-card');
+list($attrs,$card)=ap_search_section($body,'article','ac-card');
 ap_ok(substr_count($card,'class="account-spec-tag"')===4&&strpos($card,$hiddenLine)===false&&strpos($card,$tail)===false&&strpos($card,'规格已简略')!==false,'actual catalog card limits tags and includes detail hint');
 ap_ok(strpos($card,'account-card-spec')<strpos($card,'account-card-description')&&count(ap_search_tags($card,'a'))===1,'specifications precede description with one detail link');
 ap_search_expect(array('q'=>$tail),array($specProduct),'truncated specification tail remains searchable');
@@ -263,4 +316,14 @@ foreach(array('pending_payment','paid_waiting_group','pending_delivery','deliver
     if($entryStatus!=='delivered')ap_ok(strpos($entryBody,e($secret))===false&&strpos($entryBody,'data-detail-copy=')===false,'统一默认入口非交付状态不泄密 '.$entryStatus);
 }
 ap_sql('UPDATE orders SET status="delivered" WHERE order_no=?',array($no));
-echo "ACCOUNT PAGE HANDLERS PASSED\n";
+// Additional pending orders go last so existing order-count and payment regressions stay unchanged.
+$url=ap_run('POST','/orders',array(),array('product_id'=>$pid,'plan_id'=>$input['plans'][1]['id'],'note'=>'','quantity'=>'1'));$secondNo=substr($url,8);
+ap_ok(strpos($url,'/orders/')===0&&empty($GLOBALS['test_flash']['error'])&&ap_sql('SELECT plan_description_snapshot FROM orders WHERE order_no=?',array($secondNo))->fetchColumn()===$secondDescription,'selecting second plan snapshots its own description');
+$input['account_specification']='CHANGED_SPEC';unset($input['plans'][1]['public_description']);
+ap_run('POST','/admin/products/'.$pid.'/edit',array(),$input);
+ap_ok(empty($GLOBALS['test_flash']['error'])&&ap_sql('SELECT public_description FROM product_plans WHERE id=?',array($input['plans'][1]['id']))->fetchColumn()===''&&ap_sql('SELECT plan_description_snapshot FROM orders WHERE order_no=?',array($secondNo))->fetchColumn()===$secondDescription,'omitted description clears plan while preserving second order snapshot');
+$url=ap_run('POST','/orders',array(),array('product_id'=>$pid,'plan_id'=>$input['plans'][1]['id'],'note'=>'','quantity'=>'1'));$emptyDescriptionNo=substr($url,8);
+ap_ok(strpos($url,'/orders/')===0&&empty($GLOBALS['test_flash']['error'])&&ap_sql('SELECT plan_description_snapshot FROM orders WHERE order_no=?',array($emptyDescriptionNo))->fetchColumn()===null,'empty account description leaves new order snapshot NULL');
+ap_ok(ap_sql('SELECT plan_description_snapshot FROM orders WHERE order_no=?',array($vpnOrders[0]))->fetchColumn()===null,'VPN order does not use account plan description snapshot');
+if($apFailures)throw new RuntimeException(count($apFailures).' / '.$apAssertions.' assertions failed: '.implode('; ',$apFailures));
+echo 'ACCOUNT PAGE HANDLERS PASSED ('.$apAssertions." assertions)\n";

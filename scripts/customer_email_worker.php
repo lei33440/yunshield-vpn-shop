@@ -7,17 +7,20 @@ function customer_email_worker_mode($args){
 }
 function customer_email_worker_ready($email){$cfg=$email->settings();return !empty($cfg['enabled'])&&!empty($cfg['configured']);}
 function customer_email_worker_release($pdo,$rows){
-    $s=$pdo->prepare('UPDATE notification_outbox SET status="retry",locked_at=NULL,updated_at=NOW() WHERE id=? AND status="processing" AND channel="email" AND event_type IN ("customer_order_created","customer_order_delivered","customer_payment_confirmed","broadcast_notice")');
+    $s=$pdo->prepare('UPDATE notification_outbox SET status="retry",locked_at=NULL,updated_at=NOW() WHERE id=? AND status="processing" AND channel="email" AND event_type IN ("customer_order_created","customer_order_delivered","customer_payment_confirmed","customer_subscription_expiring","broadcast_notice")');
     foreach($rows as $row)$s->execute(array($row['id']));
 }
 /** 测试可注入 SMTP stub 与等待函数；生产入口不接受任意文件注入参数。 */
 function customer_email_worker_run($pdo,$config,$email=null,$wait=null){
     if($email===null)$email=new EmailService($pdo,$config);if($wait===null)$wait=function($seconds){sleep($seconds);};
     $result=array('paused'=>false,'enqueued'=>0,'claimed'=>0,'sent'=>0,'skipped'=>0,'failed'=>0);
-    // SMTP关闭或不完整时不入队、不领取、不回收，更不消耗重试。
+    // 站内提醒不依赖 SMTP；邮件仅按独立开关入队，暂停时不领取或消耗重试。
+    $reminders=(new SubscriptionReminderService($pdo,$config))->scan();
+    $result['reminded']=$reminders['notified'];$result['enqueued']=$reminders['enqueued'];
+    // SMTP关闭或不完整时不领取、不回收，更不消耗重试。
     if(!customer_email_worker_ready($email)){$result['paused']=true;return $result;}
     $campaigns=new EmailCampaignService($pdo,$config);$customers=new CustomerEmailService($pdo,$config);$outbox=new NotificationOutboxService($pdo);
-    $result['enqueued']=$campaigns->enqueueBatch(20);$rows=$outbox->claimCustomerEmails(20);$result['claimed']=count($rows);
+    $result['enqueued']+=$campaigns->enqueueBatch(20);$rows=$outbox->claimCustomerEmails(20);$result['claimed']=count($rows);
     foreach($rows as $i=>$row){
         if(!customer_email_worker_ready($email)){customer_email_worker_release($pdo,array_slice($rows,$i));$result['paused']=true;break;}
         try{

@@ -876,6 +876,44 @@ body.admin-body .admin-sidebar .admin-subnav .admin-nav-item{position:relative}
 .admin-body .admin-main .email-template-stage,.admin-body .admin-main .email-template-stage iframe{background:var(--admin-soft)}
 .admin-body .admin-main .admin-content-tabs:not(.admin-glass-tabs,.admin-settings-tabs){background:var(--admin-paper);border-color:var(--admin-line);border-radius:10px;padding:0 10px}
 .admin-body .admin-main .admin-content-tabs:not(.admin-glass-tabs,.admin-settings-tabs) a.selected{border-color:var(--admin-purple)}
+/* 商品目录操作栏与编辑表单。 */
+.admin-body .admin-catalog-heading-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px;margin-left:auto;flex:0 0 auto}
+.admin-body .admin-page-heading:has(>.admin-catalog-heading-actions){align-items:center}
+.admin-body .admin-page-heading:has(>.admin-catalog-heading-actions)>div:first-child{flex:1;min-width:240px}
+.admin-body .admin-catalog-heading-actions :is(a,button){margin:0;min-height:42px}
+.admin-body .admin-main :is(.admin-catalog-editor,.vpn-cost-form){display:grid;gap:22px;width:100%;max-width:1280px;margin:0 auto;padding:0;border:0;border-radius:0;background:transparent}
+.admin-body :is(.admin-catalog-editor,.vpn-cost-form) .product-form-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:0;padding:0;border:0}
+.admin-body :is(.admin-catalog-editor,.vpn-cost-form) .product-form-heading>div{min-width:0}
+.admin-body :is(.admin-catalog-editor,.vpn-cost-form) .product-form-heading h1{margin:6px 0 10px;font-size:clamp(28px,3vw,38px)}
+.admin-body :is(.admin-catalog-editor,.vpn-cost-form) .product-form-heading p{margin:0;max-width:820px;color:#917b68;font-size:12px;line-height:1.9}
+.admin-body :is(.admin-catalog-editor,.vpn-cost-form)>form{display:grid;gap:22px;margin:0}
+.admin-body :is(.admin-catalog-editor,.vpn-cost-form) .product-form-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:22px;align-items:start;margin:0}
+.admin-body .admin-main :is(.admin-catalog-editor,.vpn-cost-form) .product-form-section{min-width:0;margin:0;padding:26px;border:1px solid var(--admin-line);border-radius:16px;background:#fff}
+.admin-body :is(.admin-catalog-editor,.vpn-cost-form) .product-form-section h2{display:flex;align-items:center;gap:10px;margin:0 0 16px;font:650 16px/1.5 system-ui,"Microsoft YaHei",sans-serif;color:#4d392a}
+.admin-body .catalog-section-number{display:inline-flex;align-items:center;justify-content:center;width:29px;height:29px;border-radius:8px;background:#f8ede4;color:#a63f25;font-size:12px;font-weight:600}
+.admin-body :is(.admin-catalog-editor,.vpn-cost-form) :is(.field-help,.plans-heading p,.product-form-section>p){margin:6px 0 16px;color:#9b8673;font-size:12px;line-height:1.9;overflow-wrap:anywhere}
+.admin-body :is(.admin-catalog-editor,.vpn-cost-form) label{display:flex;flex-direction:column;gap:8px;min-width:0;margin:18px 0 0;color:#806a57;font-size:12px;font-weight:500;line-height:1.6}
+.admin-body :is(.admin-catalog-editor,.vpn-cost-form) :is(input:not([type=hidden]),select,textarea){box-sizing:border-box;width:100%;min-width:0;max-width:100%;min-height:44px;height:auto;margin:0;padding:11px 13px;border:1px solid #e5d7c9;border-radius:9px;background:#fdfbf8;color:#473529;font-size:13px;font-weight:400;line-height:1.6}
+.admin-body :is(.admin-catalog-editor,.vpn-cost-form) textarea{min-height:110px;resize:vertical}
+.admin-body :is(.admin-catalog-editor,.vpn-cost-form) :is(input,textarea,select):focus{outline:0;border-color:#bd8664;box-shadow:0 0 0 3px #a63f2510}
+.admin-body :is(.admin-catalog-editor,.vpn-cost-form) :is(a,button):focus-visible{outline:2px solid #a63f25;outline-offset:3px}
+.admin-body :is(.admin-catalog-editor,.vpn-cost-form) .plans-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px}
+.admin-body :is(.admin-catalog-editor,.vpn-cost-form) .plans-heading h2{margin-bottom:7px}
+.admin-body :is(.admin-catalog-editor,.vpn-cost-form) .plans-heading p{margin:0}
+.admin-body #account-plan-list{display:grid;gap:16px}
+.admin-body .account-product-form .account-plan-row{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,.7fr);gap:16px;min-width:0;margin:0;padding:20px;border:1px solid #e9d9c9;border-radius:12px;background:#fcf8f2}
+.admin-body .account-product-form .account-plan-row label{margin:0}
+.admin-body .account-product-form .account-plan-description{grid-column:1/-1}
+.admin-body .account-plan-description small{color:#a18a74;font-size:11px;font-weight:400;line-height:1.8}
+.admin-body .account-product-form .account-plan-description textarea{min-height:86px;background:#fff}
+.admin-body .vpn-cost-form .plan-row{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:16px 0 0;padding:20px;border:1px solid #e9d9c9;border-radius:12px;background:#fcf8f2;align-items:start}
+.admin-body .vpn-cost-form .plan-row .vpn-plan-field{gap:8px;margin:0;color:#806a57;font-size:12px}
+.admin-body .vpn-cost-form .plan-row .plan-remove{justify-self:end;align-self:end;min-height:44px;border-color:#e4cdbb;color:#a26144}
+.admin-body .admin-main :is(.admin-catalog-editor,.vpn-cost-form) .product-form-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px;margin:0;padding:18px 22px;border:1px solid var(--admin-line);border-radius:14px;background:#fff}
+.admin-body .catalog-save-actions>span{margin-right:auto;color:#a18a74;font-size:12px;line-height:1.8}
+.admin-body :is(.admin-catalog-editor,.vpn-cost-form) .product-form-actions :is(a,button){min-height:42px;margin:0}
+@media(max-width:1100px){.admin-body :is(.admin-catalog-editor,.vpn-cost-form) .product-form-grid{grid-template-columns:minmax(0,1fr)}.admin-body .account-product-form .account-plan-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.admin-body .admin-catalog-heading-actions{width:100%;justify-content:flex-start;margin:4px 0 0}.admin-body .admin-catalog-heading-actions>a{flex:1;text-align:center}.admin-body :is(.admin-catalog-editor,.vpn-cost-form) .product-form-heading{flex-direction:column;align-items:stretch}.admin-body :is(.admin-catalog-editor,.vpn-cost-form) .product-form-heading>a{text-align:center}.admin-body .admin-main :is(.admin-catalog-editor,.vpn-cost-form) .product-form-section{padding:18px}.admin-body .account-product-form .account-plan-row,.admin-body .vpn-cost-form .plan-row{grid-template-columns:repeat(2,minmax(0,1fr));padding:14px;gap:12px}.admin-body .account-product-form .account-plan-row>label:first-of-type{grid-column:1/-1}.admin-body .admin-main :is(.admin-catalog-editor,.vpn-cost-form) .product-form-actions{padding:14px}.admin-body .catalog-save-actions>span{flex-basis:100%;margin:0 0 4px}.admin-body :is(.admin-catalog-editor,.vpn-cost-form) .product-form-actions :is(a,button){flex:1;text-align:center}}
 /* 与 xiaoyun-admin.html 一致的轻量六组折叠菜单。 */
 .admin-body .admin-reference-nav{margin:0;padding-bottom:10px}
 .admin-body .admin-reference-nav .admin-nav-section{margin:0}

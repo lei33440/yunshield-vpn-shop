@@ -2,7 +2,7 @@
 // 仅内存数据库与隔离会话，执行真实订单列表入口，不加载业务配置。
 if(PHP_SAPI!=='cli')exit(1);
 $root=dirname(__DIR__);
-require $root.'/app/Core/Router.php';require $root.'/app/Core/Security.php';
+require $root.'/app/Core/Router.php';require $root.'/app/Core/Security.php';require $root.'/app/Core/RenewalPages.php';
 function e($v){return htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');}
 function page($title,$body,$config){$GLOBALS['orders_body']=$body;}
 function redirect($url){throw new RuntimeException('REDIRECT '.$url);}

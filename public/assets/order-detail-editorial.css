@@ -1,4 +1,16 @@
 /* 订单详情独立外壳，交付与资金操作沿用真实订单状态。 */
+.renewal-card{margin-top:24px;overflow-wrap:anywhere}
+.renewal-card h2{margin:0 0 18px}
+.renewal-card fieldset{border:0;padding:0;margin:0;min-width:0}
+.renewal-card legend{font-weight:600;margin-bottom:14px}
+.renewal-option{display:flex;align-items:center;gap:14px;padding:18px;margin-bottom:12px;border:1px solid var(--line,#ded6cc);border-radius:12px;background:#fbf7ef;cursor:pointer}
+body.order-detail-editorial .order-reference-page .renewal-option input[type=radio]{width:18px;max-width:18px;height:18px;min-height:18px;margin:0;padding:0;flex:0 0 18px;accent-color:#984c38}
+.renewal-option span{min-width:0;flex:1}.renewal-option small{display:block;margin-top:7px;color:#746a60}
+.renewal-page .order-reference-summary{overflow-wrap:anywhere}
+.renewal-page .renewal-card form{display:grid;gap:16px}
+.renewal-page .product-form-actions{display:flex;flex-wrap:wrap;gap:12px}
+.renewal-page .ao-primary{background:#984c38;color:#fff;border-color:#984c38}
+@media(max-width:720px){.renewal-page .order-reference-heading nav{flex-wrap:wrap}.renewal-card{padding:18px}.renewal-option{padding:14px}.renewal-page .product-form-actions>*{width:100%;text-align:center}}
 body.order-detail-editorial .ao-main{min-height:0;max-width:none;width:100%}
 .order-detail-editorial .ao-header>div{width:min(1600px,94%);min-height:64px}
 .order-detail-editorial .ao-layout{width:min(1600px,94%);grid-template-columns:245px minmax(0,1fr);gap:35px;margin-top:32px}

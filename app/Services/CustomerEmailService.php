@@ -6,15 +6,15 @@ class CustomerEmailService
     private $config;
     public function __construct($pdo,$config=array()){$this->pdo=$pdo;$this->config=$config;}
     public function settings(){
-        $s=$this->pdo->query('SELECT setting_key,setting_value FROM system_settings WHERE setting_key IN ("customer_order_created_enabled","customer_order_created_generation","customer_order_delivered_enabled","customer_order_delivered_generation","customer_payment_confirmed_enabled","customer_payment_confirmed_generation")');
+        $s=$this->pdo->query('SELECT setting_key,setting_value FROM system_settings WHERE setting_key IN ("customer_order_created_enabled","customer_order_created_generation","customer_order_delivered_enabled","customer_order_delivered_generation","customer_payment_confirmed_enabled","customer_payment_confirmed_generation","customer_subscription_expiring_enabled","customer_subscription_expiring_generation")');
         $values=array();foreach($s as $r)$values[$r['setting_key']]=$r['setting_value'];$result=array();
-        foreach(array('customer_order_created','customer_order_delivered','customer_payment_confirmed') as $event){$result[$event.'_enabled']=isset($values[$event.'_enabled'])&&$values[$event.'_enabled']==='1';$result[$event.'_generation']=isset($values[$event.'_generation'])?(int)$values[$event.'_generation']:0;}
+        foreach(array('customer_order_created','customer_order_delivered','customer_payment_confirmed','customer_subscription_expiring') as $event){$result[$event.'_enabled']=isset($values[$event.'_enabled'])&&$values[$event.'_enabled']==='1';$result[$event.'_generation']=isset($values[$event.'_generation'])?(int)$values[$event.'_generation']:0;}
         return $result;
     }
     public function saveSettings($input,$adminId=null){
         $own=!$this->pdo->inTransaction();if($own)$this->pdo->beginTransaction();
         try{
-            foreach(array('customer_order_created','customer_order_delivered','customer_payment_confirmed') as $event){
+            foreach(array('customer_order_created','customer_order_delivered','customer_payment_confirmed','customer_subscription_expiring') as $event){
                 $key=$event.'_enabled';if(!array_key_exists($key,$input))continue;
                 if(!in_array($input[$key],array(true,false,0,1,'0','1'),true))throw new InvalidArgumentException('客户通知开关无效。');
                 // 固定顺序锁配置，关闭时递增代次，即使随后重新启用也不补发。
@@ -48,17 +48,29 @@ class CustomerEmailService
         $payload=array('user_id'=>(int)$order['user_id'],'order_id'=>(int)$order['id'],'order_no'=>(string)$order['order_no'],'product_summary'=>(string)$order['product_name_snapshot'].' / '.(string)$order['plan_name_snapshot'],'to'=>$user['email'],'generation'=>$cfg['customer_payment_confirmed_generation']);
         (new NotificationOutboxService($this->pdo))->enqueue('customer_payment_confirmed','customer_payment_confirmed:'.$order['id'],$payload,'email');return true;
     }
+    public function enqueueSubscriptionExpiring($order,$delivery,$tier,$dedupeKey){
+        if(!$this->pdo->inTransaction())throw new LogicException('客户通知必须在订单事务中入队。');
+        $event='customer_subscription_expiring';$cfg=$this->settings();if(!$cfg[$event.'_enabled'])return false;
+        $s=$this->pdo->prepare('SELECT email,status FROM users WHERE id=?');$s->execute(array($order['user_id']));$user=$s->fetch();
+        if(!$user||$user['status']!=='active'||!filter_var($user['email'],FILTER_VALIDATE_EMAIL))return false;
+        $payload=array('user_id'=>(int)$order['user_id'],'order_id'=>(int)$order['id'],'order_no'=>(string)$order['order_no'],'product_summary'=>(string)$order['product_name_snapshot'].' / '.(string)$order['plan_name_snapshot'],'to'=>$user['email'],'generation'=>$cfg[$event.'_generation'],'delivery_id'=>(int)$delivery['id'],'delivery_version'=>(int)$delivery['version_no'],'expires_at'=>$delivery['expires_at'],'reminder_tier'=>(int)$tier);
+        $s=$this->pdo->prepare('SELECT id,status,product_type_snapshot FROM orders WHERE id=? AND user_id=? AND order_no=?');$s->execute(array($order['id'],$order['user_id'],$order['order_no']));$current=$s->fetch();
+        if(!$current||(new SubscriptionReminderService($this->pdo,$this->config))->eligibility($payload,$current)!==null)return false;
+        (new NotificationOutboxService($this->pdo))->enqueue($event,$event.':'.$dedupeKey,$payload,'email');return true;
+    }
     public function eligibility($row,$payload){
         if(!is_array($payload)||empty($payload['user_id'])||!isset($payload['to'])||!is_string($payload['to'])||!filter_var($payload['to'],FILTER_VALIDATE_EMAIL))return 'customer_payload_invalid';
         $s=$this->pdo->prepare('SELECT email,status FROM users WHERE id=?');$s->execute(array($payload['user_id']));$user=$s->fetch();
         if(!$user||$user['status']!=='active')return 'customer_user_inactive';
         if(strcasecmp($user['email'],$payload['to'])!==0)return 'customer_email_changed';
-        if(in_array($row['event_type'],array('customer_order_created','customer_order_delivered','customer_payment_confirmed'),true)){
+        if(in_array($row['event_type'],array('customer_order_created','customer_order_delivered','customer_payment_confirmed','customer_subscription_expiring'),true)){
             $cfg=$this->settings();$event=$row['event_type'];
             if(!$cfg[$event.'_enabled'])return 'customer_event_disabled';
             if(!isset($payload['generation'])||(int)$payload['generation']!==$cfg[$event.'_generation'])return 'customer_generation_expired';
-            $s=$this->pdo->prepare('SELECT id,status,product_type_snapshot,temporary_subscription_status,temporary_subscription_url FROM orders WHERE id=? AND user_id=? AND order_no=?');$s->execute(array(isset($payload['order_id'])?$payload['order_id']:0,$payload['user_id'],isset($payload['order_no'])?$payload['order_no']:''));$order=$s->fetch();
+            $columns=$event==='customer_subscription_expiring'?'id,status,product_type_snapshot':'id,status,product_type_snapshot,temporary_subscription_status,temporary_subscription_url';
+            $s=$this->pdo->prepare('SELECT '.$columns.' FROM orders WHERE id=? AND user_id=? AND order_no=?');$s->execute(array(isset($payload['order_id'])?$payload['order_id']:0,$payload['user_id'],isset($payload['order_no'])?$payload['order_no']:''));$order=$s->fetch();
             if(!$order)return 'customer_order_invalid';
+            if($event==='customer_subscription_expiring')return (new SubscriptionReminderService($this->pdo,$this->config))->eligibility($payload,$order);
             if($event==='customer_order_delivered'){
                 if($order['status']!=='delivered')return 'customer_delivery_inactive';
                 if($this->hasBinding($payload))return $this->deliveryCheck($payload,$order);
@@ -127,6 +139,7 @@ class CustomerEmailService
                 $modules['delivery']=array_intersect_key($data,array_flip(array('subscription','instructions','opened_at','expires_at')));
             }
         }
+        if($row['event_type']==='customer_subscription_expiring')$modules['subscription_reminder']=array('expires_at'=>$payload['expires_at']);
         return (new EmailTemplateService($this->pdo,$this->config))->render($row['event_type'],array('brand'=>$brand,'order_no'=>$payload['order_no'],'product_summary'=>$payload['product_summary']),$modules);
     }
     private static function render($brand,$subject,$body,$unsubscribeLink=null){

@@ -1,4 +1,6 @@
 /* 用户端统一设计层；不加载到管理后台，不改变各页业务表单。 */
+body.user-page .checkout-page #checkout-validate-coupon{display:block;margin:12px 0 0;padding:10px 20px}
+body.user-page .checkout-page #checkout-coupon-result{margin:12px 0 0}
 html{background:#f5f2ec;color-scheme:light}
 body:is(.user-page,.auth-page){color-scheme:light;--paper:#f5f2ec;--panel:#fffcf7;--ink:#28221e;--muted:#665b51;--line:#e5dacf;--soft:#eee6da;--accent:#a63f25;--accent-hover:#89321b;--tint:#f5e5da;--green:#416044;--primary:var(--accent);--surface:var(--panel);--canvas:var(--paper);--shadow:0 3px 16px #49321c08;--serif:"Noto Serif SC","Songti SC","SimSun",serif;--sans:system-ui,"Microsoft YaHei","PingFang SC",sans-serif;background:var(--paper)!important;color:var(--ink)!important;font-family:var(--sans)!important;font-size:15px;line-height:1.7}
 body:is(.user-page,.auth-page) [hidden]{display:none!important}

@@ -51,11 +51,10 @@ class PaymentService
         if ($type==='alipay'&&!$settings['alipay_enabled'] || $type==='wxpay'&&!$settings['wechat_enabled']) throw new RuntimeException('该支付方式暂未启用。');
         $notify=$this->callbackUrl($settings['notify_base_url'],'/payment/notify');
         $return=$this->callbackUrl($settings['notify_base_url'],'/payment/return');
-        $s=$this->pdo->prepare('SELECT * FROM orders WHERE order_no=? AND user_id=? FOR UPDATE');
-        $this->pdo->beginTransaction();
+        $order=OrderService::beginOperation($this->pdo,$orderNo);
         try {
-            $s->execute(array($orderNo,$userId)); $order=$s->fetch();
-            if (!$order||$order['status']!=='pending_payment') throw new RuntimeException('当前订单不能发起在线支付。');
+            if (!$order||(int)$order['user_id']!==(int)$userId||$order['status']!=='pending_payment') throw new RuntimeException('当前订单不能发起在线支付。');
+            if(isset($order['order_kind'])&&$order['order_kind']==='renewal')(new RenewalService($this->pdo,$this->config))->assertPayable($order);
             if((int)$order['total_amount_cents']<=0)throw new RuntimeException('零元订单无需在线支付。');
             $existing=$this->pdo->prepare('SELECT * FROM payment_records WHERE order_id=? AND gateway_order_no<>"" ORDER BY id LIMIT 1 FOR UPDATE');$existing->execute(array($order['id']));$attempt=$existing->fetch();
             if($attempt){
@@ -88,7 +87,7 @@ class PaymentService
         if(!$row||$money!==(int)$row['total_amount_cents']||!$row['payment_id']||$money!==(int)$row['amount_cents'])throw new RuntimeException('invalid payment notification');
         if(!in_array(isset($params['type'])?$params['type']:'',array('alipay','wxpay'),true))throw new RuntimeException('invalid payment type');
         $raw=substr(json_encode($params,JSON_UNESCAPED_UNICODE),0,60000);$trade=isset($params['trade_no'])?(string)$params['trade_no']:'';
-        (new OrderService($this->pdo))->confirmPaymentSystem($row['order_no'],(string)$params['type'],$trade,$raw,(int)$row['payment_id']);
+        (new OrderService($this->pdo,$this->config))->confirmPaymentSystem($row['order_no'],(string)$params['type'],$trade,$raw,(int)$row['payment_id']);
         return true;
     }
     private function moneyCents($value)

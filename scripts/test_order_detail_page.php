@@ -4,6 +4,7 @@ if (PHP_SAPI !== 'cli') exit(1);
 $root = dirname(__DIR__);
 foreach (array('Router','Security') as $name) require $root.'/app/Core/'.$name.'.php';
 require $root.'/app/Core/AccountProductPages.php';
+require $root.'/app/Core/RenewalPages.php';
 foreach (array('OrderService','CryptoService','SubBoostClient','PaymentService','WalletService') as $name) require $root.'/app/Services/'.$name.'.php';
 function e($v) { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 function page($title,$body,$config) { $GLOBALS['detail_body']=$body; }

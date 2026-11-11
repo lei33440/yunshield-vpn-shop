@@ -2,7 +2,7 @@
 
 function email_template_labels()
 {
-    return array('password_reset'=>'找回密码','customer_order_created'=>'下单通知','customer_order_delivered'=>'发货通知','customer_payment_confirmed'=>'付款成功通知');
+    return array('password_reset'=>'找回密码','customer_order_created'=>'下单通知','customer_order_delivered'=>'发货通知','customer_payment_confirmed'=>'付款成功通知','customer_subscription_expiring'=>'订阅到期提醒');
 }
 
 function email_template_input()
